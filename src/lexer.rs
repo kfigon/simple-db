@@ -110,9 +110,11 @@ mod test{
 
     #[test]
     fn select_1() {
-        assert_eq!(lex("select * from mytable;").unwrap(), vec![
+        assert_eq!(lex("select *, a from mytable;").unwrap(), vec![
             Token::Keyword(Keyword::Select),
-            Token::Operator(Operator::Star),
+            Token::Operator(Operator::Star),  
+            Token::Operator(Operator::Comma),
+            Token::Identifier("a".to_owned()),
             Token::Keyword(Keyword::From),
             Token::Identifier("mytable".to_owned()),
             Token::Operator(Operator::Semicolon),
