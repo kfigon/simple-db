@@ -21,6 +21,7 @@ enum Keyword {
     Group,
     Having,
     Order,
+    Not,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -65,6 +66,7 @@ fn lex(input: &str) -> Result<Vec<Token>, LexerError> {
         ("group".to_string(), Keyword::Group),
         ("having".to_string(), Keyword::Having),
         ("order".to_string(), Keyword::Order),
+        ("not".to_string(), Keyword::Not),
     ]);
 
     while let Some(c) = iter.next() {
@@ -125,8 +127,9 @@ mod test{
 
     #[test]
     fn select_2() {
-        assert_eq!(lex("select 123,4 from foo;").unwrap(), vec![
+        assert_eq!(lex("select -123,4 from foo;").unwrap(), vec![
             Token::Keyword(Keyword::Select),
+            Token::Operator(Operator::Minus),
             Token::Number(123),
             Token::Operator(Operator::Comma),
             Token::Number(4),
