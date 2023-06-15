@@ -136,7 +136,7 @@ mod test{
     #[test]
     fn random_stream_of_tokens() {
         assert_eq!(lex(";;,*   (- +//)
-        select, 123.5, ffrom where join GROUP ORDER 
+        select, 123.5, ffrom zółw where join GROUP ORDER 
         ").unwrap(), vec![
             Token::Operator(Operator::Semicolon),
             Token::Operator(Operator::Semicolon),
@@ -156,6 +156,7 @@ mod test{
             Token::Number(5),
             Token::Operator(Operator::Comma),
             Token::Identifier("ffrom".to_owned()),
+            Token::Identifier("zółw".to_owned()),
             Token::Keyword(Keyword::Where),
             Token::Keyword(Keyword::Join),
             Token::Keyword(Keyword::Group),
