@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, iter::Peekable, str::Chars};
 
 #[allow(dead_code)]
 
@@ -73,32 +73,13 @@ fn lex(input: &str) -> Result<Vec<Token>, LexerError> {
         if c.is_whitespace() {
             continue;
         } else if c.is_digit(10) {
-            let mut dig = String::new();
-            dig.push(c);
-            while let Some(num_c) = iter.peek() {
-                if num_c.is_digit(10) {
-                    dig.push(*num_c);
-                    iter.next();
-                } else {
-                    break;
-                }
-            }
+            let dig = read_until(c, &mut iter, |num_c| num_c.is_digit(10));
             let num = dig.parse::<i32>().map_err(|_| LexerError(format!("cant parse number {dig}")))?;
             out.push(Token::Number(num));
         } else if let Some(op) = operators.get(&c) {
             out.push(Token::Operator(op.clone()))
         } else {
-            let mut word = String::new();
-            word.push(c);
-            while let Some(word_c) = iter.peek() {
-                if word_c.is_alphanumeric() {
-                    word.push(*word_c);
-                    iter.next();
-                } else {
-                    break;
-                }
-            }
-
+            let word = read_until(c, &mut iter, |word_c| word_c.is_alphanumeric());
             if let Some(keyword) = keywords.get(&word.to_lowercase()) {
                 out.push(Token::Keyword(keyword.clone()));
             } else {
@@ -106,8 +87,21 @@ fn lex(input: &str) -> Result<Vec<Token>, LexerError> {
             }
         }
     }
-
     Ok(out)
+}
+
+fn read_until(current_char: char, iter: &mut Peekable<Chars>, func: fn(char) -> bool) -> String {
+    let mut word = String::new();
+    word.push(current_char);
+    while let Some(word_c) = iter.peek() {
+        if func(*word_c) {
+            word.push(*word_c);
+            iter.next();
+        } else {
+            break;
+        }
+    }
+    word
 }
 
 #[cfg(test)]
