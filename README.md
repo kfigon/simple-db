@@ -41,8 +41,15 @@ tuple has also a little header like transaction id etc.
 # data representation
 * usually normal datatypes we have in C. Floats can be var precision (fast, because CPUs have instructions for that, but we have rounding errors) or fixed precission - slower but better for representing money or scientific results - no rounding errors.
 * if the data is bigger than single page - we use overflow (Toast in postgres) page. instead of data for particular column, there's a pointer to next page with rest of the data. Or pointer to external file with the content - blob (binary large object) types.
+* system catalogs - metadata about the databsae and its internals, tables, databases, metrics etc. just another tables for metadata. `INFORMATION_SCHEMA`. `\d` in postgres etc.
+ 
+ ------------
+ # types/workloads of queries
+ * OLTP - on line transaction processing - regular queries for an app, select from ordres etc.
+ * OLAP - online analytical processing - long complex readonly queries with large data, lot of joins, high level analytics. Usually we don't index very much
+ * htap - hybric transaction analytical processing - in the middle of both workload
 
+ there are different storage models (`row`/`column storage`) that better suits different workloads. Tuples persisted as rows are better for OLTP, column storage is better for olap - pages contain columns
 
-
-
+ # Buffer managers
  
