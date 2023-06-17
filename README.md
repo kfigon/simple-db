@@ -40,4 +40,9 @@ tuple has also a little header like transaction id etc.
 
 # data representation
 * usually normal datatypes we have in C. Floats can be var precision (fast, because CPUs have instructions for that, but we have rounding errors) or fixed precission - slower but better for representing money or scientific results - no rounding errors.
+* if the data is bigger than single page - we use overflow (Toast in postgres) page. instead of data for particular column, there's a pointer to next page with rest of the data. Or pointer to external file with the content - blob (binary large object) types.
 
+
+
+
+ 
