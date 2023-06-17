@@ -26,8 +26,10 @@ special page with mapping of page id and offsets. SUmmary what is where. Hash ta
 
 ## page layout
 * header with metadata- page size, checksum, dbms version, transaction visibility, compression info
-    * slot array after the header - offsets within the page of next tuples. Data is filled from the end of page, slots from the begining
+    * slot array after the header - list of offsets of next tuples. Data is filled from the end of page, slots from the begining
 * data - can be tuple oriented or log structured
+    * log structured file organisation - log of changes, inserts, updates, deletes etc. This is stored in the page. Less disk writes, recovery is easier. Append only works good on distributed filesystems (s3 is append only). Read become slow, we need to recreate the data (we need snapshots/compact and indexes)
+
 
 tuple id (rowid, ctid etc) usually pageid + offset/slot
 
@@ -35,4 +37,7 @@ tuple id (rowid, ctid etc) usually pageid + offset/slot
 tuple is a sequence of bytes in the page, schema will interpret that as rows.
 tuple has also a little header like transaction id etc.
 
+
+# data representation
+* usually normal datatypes we have in C. Floats can be var precision (fast, because CPUs have instructions for that, but we have rounding errors) or fixed precission - slower but better for representing money or scientific results - no rounding errors.
 
