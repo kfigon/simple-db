@@ -1,5 +1,3 @@
-use core::slice;
-use std::{mem, io::Read};
 
 #[derive(Debug)]
 struct PageHeader {
@@ -35,26 +33,12 @@ impl StorageManager {
     }
 }
 
-fn marshall<T: Sized>(data: T) -> Vec<u8> {
-    let d = unsafe {
-        ::core::slice::from_raw_parts(
-            (&data as *const T) as *const u8,
-            ::core::mem::size_of::<T>(),
-        )
-    };
-    Vec::<u8>::from(d)
+fn marshall<T: serde::ser::Serialize>(data: T) -> Result<Vec<u8>, String> {
+    bincode::serialize(&data).map_err(|e| format!("error during serialization {e}"))
 }
 
-fn unmarshall<T>(data: Vec<u8>) -> Result<T,String> {
-    let mut out: T = unsafe { mem::zeroed() };
-
-    let struct_size = mem::size_of::<T>();
-    unsafe {
-        let slice = slice::from_raw_parts_mut(&mut out as *mut _ as *mut u8, struct_size);
-        data.as_slice().read_exact(slice).map_err(|e| format!("Error during unmarshalling: {e}"))?;
-    }
-
-    Ok(out)
+fn unmarshall<'a, T: serde::de::Deserialize<'a>,>(data: &'a Vec<u8>) -> Result<T,String> {
+    bincode::deserialize(&data[..]).map_err(|e| format!("error during deserialization {e}"))
 }
 
 #[cfg(test)]
@@ -63,40 +47,31 @@ mod marshalling_tests {
 
     #[test]
     fn marshall_int() {
-        assert_eq!(marshall::<u8>(12), vec![12]);
-        assert_eq!(marshall::<i32>(1234), vec![0xd2,0x4,0,0]);
-        assert_eq!(marshall::<i32>(-1234), vec![0x2e,0xfb, 0xff,0xff]);
+        let input = marshall(1234).unwrap();
+        let out: i32 = unmarshall(&input).unwrap();
+        assert_eq!(1234, out);
     }
 
     #[test]
-    fn unmarshall_int() {
-        assert_eq!(unmarshall::<u8>(vec![12]), Ok(12));
-        assert_eq!(unmarshall::<i32>(vec![0xd2,0x4,0,0]), Ok(1234));
-        assert_eq!(unmarshall::<i32>(vec![0x2e,0xfb, 0xff,0xff]), Ok(-1234));
-    }
-
-    #[test]
-    #[ignore]
     fn marshall_string() {
-        todo!()
+        let input = marshall("foobar").unwrap();
+        let out: String = unmarshall(&input).unwrap();
+        assert_eq!("foobar", &out);
     }
 
-    #[test]
-    #[ignore]
-    fn unmarshall_string() {
-        todo!()
+    #[derive(Eq, PartialEq, Debug, serde::Serialize, serde::Deserialize, Clone)]
+    struct MyData {
+        name: String,
+        age: u32,
+        d: Vec<u8>
     }
-
     #[test]
-    #[ignore]
     fn marshall_struct() {
-        todo!()
-    }
+        let my_data = MyData{name: "foo".to_string(), age: 123, d: vec![1,2,3,4]};
 
-    #[test]
-    #[ignore]
-    fn unmarshall_struct() {
-        todo!()
+        let input = marshall(my_data.clone()).unwrap();
+        let out: MyData = unmarshall(&input).unwrap();
+        assert_eq!(my_data, out);
     }
 }
 
