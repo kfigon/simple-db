@@ -73,3 +73,18 @@ Usually oltp are local databased in the apps, then we have ETLs to shove it to O
 ## dirty pages
 some query modified this page recently. We need to flush it to disk, then we can reuse. Only then we can evict pages from buffer pool manager
 
+# Data structures
+
+we can use them to store:
+* internal metadata
+* core storage
+* temporaru data structures
+* table indexes
+
+**Index** - replica of some attributes of the table to do fast search. Speeds queries, but bigger memory usage, storage overhead and updates/inserts are longer.
+
+`HashTable` for storing table data, metadata and for indexes (when doing `=`)
+
+`B-tree`/`B+tree` - self balancing trees, sorted order, efficient search, seq access, insert, delete. Always `O(logn)`. For indexes -> fast searching when doing `>, >=, <, <=` etc. Like binary trees, but can't be tall and have multiple children.
+
+`LSM-Trees` (Log Structured Merge Trees) are usually used by NoSQL databases. An LSM-Tree essentially takes a simple log and extends it by dumping the log to disk once it reaches a certain size (Commonly referred to as a “segment”).

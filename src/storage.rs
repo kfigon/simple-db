@@ -54,12 +54,12 @@ impl StorageManager {
     }
 }
 
-fn marshall<T: serde::ser::Serialize>(data: T) -> Result<Vec<u8>, String> {
-    bincode::serialize(&data).map_err(|e| format!("error during serialization {e}"))
+fn marshall<T: serde::ser::Serialize>(data: T) -> Result<Vec<u8>, StorageError> {
+    bincode::serialize(&data).map_err(|e: Box<bincode::ErrorKind>| StorageError(format!("error during serialization {e}")))
 }
 
-fn unmarshall<'a, T: serde::de::Deserialize<'a>,>(data: &'a Vec<u8>) -> Result<T, String> {
-    bincode::deserialize(&data[..]).map_err(|e| format!("error during deserialization {e}"))
+fn unmarshall<'a, T: serde::de::Deserialize<'a>,>(data: &'a Vec<u8>) -> Result<T, StorageError> {
+    bincode::deserialize(&data[..]).map_err(|e: Box<bincode::ErrorKind>| StorageError(format!("error during deserialization {e}")))
 }
 
 #[cfg(test)]
