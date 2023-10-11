@@ -56,17 +56,17 @@ fn lex(input: &str) -> Result<Vec<Token>, LexerError> {
         (';', Operator::Semicolon),
     ]);
 
-    let keywords: HashMap<String, Keyword> = HashMap::from([
-        ("select".to_string(), Keyword::Select),
-        ("from".to_string(), Keyword::From),
-        ("where".to_string(), Keyword::Where),
-        ("join".to_string(), Keyword::Join),
-        ("left".to_string(), Keyword::Left),
-        ("right".to_string(), Keyword::Right),
-        ("group".to_string(), Keyword::Group),
-        ("having".to_string(), Keyword::Having),
-        ("order".to_string(), Keyword::Order),
-        ("not".to_string(), Keyword::Not),
+    let keywords: HashMap<&str, Keyword> = HashMap::from([
+        ("select", Keyword::Select),
+        ("from", Keyword::From),
+        ("where", Keyword::Where),
+        ("join", Keyword::Join),
+        ("left", Keyword::Left),
+        ("right", Keyword::Right),
+        ("group", Keyword::Group),
+        ("having", Keyword::Having),
+        ("order", Keyword::Order),
+        ("not", Keyword::Not),
     ]);
 
     while let Some(c) = iter.next() {
@@ -74,13 +74,13 @@ fn lex(input: &str) -> Result<Vec<Token>, LexerError> {
             continue;
         } else if c.is_digit(10) {
             let dig = read_until(c, &mut iter, |num_c| num_c.is_digit(10));
-            let num = dig.parse::<i32>().map_err(|_| LexerError(format!("cant parse number {dig}")))?;
+            let num = dig.parse::<i32>().map_err(|e| LexerError(format!("cant parse number {dig}: {err}", err = e.to_string())))?;
             out.push(Token::Number(num));
         } else if let Some(op) = operators.get(&c) {
             out.push(Token::Operator(op.clone()))
         } else {
             let word = read_until(c, &mut iter, |word_c| word_c.is_alphanumeric());
-            if let Some(keyword) = keywords.get(&word.to_lowercase()) {
+            if let Some(keyword) = keywords.get(word.to_lowercase().as_str()) {
                 out.push(Token::Keyword(keyword.clone()));
             } else {
                 out.push(Token::Identifier(word));

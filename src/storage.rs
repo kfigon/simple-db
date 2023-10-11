@@ -27,7 +27,7 @@ struct StorageError(String);
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 struct PageId(usize);
 
-// currently inmemory
+// currently inmemory. Storage manager == buffer pool manager here
 // todo: mutex
 struct StorageManager {
     data: Vec<Page>
