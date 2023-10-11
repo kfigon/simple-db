@@ -209,7 +209,7 @@ mod persistance_tests {
         s.update_data(id, HashMap::from([
             (FieldName("fooooo".to_string()), "1234".to_string()),
             (FieldName("barooo".to_string()), "the value".to_string()),
-        ]));
+        ])).unwrap();
 
         let p = s.read(id).unwrap();
         let read_data: HashMap<FieldName, String> = unmarshall(&p.data).unwrap();
