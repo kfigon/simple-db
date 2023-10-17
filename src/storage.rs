@@ -45,14 +45,13 @@ impl Pager {
                 let new_page = Page::new(data);
                 self.data.push(new_page);
             },
-            Some(p) => {
-                if p.head.size >= self.page_size {
-                    let new_page = Page::new(data);
-                    self.data.push(new_page);
-                } else {
-                    p.data.append(&mut data);
-                    p.head.size = p.data.len();
-                }
+            Some(mut p) if p.head.size >= self.page_size => {  // proper page management is hard, this will do for now. Note that we can exceed page_size in this impl
+                let new_page = Page::new(data);
+                self.data.push(new_page);
+            }, 
+            Some(mut p) => {
+                p.data.append(&mut data);
+                p.head.size = p.data.len();
             }
         }
         Ok(PageId(self.data.len()-1))
