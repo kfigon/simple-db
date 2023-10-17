@@ -22,38 +22,24 @@ impl Page {
     }
 }
 
-
 // currently inmemory. Storage manager == buffer pool manager here
 // we also don't care about slotted array
+// in this system page_id == record_id
 struct Pager {
     data: Vec<Page>, // all pages, full disk
-    page_size: usize
 }
 
 impl Pager {
-    fn new(page_size: usize) -> Self {
+    fn new() -> Self {
         Self { 
             data: Vec::new(), 
-            page_size: page_size
         }
     }
 
-    fn store_new(&mut self, mut data: Vec<u8>) -> Result<PageId, StorageError> {
-        let last_page_id = self.data.last_mut();
-        match last_page_id {
-            None => {
-                let new_page = Page::new(data);
-                self.data.push(new_page);
-            },
-            Some(mut p) if p.head.size >= self.page_size => {  // proper page management is hard, this will do for now. Note that we can exceed page_size in this impl
-                let new_page = Page::new(data);
-                self.data.push(new_page);
-            }, 
-            Some(mut p) => {
-                p.data.append(&mut data);
-                p.head.size = p.data.len();
-            }
-        }
+    fn store_new(&mut self, data: Vec<u8>) -> Result<PageId, StorageError> {
+        // proper page management is hard, this will do for now. Note that we can exceed page_size in this impl
+        let new_page = Page::new(data);
+        self.data.push(new_page);
         Ok(PageId(self.data.len()-1))
     }
 
@@ -77,25 +63,26 @@ mod persistance_tests {
 
     #[test]
     fn read_unknown() {
-        let mut s = Pager::new(5);
+        let s = Pager::new();
         assert_eq!(s.read(PageId(12)), None)
     }
 
     #[test]
     fn insert_read() {
-        let mut s = Pager::new(512);
+        let mut s = Pager::new();
         assert_eq!(s.read(PageId(0)), None);
 
         s.store_new(vec![1,2,3]).unwrap();
         assert_eq!(s.read(PageId(0)), Some(&Page::new(vec![1,2,3])));
 
         s.store_new(vec![4,5,6]).unwrap();
-        assert_eq!(s.read(PageId(0)), Some(&Page::new(vec![1,2,3,4,5,6])));
+        assert_eq!(s.read(PageId(0)), Some(&Page::new(vec![1,2,3])));
+        assert_eq!(s.read(PageId(1)), Some(&Page::new(vec![4,5,6])));
     }
 
     #[test]
     fn modify() {
-        let mut s = Pager::new(3);
+        let mut s = Pager::new();
         s.store_new(vec![1,2,3]).unwrap();
         s.store_new(vec![4,5,6]).unwrap();
 
@@ -108,20 +95,8 @@ mod persistance_tests {
     }
 
     #[test]
-    fn modify_same_page() {
-        let mut s = Pager::new(512);
-        s.store_new(vec![1,2,3]).unwrap();
-        s.store_new(vec![4,5,6]).unwrap();
-
-        assert_eq!(s.read(PageId(0)), Some(&Page::new(vec![1,2,3,4,5,6])));
-
-        s.update(PageId(0), vec![87]).unwrap();
-        assert_eq!(s.read(PageId(0)), Some(&Page::new(vec![87])));
-    }
-
-    #[test]
     fn modify_unknown() {
-        let mut s = Pager::new(3);
+        let mut s = Pager::new();
         s.store_new(vec![1,2,3]).unwrap();
         s.store_new(vec![4,5,6]).unwrap();
 
@@ -142,7 +117,7 @@ struct StorageManager {
 
 impl StorageManager {
     fn new() -> Self{
-        Self { pager: Pager::new(512), page_directory: HashMap::new(), schemas: HashMap::new() }
+        Self { pager: Pager::new(), page_directory: HashMap::new(), schemas: HashMap::new() }
     }
 
     fn insert_data(&mut self, table_name: TableName, data: HashMap<FieldName, String>) -> Result<PageId, StorageError> {
