@@ -112,7 +112,7 @@ struct StorageManager {
 
     // ids: HashMap<usize, PageId> // todo, dont use pageIds in this layer - primary key to PageId
     page_directory: HashMap<TableName, HashSet<PageId>>,
-    schemas: HashMap<TableName, FieldName>
+    schemas: HashMap<TableName, Vec<FieldName>>
 }
 
 impl StorageManager {
