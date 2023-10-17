@@ -35,6 +35,8 @@ special page with mapping of page id and offsets. SUmmary what is where. Hash ta
 
 tuple id (rowid, ctid etc) usually pageid + offset/slot
 
+![page structure](page_structure.png)
+
 ## tuple layout
 tuple is a sequence of bytes in the page, schema will interpret that as rows.
 tuple has also a little header like transaction id etc.
@@ -89,5 +91,7 @@ we can use them to store:
 
 `LSM-Trees` (Log Structured Merge Trees) are usually used by NoSQL databases. An LSM-Tree essentially takes a simple log and extends it by dumping the log to disk once it reaches a certain size (Commonly referred to as a “segment”).
 
-# index concurrency control
-https://www.youtube.com/watch?v=x5tqzyf0zrk&list=PLSE8ODhjZXjbohkNBWQs_otTrBTrjyohi&index=9
+# concurrency control
+
+* lock - logical correctness, transaction control. ROllbacks
+* latch - mutex, physical primitive to secure data structures. No rollbacks, this is for atomic code operations

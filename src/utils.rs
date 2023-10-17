@@ -1,6 +1,15 @@
 #[derive(Debug, PartialEq)]
 pub struct StorageError(pub String);
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub struct PageId(pub usize);
+
+#[derive(Debug, PartialEq, Eq, Hash, PartialOrd)]
+pub struct TableName(pub String);
+
+#[derive(Debug, PartialEq, Eq, Hash, PartialOrd, serde::Serialize, serde::Deserialize)]
+pub struct FieldName(pub String);
+
 pub fn marshall<T: serde::ser::Serialize>(data: T) -> Result<Vec<u8>, StorageError> {
     bincode::serialize(&data).map_err(|e: Box<bincode::ErrorKind>| StorageError(format!("error during serialization {e}")))
 }
