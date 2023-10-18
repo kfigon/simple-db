@@ -123,3 +123,14 @@ Conflicts happen when the object is accessed by different transactions, there ar
 * write - write conflict - `overriting uncommited` - `write skew`
 ![override](override.png)
 
+`2PL` - locking. Lock manager updates it's own lock table to keep track what's locked. RW locks are used.
+Two phase locking does not need to know all the queries within tx ahead of time.
+2 phases: growing - acquire all locks that it needs. shrink - we can only release locks. It's great, but it leads to cascading aborts.
+Deadlock handling - find a victim and kill it.
+
+`MVCC` - multiversion concurrency control. Most of DBs keeps multiple physical version of objects (page, tuple) and applies transactions to them. Then resolve the conflicts to final result.
+Writers don't block readers, readers don't block writers. Only write-write blocks. Optimised for reads.
+Easy to support time travel queries.
+
+We also need garbage collection (vacuum) to collect dead tuples
+
