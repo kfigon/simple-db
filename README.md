@@ -95,3 +95,31 @@ we can use them to store:
 
 * lock - logical correctness, transaction control. ROllbacks
 * latch - mutex, physical primitive to secure data structures. No rollbacks, this is for atomic code operations
+
+
+`transaction` - many queries that perform high level function. All or none
+* for analytics dbs we don't do transactions
+* naive approach: copy db files, do queries, if succeeds - set the pointer to the new file. But this is slow
+
+permanent inconsistencies are not, but some temporary inconsistencies are ok (unavoidable), we're hiding these inconsistencies from outside world
+
+ACID:
+* atomicity - all or none. Done by write ahead log or shadow page (naive approach mentioned before copy pages, do changes there)
+* consistency - db state before and after tx is correct. Constraints etc.
+* isolation - how parallel transactions see eachother
+* durability - when we commit - it's persisted
+
+concurrency control protocols:
+* pessimistic - don't let the problem to arise in the first place. Acquire locks before we do anything. `Two-phase locking`
+* optimistic - assume conflicts are rare, deal when they happen. No locks, let them run, then solve conflicts. `Timestamp ordering concurrency control`
+
+DB sees reads or writes on tuples or tables and uses it to interleave transactions that operate on same objects (tables or tuples, we don't track fields).
+
+Conflicts happen when the object is accessed by different transactions, there are writes involved.
+* read - write conflict - `nonrepeatable read` - i read, somebody commited and i read again. Also `phantom reads` when there's an insert
+![unrepeatable read](unrepeatable_read.png)
+* write - read conflict - `dirty reads`/`read uncommited` - i can see uncommited changes
+![dirty read](dirty_read.png)
+* write - write conflict - `overriting uncommited` - `write skew`
+![override](override.png)
+
