@@ -47,6 +47,27 @@ func (b *BTree)insert(key int) {
 	}
 }
 
+func (b *BTree) split(parent *node, fullChildIdx int) {
+	// todo: not finished, check ranges
+	
+	fullChild := parent.children[fullChildIdx]
+
+	newNode := &node{ isLeaf: fullChild.isLeaf }
+	// todo: sort both
+	parent.children = append(parent.children, newNode)
+
+	// insert median
+	parent.keys = append(parent.keys, fullChild.keys[len(fullChild.keys)/2])
+
+	newNode.keys = fullChild.keys[1+len(fullChild.keys)/2:]
+	fullChild.keys = fullChild.keys[:len(fullChild.keys)/2]
+
+	if !fullChild.isLeaf {
+		newNode.children = fullChild.children[1+len(fullChild.children)/2:]
+		fullChild.children = fullChild.children[:len(fullChild.children)/2]
+	}
+}
+
 func (b *BTree)search(key int) (int, bool) {
 	var fn func(*node) (int, bool)
 	fn = func(n *node) (int, bool) {
@@ -65,7 +86,7 @@ func (b *BTree)search(key int) (int, bool) {
 }
 
 func (b *BTree)delete(key int) bool {
-	return false
+	panic("todo")
 }
 
 func (b *BTree) asStr() string {
