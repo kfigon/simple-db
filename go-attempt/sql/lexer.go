@@ -95,15 +95,15 @@ func Lex(in string) []Token {
 			line++
 		} else if unicode.IsSpace(c) {
 			continue
+		} else if c == '!' || c == '<' || c == '>' {
+			if next, ok := it.peek(); ok && next == '=' {
+				it.next()
+				out = append(out, emit(Operator, string(c+next), line))
+			} else {
+				out = append(out, emit(Operator, string(c), line))
+			}
 		} else if typ, ok := singleCharTokens[c]; ok {
 			out = append(out, emit(typ, string(c), line))
-		} else if c == '!' {
-			if next, ok := it.peek(); ok && next == '='{
-				it.next()
-				out = append(out, emit(Operator, "!=", line))
-			} else {
-				out = append(out, emit(Operator, "!", line))
-			}
 		} else if unicode.IsDigit(c) {
 			dig := readUntil(c, it, unicode.IsDigit)
 			out = append(out, emit(Number, dig, line))
