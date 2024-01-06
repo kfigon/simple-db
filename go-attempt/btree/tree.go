@@ -7,6 +7,7 @@ import (
 )
 
 // [K cmp.Ordered, V any]
+// todo: store both key and val in single struct IN node. Might be easier to implement
 type node struct{
 	keys []int
 	
@@ -49,7 +50,6 @@ func (b *BTree)insert(key int) {
 		return
 	}
 	b.insertNonFull(b.root, key)
-	
 }
 
 func (b *BTree) insertNonFull(n *node, key int) {
@@ -108,6 +108,7 @@ func (b *BTree)search(key int) (int, bool) {
 		}
 		return fn(b.root.children[i])
 	}
+	
 	return fn(b.root)
 }
 
