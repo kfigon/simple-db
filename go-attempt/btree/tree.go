@@ -7,9 +7,8 @@ import (
 )
 
 // [K cmp.Ordered, V any]
-// todo: store both key and val in single struct IN node. Might be easier to implement
 type node struct{
-	keys []int
+	keys []int // todo: entry {key, val}
 	
 	isLeaf bool
 	children []*node
@@ -20,9 +19,9 @@ type BTree struct{
 	root *node
 }
 
-func NewBtree(order int) *BTree {
+func NewBtree(numberOfChildren int) *BTree {
 	return &BTree {
-		order: order,
+		order: numberOfChildren,
 		root: &node{
 			keys:      nil,
 			isLeaf:    true,
@@ -40,15 +39,17 @@ func (b *BTree) full(n *node) bool {
 // https://algs4.cs.princeton.edu/code/edu/princeton/cs/algs4/BTree.java.html
 
 // https://www.youtube.com/watch?v=tT2DT9Z4H-0&list=PL9xmBV_5YoZNFPPv98DjTdD9X6UI9KMHz&index=5
-func (b *BTree)insert(key int) {
+func (b *BTree) insert(key int) {
 	if b.full(b.root) {
 		oldRoot := b.root
+
 		b.root = &node{}
 		b.root.children = append(b.root.children, oldRoot)
 		b.split(b.root, 0)
 		b.insertNonFull(b.root, key)
 		return
 	}
+	
 	b.insertNonFull(b.root, key)
 }
 
@@ -73,19 +74,18 @@ func (b *BTree) insertNonFull(n *node, key int) {
 }
 
 func (b *BTree) split(parent *node, fullChildIdx int) {
-	// todo: not finished, check ranges
+	// todo: check ranges
 	fullChild := parent.children[fullChildIdx]
 	medianId := len(fullChild.keys)/2
 
-
 	newNode := &node{ isLeaf: fullChild.isLeaf }
-	// todo: sort both
-	parent.children = append(parent.children, newNode)
+	parent.children = slices.Insert(parent.children, fullChildIdx + 1, newNode)
 
-	// insert median
-	parent.keys = append(parent.keys, fullChild.keys[medianId])
+	// insert median to parent
+	parent.keys = slices.Insert(parent.keys, fullChildIdx, fullChild.keys[medianId])
 
-	newNode.keys = fullChild.keys[1+medianId:]
+	// not include median, because we've just moved it to the parent
+	newNode.keys = fullChild.keys[1+medianId:] 
 	fullChild.keys = fullChild.keys[:medianId]
 
 	if !fullChild.isLeaf {
@@ -94,7 +94,7 @@ func (b *BTree) split(parent *node, fullChildIdx int) {
 	}
 }
 
-func (b *BTree)search(key int) (int, bool) {
+func (b *BTree) search(key int) (int, bool) {
 	var fn func(*node) (int, bool)
 	fn = func(n *node) (int, bool) {
 		i := 0
@@ -112,11 +112,11 @@ func (b *BTree)search(key int) (int, bool) {
 	return fn(b.root)
 }
 
-func (b *BTree)delete(key int) bool {
+func (b *BTree) delete(key int) bool {
 	panic("todo")
 }
 
-func (b *BTree) asStr() string {
+func (b *BTree) String() string {
 	out := strings.Builder{}
 	
 	var fn func(*node,int)
