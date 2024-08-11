@@ -23,9 +23,13 @@ func NewPage() *Page {
 }
 // todo: impl overflow pages for big data
 
+func (p *Page) tooBig(offset PageOffset, dataSize int) bool {
+	return int(offset) + dataSize >= len(p.data)
+}
+
 var ErrCantFitInPage = fmt.Errorf("can't fit it in page")
 func (p *Page) StoreInt(offset PageOffset, data int32) error {
-	if int(offset) + 4 >= len(p.data) {
+	if p.tooBig(offset, 4) {
 		return ErrCantFitInPage
 	}
 	
@@ -34,20 +38,38 @@ func (p *Page) StoreInt(offset PageOffset, data int32) error {
 	return nil
 }
 
+func (p *Page) StoreByte(offset PageOffset, data byte) error {
+	if p.tooBig(offset, 1) {
+		return ErrCantFitInPage
+	}
+	
+	p.data[offset] = data
+	p.takenSpace += 1
+	return nil
+}
+
+func (p *Page) StoreI16(offset PageOffset, data int16) error {
+	if p.tooBig(offset, 2) {
+		return ErrCantFitInPage
+	}
+	
+	binary.BigEndian.PutUint16(p.data[offset:], uint16(data))
+	p.takenSpace += 2
+	return nil
+}
+
 func (p *Page) StoreString(offset PageOffset, data string) error {
 	return p.StoreBlob(offset, []byte(data))
 }
 
 func (p *Page) StoreBlob(offset PageOffset, data []byte) error {
-	if int(offset) + 1 + len(data) >= len(p.data) {
+	if p.tooBig(offset, 2 + len(data)) {
 		return ErrCantFitInPage
-	} else if len(data) > 255 {
-		return fmt.Errorf("cant store more than 255 now")
 	}
 
-	p.data[offset] = byte(len(data))
-	ret := copy(p.data[offset+1:], data)
-	p.takenSpace += 1 + len(data)
+	binary.BigEndian.PutUint16(p.data[offset:], uint16(len(data)))
+	ret := copy(p.data[offset+2:], data)
+	p.takenSpace += 2 + len(data)
 
 	if ret != len(data) {
 		return fmt.Errorf("invalid number of bytes written, got %v, exp %v", ret, len(data))
@@ -60,13 +82,23 @@ func (p *Page) ReadInt(offset PageOffset) int32 {
 	return int32(v)
 }
 
+func (p *Page) ReadByte(offset PageOffset) byte {
+	return p.data[offset]
+}
+
+func (p *Page) ReadInt16(offset PageOffset) int16 {
+	v := binary.BigEndian.Uint16(p.data[offset:])
+	return int16(v)
+}
+
 func (p *Page) ReadString(offset PageOffset) string {
 	return string(p.ReadBlob(offset))
 }
 
 func (p *Page) ReadBlob(offset PageOffset) []byte {
-	howMany := p.data[offset]
+	howMany := binary.BigEndian.Uint16(p.data[offset:])
+	
 	data := make([]byte, howMany)
-	copy(data, p.data[offset+1:])
+	copy(data, p.data[offset+2:])
 	return data
 }
