@@ -61,8 +61,12 @@ func (p *Page) ReadInt(offset PageOffset) int32 {
 }
 
 func (p *Page) ReadString(offset PageOffset) string {
+	return string(p.ReadBlob(offset))
+}
+
+func (p *Page) ReadBlob(offset PageOffset) []byte {
 	howMany := p.data[offset]
 	data := make([]byte, howMany)
 	copy(data, p.data[offset+1:])
-	return string(data)
+	return data
 }
