@@ -23,6 +23,8 @@ func NewPage() *Page {
 }
 // todo: impl overflow pages for big data
 
+// todo: generalize pager? Accept a byte array and store anything? Delegate serialization to concrete wrapper types?
+
 func (p *Page) tooBig(offset PageOffset, dataSize int) bool {
 	return int(offset) + dataSize >= len(p.data)
 }
