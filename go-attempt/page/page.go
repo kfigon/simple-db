@@ -35,6 +35,10 @@ func (p *Page) StoreInt(offset PageOffset, data int32) error {
 }
 
 func (p *Page) StoreString(offset PageOffset, data string) error {
+	return p.StoreBlob(offset, []byte(data))
+}
+
+func (p *Page) StoreBlob(offset PageOffset, data []byte) error {
 	if int(offset) + 1 + len(data) >= len(p.data) {
 		return ErrCantFitInPage
 	} else if len(data) > 255 {
