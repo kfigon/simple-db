@@ -2,6 +2,20 @@
 
 based on [chidb](http://chi.cs.uchicago.edu/chidb/index.html) from university of chicago
 
+# db
+single file - sequence of pages. Page is our storage unit, being a set of disk blocks. Different kind of pages - tables, indexes etc.
+
+btree page == btree node. Each pointer is just a page ID
+
+page internally is a slotted page - this way we can store variable size data in a page, inserts and sorting is easy. Slotted index grows to the end of the page, Cell data grows to the beginning. Page has a header to point what's inside
+
+Overflow page - linked list of pages to store bigger data
+
+table is set of pages
+Row format - each Cell is just a row, sequence of bytes.
+
+
+
 * b+ trees for table data
     *  like Btree in which each node contains only keys (not key–value pairs), and to which an additional level is added at the bottom with linked leaves
 * btrees for indexes
@@ -23,3 +37,4 @@ b - balanced
     * functions == full table scan
     * inequality operators matters
     * add relevant columns even from select to index
+
