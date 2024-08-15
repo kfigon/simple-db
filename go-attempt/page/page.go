@@ -5,102 +5,100 @@ import (
 	"fmt"
 )
 
-const PageSize = 8*512 // 4KB
+type PageType byte
+const (
+	DirectoryPageType PageType = iota + 1
+	DataPageType
+)
 
-type PageOffset int
-type PageID int
+type FieldType byte
+const (
+	I8Type FieldType = iota
+	I16Type
+	I32Type
+	I64Type
+	StringType
+	BinaryBlobType
+)
 
-type Page struct {
-	data []byte
-	takenSpace int
+type Serializable[T any] interface {
+	Serialize() []byte
+	Deserialize([]byte) (T, error)
+	Length() int
 }
 
-func NewPage() *Page {
-	return &Page{
-		data: make([]byte, PageSize),
-		takenSpace: 0,
+var ErrTooShortBuffer = fmt.Errorf("too short buffer")
+
+type Byte byte
+func(b Byte) Serialize() []byte{
+	return []byte{byte(b)}
+}
+
+func(b Byte) Deserialize(data []byte) (Byte, error) {
+	if len(data) < b.Length() {
+		return 0, ErrTooShortBuffer
 	}
-}
-// todo: impl overflow pages for big data
-
-// todo: generalize pager? Accept a byte array and store anything? Delegate serialization to concrete wrapper types?
-
-func (p *Page) tooBig(offset PageOffset, dataSize int) bool {
-	return int(offset) + dataSize >= len(p.data)
+	return Byte(data[0]), nil
 }
 
-var ErrCantFitInPage = fmt.Errorf("can't fit it in page")
-func (p *Page) StoreInt(offset PageOffset, data int32) error {
-	if p.tooBig(offset, 4) {
-		return ErrCantFitInPage
+func (b Byte) Length() int {
+	return 1
+}
+
+type I16 int16
+func(i I16) Serialize() []byte{
+	out := make([]byte, i.Length())
+	binary.BigEndian.PutUint16(out, uint16(i))
+	return out
+}
+
+func(i I16) Deserialize(data []byte) (I16, error) {
+	if len(data) < i.Length() {
+		return 0, ErrTooShortBuffer
 	}
 	
-	binary.BigEndian.PutUint32(p.data[offset:], uint32(data))
-	p.takenSpace += 4
-	return nil
+	return I16(binary.BigEndian.Uint16(data)), nil
 }
 
-func (p *Page) StoreByte(offset PageOffset, data byte) error {
-	if p.tooBig(offset, 1) {
-		return ErrCantFitInPage
+func(i I16) Length() int {
+	return 2
+}
+
+type String string
+func(s String) Serialize() []byte {
+	return Bytes([]byte(s)).Serialize()
+}
+
+func(String) Deserialize(data []byte) (String, error){
+	out, err := Bytes(nil).Deserialize(data)
+	if err != nil {
+		return "", err
 	}
-	
-	p.data[offset] = data
-	p.takenSpace += 1
-	return nil
+	return String(out), nil
 }
 
-func (p *Page) StoreI16(offset PageOffset, data int16) error {
-	if p.tooBig(offset, 2) {
-		return ErrCantFitInPage
+
+type Bytes []byte
+func(b Bytes) Serialize() []byte{
+	out := make([]byte, 0, b.Length())
+	out = append(out, I16(len(b)).Serialize()...)
+	out = append(out, b...)
+	return out
+}
+
+func(Bytes) Deserialize(data []byte) (Bytes, error){
+	howMany, err := I16(0).Deserialize(data)
+	headerLen := I16(0).Length()
+
+	if err != nil {
+		return nil, err
+	} else if int(howMany) + headerLen > len(data) {
+		return nil, ErrTooShortBuffer
 	}
-	
-	binary.BigEndian.PutUint16(p.data[offset:], uint16(data))
-	p.takenSpace += 2
-	return nil
+	out := data[headerLen:int(howMany)+headerLen]
+	return Bytes(out),nil
 }
 
-func (p *Page) StoreString(offset PageOffset, data string) error {
-	return p.StoreBlob(offset, []byte(data))
-}
-
-func (p *Page) StoreBlob(offset PageOffset, data []byte) error {
-	if p.tooBig(offset, 2 + len(data)) {
-		return ErrCantFitInPage
-	}
-
-	binary.BigEndian.PutUint16(p.data[offset:], uint16(len(data)))
-	ret := copy(p.data[offset+2:], data)
-	p.takenSpace += 2 + len(data)
-
-	if ret != len(data) {
-		return fmt.Errorf("invalid number of bytes written, got %v, exp %v", ret, len(data))
-	}
-	return nil
-}
-
-func (p *Page) ReadInt(offset PageOffset) int32 {
-	v := binary.BigEndian.Uint32(p.data[offset:])
-	return int32(v)
-}
-
-func (p *Page) ReadByte(offset PageOffset) byte {
-	return p.data[offset]
-}
-
-func (p *Page) ReadInt16(offset PageOffset) int16 {
-	v := binary.BigEndian.Uint16(p.data[offset:])
-	return int16(v)
-}
-
-func (p *Page) ReadString(offset PageOffset) string {
-	return string(p.ReadBlob(offset))
-}
-
-func (p *Page) ReadBlob(offset PageOffset) []byte {
-	howMany := binary.BigEndian.Uint16(p.data[offset:])
-	
-	data := make([]byte, howMany)
-	copy(data, p.data[offset+2:])
-	return data
+func(b Bytes) Length() int {
+	return I16(0).Length() + len(b)
 }
