@@ -17,6 +17,7 @@ type RecordID struct {
 	PageID PageId
 	Offset PageOffset
 }
+
 type PageType byte // always first byte in a page
 const (
 	RootPageType PageType = iota + 1
