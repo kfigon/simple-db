@@ -102,7 +102,7 @@ type DataPage struct {
 	Cells [][]byte
 }
 
-// todo: convert all pages to this type, probably a pattern will emerge
+// todo: convert all pages to this type, probably a pattern will emerge. Delegate details to storage manager
 type GenericPage struct {
 	Header struct{
 		PageTyp PageType
