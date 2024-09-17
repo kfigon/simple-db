@@ -101,3 +101,14 @@ type DataPage struct {
 	Slots []byte
 	Cells [][]byte
 }
+
+// todo: convert all pages to this type, probably a pattern will emerge
+type GenericPage struct {
+	Header struct{
+		PageTyp PageType
+		NextPage PageId
+		SlotArrayLen Byte
+	}
+	Slots []byte
+	Cells [][]byte
+}
