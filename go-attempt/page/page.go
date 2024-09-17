@@ -99,5 +99,5 @@ type DataPage struct {
 		SlotArrayLen Byte
 	}
 	Slots []byte
-	TupleData []byte
+	Cells [][]byte
 }
