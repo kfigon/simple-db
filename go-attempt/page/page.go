@@ -58,6 +58,13 @@ type DirectoryPage struct {
 	PagesData []PageCatalog // todo: slotarray
 }
 
+type PageCatalog struct {
+	StartPageID PageId
+	SchemaRootRecord RecordID // for data pages
+	ObjectType PageType // what kind of page is it
+	ObjectName String
+}
+
 func NewDirectoryPage() *DirectoryPage {
 	return &DirectoryPage{
 		Header:    struct{PageTyp PageType; NextPage PageId}{
@@ -66,13 +73,6 @@ func NewDirectoryPage() *DirectoryPage {
 		},
 		PagesData: nil,
 	}
-}
-
-type PageCatalog struct {
-	StartPageID PageId
-	SchemaRootRecord RecordID // for data pages
-	ObjectType PageType // what kind of page is it
-	ObjectName String
 }
 
 // ============ Schema 
