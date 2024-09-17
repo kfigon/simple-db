@@ -54,7 +54,7 @@ type DirectoryPage struct {
 		PageTyp PageType
 		NextPage PageId
 	}
-	PagesData []PageCatalog // contains variable len data, probably need slot array
+	PagesData []PageCatalog // todo: slotarray
 }
 
 func NewDirectoryPage() *DirectoryPage {
@@ -69,7 +69,7 @@ func NewDirectoryPage() *DirectoryPage {
 
 type PageCatalog struct {
 	StartPageID PageId
-	SchemaPage PageId // for data pages
+	SchemaRootRecord RecordID // for data pages
 	ObjectType PageType // what kind of page is it
 	ObjectName String
 }
@@ -78,15 +78,16 @@ type PageCatalog struct {
 type SchemaPage struct {
 	Header struct {
 		PageTyp PageType
-		NextPage PageId 
+		NextPage PageId
 	}
-	Schemas []SchemaData // todo: slot array, as it contains var len data
+	Schemas []SchemaData // todo: slot array
 }
 
 type SchemaData struct {
 	FieldTyp FieldType
 	IsNull bool // todo - make it bitfield for more efficiency
 	FieldName string
+	Next RecordID
 }
 
 // ============== Data
