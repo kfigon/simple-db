@@ -26,8 +26,8 @@ const (
 // ============= root page. Always first page (1)
 // entry point for all metadata
 type RootPage struct {
-	MagicNumber I32
 	PageTyp PageType
+	MagicNumber I32
 	DirectoryPageRootID PageId
 	SchemaPageRootID PageId
 }
@@ -38,6 +38,7 @@ type RootPage struct {
 type DirectoryPage struct {
 	Header struct {
 		PageTyp PageType
+		NextPage PageId
 		PageDataLen I16
 	}
 	PagesData []PageCatalog
@@ -52,6 +53,7 @@ type PageCatalog struct {
 type SchemaPage struct {
 	Header struct {
 		PageTyp PageType
+		NextPage PageId
 		SchemaLength int16
 	}
 	Schemas []SchemaData
@@ -61,4 +63,15 @@ type SchemaData struct {
 	FieldTyp FieldType
 	IsNull bool // todo - make it bitfield for more efficiency
 	FieldName string
+}
+
+// ============== Data
+type DataPage struct {
+	Header struct {
+		PageTyp PageType
+		NextPage PageId
+		SlotArrayLen Byte
+	}
+	Slots []byte
+	TupleData []byte
 }
