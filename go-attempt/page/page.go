@@ -102,13 +102,15 @@ type DataPage struct {
 	Cells [][]byte
 }
 
+// ============ generic page definiton
 // todo: convert all pages to this type, probably a pattern will emerge. Delegate details to storage manager
-type GenericPage struct {
+type GenericPage[T any] struct {
 	Header struct{
 		PageTyp PageType
 		NextPage PageId
 		SlotArrayLen Byte
 	}
+	AdditionalHeader T
 	Slots []byte
 	Cells [][]byte
 }
