@@ -13,6 +13,10 @@ const PageSize = 8*512
 
 type PageId int // 1 base-indexed
 type PageOffset int
+type RecordID struct {
+	PageID PageId
+	Offset PageOffset
+}
 type PageType byte // always first byte in a page
 const (
 	RootPageType PageType = iota + 1
@@ -49,17 +53,15 @@ type DirectoryPage struct {
 	Header struct {
 		PageTyp PageType
 		NextPage PageId
-		PageDataLen I16
 	}
-	PagesData []PageCatalog
+	PagesData []PageCatalog // contains variable len data, probably need slot array
 }
 
 func NewDirectoryPage() *DirectoryPage {
 	return &DirectoryPage{
-		Header:    struct{PageTyp PageType; NextPage PageId; PageDataLen I16}{
+		Header:    struct{PageTyp PageType; NextPage PageId}{
 			PageTyp: DirectoryPageType,
 			NextPage: 0,
-			PageDataLen: 0,
 		},
 		PagesData: nil,
 	}
@@ -67,6 +69,7 @@ func NewDirectoryPage() *DirectoryPage {
 
 type PageCatalog struct {
 	StartPageID PageId
+	SchemaPage PageId // for data pages
 	ObjectType PageType // what kind of page is it
 	ObjectName String
 }
@@ -75,10 +78,9 @@ type PageCatalog struct {
 type SchemaPage struct {
 	Header struct {
 		PageTyp PageType
-		NextPage PageId
-		SchemaLength int16
+		NextPage PageId 
 	}
-	Schemas []SchemaData
+	Schemas []SchemaData // todo: slot array, as it contains var len data
 }
 
 type SchemaData struct {
@@ -89,7 +91,7 @@ type SchemaData struct {
 
 // ============== Data
 type DataPage struct {
-	Header struct {
+	Header struct { // todo: need table name/tableid? Or put associate schema with data in catalog?
 		PageTyp PageType
 		NextPage PageId
 		SlotArrayLen Byte
