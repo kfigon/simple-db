@@ -12,7 +12,7 @@ const (
 const PageSize = 8*512
 
 type PageId int // 1 base-indexed
-type PageOffset int
+type PageOffset I32
 type RecordID struct {
 	PageID PageId
 	Offset PageOffset
