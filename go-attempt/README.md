@@ -46,7 +46,8 @@ real project start 17.09.24
     * [ ] linked list pages
     * [ ]page iterator
     * [ ] slotted pages
-    * [x] de/serialization
+    * [x] primitive de/serialization
+    * [ ] page de/serialization
     * [ ] catalog
     * [ ] schema
     * [ ] overflow pages
