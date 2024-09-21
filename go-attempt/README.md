@@ -38,3 +38,26 @@ b - balanced
     * inequality operators matters
     * add relevant columns even from select to index
 
+real project start 17.09.24
+
+# backlog
+* [x] page design
+* [ ] storage manager
+    * [ ] linked list pages
+    * [ ]page iterator
+    * [ ] slotted pages
+    * [x] de/serialization
+    * [ ] catalog
+    * [ ] schema
+    * [ ] overflow pages
+* [ ] btree
+* [ ] sql
+    * [x] lexer
+    * [ ] parser
+* [ ] query planner (ast evaluator)
+    * [ ] vm or tree walking
+* [ ] concurrency
+* [ ] client-server
+    * [ ] protocol
+    * [ ] protocol
+* [ ] go stdlib db interface

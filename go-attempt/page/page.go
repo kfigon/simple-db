@@ -12,7 +12,7 @@ const (
 const PageSize = 8*512
 
 type PageId int // 1 base-indexed
-type PageOffset I32
+type PageOffset I16 // offset within the single page (for slot array). todo: can we make it 8bit long?
 type RecordID struct {
 	PageID PageId
 	Offset PageOffset
