@@ -29,7 +29,7 @@ real project start 17.09.24
 * [x] page design
 * [ ] storage manager
     * [ ] linked list pages
-    * [ ]page iterator
+    * [ ] page iterator
     * [ ] slotted pages
     * [x] primitive de/serialization
     * [ ] page de/serialization

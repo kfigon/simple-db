@@ -98,6 +98,7 @@ type DataPage struct {
 		PageTyp PageType
 		NextPage PageId
 		SlotArrayLen Byte
+		SlotArrayLastOffset PageOffset
 	}
 	Slots []byte
 	Cells [][]byte
@@ -110,6 +111,7 @@ type GenericPage[T any] struct {
 		PageTyp PageType
 		NextPage PageId
 		SlotArrayLen Byte
+		SlotArrayLastOffset PageOffset
 	}
 	AdditionalHeader T
 	Slots []byte
