@@ -12,10 +12,11 @@ const (
 const PageSize = 8*512
 
 type PageId int // 1 base-indexed
-type PageOffset I16 // offset within the single page (for slot array). todo: can we make it 8bit long?
-type RecordID struct {
+type PageOffset I16 // offset within the single page
+type SlotIdx I16 // slot number
+type RecordID struct { // internal "primary key". Where to find given tuple
 	PageID PageId
-	Offset PageOffset
+	SlotID SlotIdx
 }
 
 type PageType byte // always first byte in a page
