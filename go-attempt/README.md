@@ -28,14 +28,16 @@ real project start 17.09.24
 # backlog
 * [x] page design
 * [ ] storage manager
+    * [ ] pages - separete data format from objects
     * [ ] linked list pages
     * [ ] page iterator
-    * [ ] slotted pages
+    * [x] slotted pages
     * [x] primitive de/serialization
     * [ ] page de/serialization
     * [ ] catalog
     * [ ] schema
     * [ ] overflow pages
+    * [ ] storage manager to handle OS interaction
 * [ ] btree
 * [ ] sql
     * [x] lexer
@@ -44,7 +46,6 @@ real project start 17.09.24
     * [ ] vm or tree walking
 * [ ] concurrency
 * [ ] client-server
-    * [ ] protocol
     * [ ] protocol
 * [ ] go stdlib db interface
 

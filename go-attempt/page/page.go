@@ -106,14 +106,21 @@ type DataPage struct {
 
 // ============ generic page definiton
 // todo: convert all pages to this type, probably a pattern will emerge. Delegate details to storage manager
-type GenericPage[T any] struct {
-	Header struct{
-		PageTyp PageType
-		NextPage PageId
-		SlotArrayLen Byte
-		SlotArrayLastOffset PageOffset
-	}
-	AdditionalHeader T
-	Slots []byte
-	Cells [][]byte
+type GenericPage struct {
+	BaseHeader
+	SlottedPageHeader
+}
+
+type BaseHeader struct{
+	PageTyp PageType
+	NextPage PageId
+}
+
+type SlottedPageHeader struct {
+	SlotArrayLen Byte
+	SlotArrayLastOffset PageOffset
+}
+
+type NextPage[T any] interface {
+	Next() (T, bool)
 }

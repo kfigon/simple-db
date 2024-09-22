@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// todo: these are very similar. Make it an std interface like Reader and Writer?
 type Serializable[T any] interface {
 	Serialize() []byte
 	Deserialize([]byte) (T, error)
