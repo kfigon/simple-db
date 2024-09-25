@@ -62,7 +62,7 @@ type DirectoryPage struct {
 type PageCatalog struct {
 	StartPageID PageId
 	SchemaRootRecord RecordID // for data pages
-	ObjectType PageType // what kind of page is it
+	ObjectType PageType // what kind of page is it - index, data etc.
 	ObjectName String
 }
 
@@ -119,6 +119,25 @@ type BaseHeader struct{
 type SlottedPageHeader struct {
 	SlotArrayLen Byte
 	SlotArrayLastOffset PageOffset
+}
+
+func (s SlottedPageHeader) Serialize() []byte {
+	out := make([]byte, s.Length())
+	offset := 0
+	
+	a := s.SlotArrayLen.Serialize()
+	copy(out[offset:], a)
+	offset += len(a)
+	
+	b := I16(s.SlotArrayLastOffset).Serialize()
+	copy(out[offset:], b)
+	offset += len(b)
+
+	return out
+}
+
+func (s SlottedPageHeader) Length() int {
+	return 1 + 2
 }
 
 type NextPage[T any] interface {

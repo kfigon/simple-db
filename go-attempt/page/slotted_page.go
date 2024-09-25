@@ -1,5 +1,6 @@
 package page
 
+
 type SlottedPage struct {
 	headerLen int
 	lastOffset PageOffset
@@ -28,6 +29,30 @@ func (s *SlottedPage) Header() SlottedPageHeader {
 	}
 }
 
+func (s *SlottedPage) Serialize() []byte {
+	out := make([]byte, s.Length())
+	offset := 0
+	
+	header := s.Header().Serialize()
+	copy(out[offset:], header)
+	offset += len(header)
+
+	for _, slot := range s.slots {
+		d := I16(slot).Serialize()
+		copy(out[offset:], d)
+		offset += len(d)
+	}
+
+	cellsStart := len(out) - len(s.cells)
+
+	copy(out[cellsStart:], s.cells)
+	return out
+}
+
+func (s *SlottedPage) Length() int {
+	return PageSize
+}
+
 // todo: overflow checks including header
 func (s *SlottedPage) AppendCell(cell Bytes) SlotIdx {
 	payload := cell.Serialize()
@@ -46,3 +71,4 @@ func (s *SlottedPage) ReadCell(id SlotIdx) (Bytes, error) {
 	var b Bytes
 	return b.Deserialize(s.cells[offset:])
 }
+
