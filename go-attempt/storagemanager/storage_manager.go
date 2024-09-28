@@ -36,6 +36,16 @@ func NewEmptyStorageManager() *StorageManager {
 	}
 }
 
-func (s *StorageManager) CreateTable(name string, schema []utils.Pair[string, page.FieldType]) {
-	
+func (s *StorageManager) CreateTable(name string, schema []utils.Pair[string, string]) {
+	// todo: create directory entry
+	// create schema entries and link together
+
+	schemaEntries := []page.SchemaEntry{}
+
+	dirEntry := page.DirectoryEntry{
+		DataRootPageID:   0,
+		SchemaRootRecord: page.RecordID{},
+		ObjectType:       0,
+		ObjectName:       "",
+	}
 }

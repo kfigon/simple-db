@@ -54,8 +54,8 @@ func NewRootPage() RootPage{
 // contains info about the content of the db
 // where to find all pages and lookup what table's inside
 type DirectoryEntry struct {
-	StartPageID PageId
-	SchemaRootRecord RecordID // for data pages
+	DataRootPageID PageId //
+	SchemaRootRecord RecordID // schema - only for data pages
 	ObjectType PageType // what kind of page is it - index, data etc.
 	ObjectName String
 }

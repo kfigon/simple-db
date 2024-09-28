@@ -7,7 +7,6 @@ import (
 )
 
 func TestLex(t *testing.T) {
-	// todo: more
 	testCases := []struct {
 		desc	string
 		input 	string
