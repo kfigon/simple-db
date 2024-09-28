@@ -9,7 +9,6 @@ import (
 type Serializable[T any] interface {
 	Serialize() []byte
 	Deserialize([]byte) (T, error)
-	Length() int
 }
 
 var ErrTooShortBuffer = fmt.Errorf("too short buffer")

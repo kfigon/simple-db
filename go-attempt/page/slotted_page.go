@@ -14,12 +14,15 @@ const slotEntrySize = 2 // PageOffset = I16 -> 2
 type SlotArray []PageOffset
 type Cell Bytes // len + data
 
-// lastoffset default - page size
 func NewSlottedPage(headerLen int, lastOffset PageOffset) *SlottedPage {
 	return &SlottedPage{
 		headerLen: headerLen,
 		lastOffset: lastOffset,
 	}
+}
+
+func NewEmptySlottedPage(headerLen int) *SlottedPage {
+	return NewSlottedPage(headerLen, PageSize)
 }
 
 func (s *SlottedPage) Header() SlottedPageHeader {
@@ -30,7 +33,8 @@ func (s *SlottedPage) Header() SlottedPageHeader {
 }
 
 func (s *SlottedPage) Serialize() []byte {
-	out := make([]byte, s.Length())
+	length := PageSize
+	out := make([]byte, length)
 	offset := 0
 	
 	header := s.Header().Serialize()
@@ -47,10 +51,6 @@ func (s *SlottedPage) Serialize() []byte {
 
 	copy(out[cellsStart:], s.cells)
 	return out
-}
-
-func (s *SlottedPage) Length() int {
-	return PageSize
 }
 
 // todo: overflow checks including header

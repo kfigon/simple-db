@@ -11,7 +11,7 @@ const (
 
 const PageSize = 8*512
 
-type PageId int // 1 base-indexed
+type PageId int // 0 base-indexed, but 0 value is reserved for the root page
 type PageOffset I16 // offset within the single page
 type SlotIdx I16 // slot number
 type RecordID struct { // internal "primary key". Where to find given tuple
