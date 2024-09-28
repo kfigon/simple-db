@@ -10,21 +10,27 @@ type OsInterface interface {
 }
 
 type StorageManager struct {
-	RootPage *page.RootPage
-	Directory page.DirectoryPage
-	SchemaPages []page.SchemaPage
-	DataPages []page.DataPage
+	RootPage page.RootPage
+	Directory page.GenericPage[page.DirectoryEntry]
+	Schema page.GenericPage[page.SchemaEntry]
 
 	OsInterface
 }
 
-func NewStorageManager(root *page.RootPage) *StorageManager {
-	// todo: init. build internal state of directory and schemas
-	// from basic pages
+func NewEmptyStorageManager() *StorageManager {
+	rootPage := page.NewRootPage()
+	directory := page.NewDirectoryPage()
+	schema := page.NewSchemaPage()
+
+	rootPage.DirectoryPageRootID = 1
+	rootPage.SchemaPageRootID = 2
+
+	// todo: serialize
+	
 	return &StorageManager{
-		Directory:   page.DirectoryPage{},
-		SchemaPages: []page.SchemaPage{},
-		DataPages:   []page.DataPage{},
-		OsInterface: &InMemoryPager{},
+		RootPage: page.NewRootPage(),
+		Directory: directory,
+		Schema: schema,
+		OsInterface: NewInMemoryPager(),
 	}
 }
