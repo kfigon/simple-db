@@ -37,7 +37,7 @@ real project start 17.09.24
     * [ ] catalog
     * [ ] schema
     * [ ] overflow pages
-    * [ ] storage manager to handle OS interaction
+    * [x] storage manager to handle OS interaction
 * [ ] btree
 * [ ] sql
     * [x] lexer

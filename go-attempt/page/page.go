@@ -79,8 +79,9 @@ func NewSchemaPage() GenericPage[SchemaEntry] {
 // ============== Data - just slot array with binary data
 // todo: need table name/tableid? Or put associate schema with data in catalog?
 
+
 // ============ generic page definiton
-type GenericPage[T any] struct {
+type GenericPage[T any] struct { // todo: use that generic in slotted page
 	BaseHeader
 	SlottedPageHeader
 

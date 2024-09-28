@@ -2,6 +2,7 @@ package storagemanager
 
 import (
 	"simple-db/page"
+	"simple-db/utils"
 )
 
 type OsInterface interface {
@@ -24,13 +25,17 @@ func NewEmptyStorageManager() *StorageManager {
 
 	rootPage.DirectoryPageRootID = 1
 	rootPage.SchemaPageRootID = 2
-
+	rootPage.LastFreePage = 3
 	// todo: serialize
-	
+
 	return &StorageManager{
 		RootPage: page.NewRootPage(),
 		Directory: directory,
 		Schema: schema,
 		OsInterface: NewInMemoryPager(),
 	}
+}
+
+func (s *StorageManager) CreateTable(name string, schema []utils.Pair[string, page.FieldType]) {
+	
 }
