@@ -6,8 +6,11 @@ import (
 )
 
 // todo: these are very similar. Make it an std interface like Reader and Writer?
-type Serializable[T any] interface {
+type Serializable interface {
 	Serialize() []byte
+}
+
+type Deserializable[T any] interface {
 	Deserialize([]byte) (T, error)
 }
 
@@ -125,4 +128,10 @@ func(Bytes) Deserialize(data []byte) (Bytes, error){
 
 func(b Bytes) Length() int {
 	return I16(0).Length() + len(b)
+}
+
+func Write(out []byte, offset *int, serializable Serializable) {
+	b := serializable.Serialize()
+	copy(out[*offset:], b)
+	*offset += len(b)
 }
