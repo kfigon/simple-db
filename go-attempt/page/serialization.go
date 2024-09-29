@@ -130,8 +130,20 @@ func(b Bytes) Length() int {
 	return I16(0).Length() + len(b)
 }
 
-func Write(out []byte, offset *int, serializable Serializable) {
-	b := serializable.Serialize()
-	copy(out[*offset:], b)
-	*offset += len(b)
+func Write(serializables ...Serializable) []byte {
+	length := 0
+	data := [][]byte{}
+	for _, v := range serializables {
+		d := v.Serialize()
+		data = append(data, d)
+		length += len(d)
+	}
+
+	out := make([]byte, length)
+	offset := 0
+	for _, d := range data {
+		copy(out[offset:], d)
+		offset += len(d)
+	}
+	return out
 }

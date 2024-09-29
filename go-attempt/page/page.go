@@ -51,17 +51,11 @@ func NewRootPage() RootPage{
 }
 
 func (r *RootPage) Serialize() []byte {
-	length := 1 + 4 + 4 + 4 +4
-	out := make([]byte, length)
-	var offset int
-
-	Write(out, &offset, Byte(r.PageTyp))
-	Write(out, &offset, r.MagicNumber)
-	Write(out, &offset, I32(r.DirectoryPageRootID))
-	Write(out, &offset, I32(r.SchemaPageRootID))
-	Write(out, &offset, I32(r.LastFreePage))
-
-	return out
+	return Write(Byte(r.PageTyp),
+		r.MagicNumber,
+		I32(r.DirectoryPageRootID),
+		I32(r.SchemaPageRootID),
+		I32(r.LastFreePage))
 }
 
 // =================== directory. 
@@ -112,19 +106,15 @@ func NewPage[T any](pageType PageType) GenericPage[T] {
 			SlotArrayLen:        0,
 			SlotArrayLastOffset: 0,
 		},
+		data: *NewEmptySlottedPage(3),
 	}
 }
 
 func (g *GenericPage[T]) Serialize() []byte {
-	length := 1+ 4 + 3
-	out := make([]byte, length)
-	offset := 0
-	
-	Write(out, &offset, Byte(g.PageTyp))
-	Write(out, &offset, I32(g.NextPage))
-	Write(out, &offset, g.SlottedPageHeader)
-
-	return out
+	return Write(Byte(g.PageTyp), 
+		I32(g.NextPage), 
+		g.SlottedPageHeader, 
+		&g.data)
 }
 
 type BaseHeader struct{
@@ -138,14 +128,7 @@ type SlottedPageHeader struct {
 }
 
 func (s SlottedPageHeader) Serialize() []byte {
-	length := 1 + 2
-	out := make([]byte, length)
-	offset := 0
-	
-	Write(out, &offset, s.SlotArrayLen)
-	Write(out, &offset, I16(s.SlotArrayLastOffset))
-	
-	return out
+	return Write(s.SlotArrayLen, I16(s.SlotArrayLastOffset))
 }
 
 type NextPage[T any] interface {

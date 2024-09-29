@@ -37,10 +37,14 @@ func (s *SlottedPage) Serialize() []byte {
 	out := make([]byte, length)
 	offset := 0
 	
-	Write(out, &offset, s.Header())
+	d := s.Header().Serialize()
+	copy(out[offset:], d)
+	offset += len(d)
 
 	for _, slot := range s.slots {
-		Write(out, &offset, I16(slot))
+		d = I16(slot).Serialize()
+		copy(out[offset:], d)
+		offset += len(d)
 	}
 
 	cellsStart := len(out) - len(s.cells)
