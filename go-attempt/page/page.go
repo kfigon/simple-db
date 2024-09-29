@@ -106,7 +106,7 @@ func NewPage[T any](pageType PageType) GenericPage[T] {
 			SlotArrayLen:        0,
 			SlotArrayLastOffset: 0,
 		},
-		data: *NewEmptySlottedPage(3),
+		data: *NewEmptySlottedPage(),
 	}
 }
 

@@ -28,12 +28,13 @@ real project start 17.09.24
 # backlog
 * [x] page design
 * [ ] storage manager
-    * [ ] pages - separete data format from objects
+    * [x] pages - separete data format from objects
     * [ ] linked list pages
     * [ ] page iterator
     * [x] slotted pages
     * [x] primitive de/serialization
-    * [ ] page de/serialization
+    * [x] page serialization
+    * [ ] page deserialization
     * [ ] catalog
     * [ ] schema
     * [ ] overflow pages

@@ -15,7 +15,7 @@ type StorageManager struct {
 	Directory page.GenericPage[page.DirectoryEntry]
 	Schema page.GenericPage[page.SchemaEntry]
 
-	OsInterface
+	os OsInterface
 }
 
 func NewEmptyStorageManager() *StorageManager {
@@ -31,12 +31,12 @@ func NewEmptyStorageManager() *StorageManager {
 		RootPage: page.NewRootPage(),
 		Directory: directory,
 		Schema: schema,
-		OsInterface: NewInMemoryPager(),
+		os: NewInMemoryPager(),
 	}
 
-	out.OsInterface.WritePage(0, out.RootPage.Serialize())
-	out.OsInterface.WritePage(rootPage.DirectoryPageRootID, out.Directory.Serialize())
-	out.OsInterface.WritePage(rootPage.SchemaPageRootID, out.Schema.Serialize())
+	out.os.WritePage(0, out.RootPage.Serialize())
+	out.os.WritePage(rootPage.DirectoryPageRootID, out.Directory.Serialize())
+	out.os.WritePage(rootPage.SchemaPageRootID, out.Schema.Serialize())
 
 	return out
 }

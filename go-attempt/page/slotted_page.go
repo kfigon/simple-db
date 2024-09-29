@@ -2,7 +2,6 @@ package page
 
 
 type SlottedPage struct {
-	headerLen int
 	lastOffset PageOffset
 
 	slots SlotArray
@@ -12,17 +11,15 @@ type SlottedPage struct {
 const slotEntrySize = 2 // PageOffset = I16 -> 2
 
 type SlotArray []PageOffset
-type Cell Bytes // len + data
 
-func NewSlottedPage(headerLen int, lastOffset PageOffset) *SlottedPage {
+func NewSlottedPage(lastOffset PageOffset) *SlottedPage {
 	return &SlottedPage{
-		headerLen: headerLen,
 		lastOffset: lastOffset,
 	}
 }
 
-func NewEmptySlottedPage(headerLen int) *SlottedPage {
-	return NewSlottedPage(headerLen, PageSize)
+func NewEmptySlottedPage() *SlottedPage {
+	return NewSlottedPage(PageSize)
 }
 
 func (s *SlottedPage) Header() SlottedPageHeader {
