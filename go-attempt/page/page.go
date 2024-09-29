@@ -50,6 +50,11 @@ func NewRootPage() RootPage{
 	}
 }
 
+func (r *RootPage) Serialize() []byte {
+	// todo: impl
+	return nil
+}
+
 // =================== directory. 
 // contains info about the content of the db
 // where to find all pages and lookup what table's inside
@@ -99,6 +104,11 @@ func NewPage[T any](pageType PageType) GenericPage[T] {
 			SlotArrayLastOffset: 0,
 		},
 	}
+}
+
+func (g *GenericPage[T]) Serialize() []byte {
+	// todo: impl
+	return nil
 }
 
 type BaseHeader struct{

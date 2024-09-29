@@ -26,14 +26,19 @@ func NewEmptyStorageManager() *StorageManager {
 	rootPage.DirectoryPageRootID = 1
 	rootPage.SchemaPageRootID = 2
 	rootPage.LastFreePage = 3
-	// todo: serialize
 
-	return &StorageManager{
+	out := &StorageManager{
 		RootPage: page.NewRootPage(),
 		Directory: directory,
 		Schema: schema,
 		OsInterface: NewInMemoryPager(),
 	}
+
+	out.OsInterface.WritePage(0, out.RootPage.Serialize())
+	out.OsInterface.WritePage(rootPage.DirectoryPageRootID, out.Directory.Serialize())
+	out.OsInterface.WritePage(rootPage.SchemaPageRootID, out.Schema.Serialize())
+
+	return out
 }
 
 func (s *StorageManager) CreateTable(name string, schema []utils.Pair[string, string]) {
