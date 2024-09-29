@@ -41,11 +41,16 @@ func NewEmptyStorageManager() *StorageManager {
 	return out
 }
 
-func (s *StorageManager) CreateTable(name string, schema []utils.Pair[string, string]) {
-	// todo: create directory entry
-	// create schema entries and link together
-
+func (s *StorageManager) CreateTable(name string, schema []utils.Pair[string, page.FieldType]) {
 	schemaEntries := []page.SchemaEntry{}
+	for _, sch := range schema {
+		schemaEntries = append(schemaEntries, page.SchemaEntry{
+			FieldTyp:  sch.B,
+			IsNull:    false,
+			FieldName: sch.A,
+			Next:      page.RecordID{}, // todo: fill with data when persisting
+		}) // this is a common pattern - create object, assign ids later
+	}
 
 	dirEntry := page.DirectoryEntry{
 		DataRootPageID:   0,
@@ -53,4 +58,5 @@ func (s *StorageManager) CreateTable(name string, schema []utils.Pair[string, st
 		ObjectType:       0,
 		ObjectName:       "",
 	}
+	_ = dirEntry
 }

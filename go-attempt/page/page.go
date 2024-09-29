@@ -1,6 +1,7 @@
 package page
 
 type FieldType byte
+
 const (
 	I8Type FieldType = iota
 	I16Type
@@ -9,11 +10,11 @@ const (
 	BinaryBlobType
 )
 
-const PageSize = 8*512
+const PageSize = 8 * 512
 
-type PageId I32 // 0 base-indexed, but 0 value is reserved for the root page
-type PageOffset I16 // offset within the single page
-type SlotIdx I16 // slot number
+type PageId I32        // 0 base-indexed, but 0 value is reserved for the root page
+type PageOffset I16    // offset within the single page
+type SlotIdx I16       // slot number
 type RecordID struct { // internal "primary key". Where to find given tuple
 	PageID PageId
 	SlotID SlotIdx
@@ -32,52 +33,52 @@ const (
 // ============= root page. Always first page (1)
 // entry point for all metadata
 type RootPage struct {
-	PageTyp PageType
-	MagicNumber I32
+	PageTyp             PageType
+	MagicNumber         I32
 	DirectoryPageRootID PageId
-	SchemaPageRootID PageId
-	LastFreePage PageId
+	SchemaPageRootID    PageId
+	LastFreePage        PageId
 }
 
-func NewRootPage() RootPage{
+func NewRootPage() RootPage {
 	n := 0xDEADBEEF
 	return RootPage{
-		PageTyp: RootPageType,
-		MagicNumber: I32(n),
+		PageTyp:             RootPageType,
+		MagicNumber:         I32(n),
 		DirectoryPageRootID: 0,
-		SchemaPageRootID: 0,
-		LastFreePage: 0,
+		SchemaPageRootID:    0,
+		LastFreePage:        0,
 	}
 }
 
 func (r *RootPage) Serialize() []byte {
-	return Write(Byte(r.PageTyp),
+	return Serialize(Byte(r.PageTyp),
 		r.MagicNumber,
 		I32(r.DirectoryPageRootID),
 		I32(r.SchemaPageRootID),
 		I32(r.LastFreePage))
 }
 
-// =================== directory. 
+// =================== directory.
 // contains info about the content of the db
 // where to find all pages and lookup what table's inside
 type DirectoryEntry struct {
-	DataRootPageID PageId //
+	DataRootPageID   PageId   //
 	SchemaRootRecord RecordID // schema - only for data pages
-	ObjectType PageType // what kind of page is it - index, data etc.
-	ObjectName String
+	ObjectType       PageType // what kind of page is it - index, data etc.
+	ObjectName       String
 }
 
 func NewDirectoryPage() GenericPage[DirectoryEntry] {
 	return NewPage[DirectoryEntry](DirectoryPageType)
 }
 
-// ============ Schema 
+// ============ Schema
 type SchemaEntry struct {
-	FieldTyp FieldType
-	IsNull bool // todo - make it bitfield for more efficiency
+	FieldTyp  FieldType
+	IsNull    bool // todo - make it bitfield for more efficiency
 	FieldName string
-	Next RecordID
+	Next      RecordID
 }
 
 func NewSchemaPage() GenericPage[SchemaEntry] {
@@ -86,7 +87,6 @@ func NewSchemaPage() GenericPage[SchemaEntry] {
 
 // ============== Data - just slot array with binary data
 // todo: need table name/tableid? Or put associate schema with data in catalog?
-
 
 // ============ generic page definiton
 type GenericPage[T any] struct { // todo: use that generic in slotted page
@@ -97,9 +97,9 @@ type GenericPage[T any] struct { // todo: use that generic in slotted page
 }
 
 func NewPage[T any](pageType PageType) GenericPage[T] {
-	return GenericPage[T] {
+	return GenericPage[T]{
 		BaseHeader: BaseHeader{
-			PageTyp: pageType,
+			PageTyp:  pageType,
 			NextPage: 0,
 		},
 		SlottedPageHeader: SlottedPageHeader{
@@ -111,26 +111,22 @@ func NewPage[T any](pageType PageType) GenericPage[T] {
 }
 
 func (g *GenericPage[T]) Serialize() []byte {
-	return Write(Byte(g.PageTyp), 
-		I32(g.NextPage), 
-		g.SlottedPageHeader, 
+	return Serialize(Byte(g.PageTyp),
+		I32(g.NextPage),
+		g.SlottedPageHeader,
 		&g.data)
 }
 
-type BaseHeader struct{
-	PageTyp PageType
+type BaseHeader struct {
+	PageTyp  PageType
 	NextPage PageId
 }
 
 type SlottedPageHeader struct {
-	SlotArrayLen Byte
+	SlotArrayLen        Byte
 	SlotArrayLastOffset PageOffset
 }
 
 func (s SlottedPageHeader) Serialize() []byte {
-	return Write(s.SlotArrayLen, I16(s.SlotArrayLastOffset))
-}
-
-type NextPage[T any] interface {
-	Next() (T, bool)
+	return Serialize(s.SlotArrayLen, I16(s.SlotArrayLastOffset))
 }
