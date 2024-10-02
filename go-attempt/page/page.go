@@ -20,6 +20,10 @@ type RecordID struct { // internal "primary key". Where to find given tuple
 	SlotID SlotIdx
 }
 
+func (r RecordID) Serialize() []byte {
+	return Serialize(I32(r.PageID), I16(r.SlotID))
+}
+
 type PageType byte // always first byte in a page
 const (
 	RootPageType PageType = iota + 1
@@ -73,11 +77,20 @@ func NewDirectoryPage() GenericPage[DirectoryEntry] {
 	return NewPage[DirectoryEntry](DirectoryPageType)
 }
 
+func (d DirectoryEntry) Serialize() []byte {
+	return Serialize(
+		I32(d.DataRootPageID),
+		d.SchemaRootRecord,
+		Byte(d.ObjectType),
+		d.ObjectName,
+	)
+}
+
 // ============ Schema
 type SchemaEntry struct {
 	FieldTyp  FieldType
 	IsNull    bool // todo - make it bitfield for more efficiency
-	FieldName string
+	FieldName String
 	Next      RecordID
 }
 
@@ -113,8 +126,12 @@ func NewPage[T any](pageType PageType) GenericPage[T] {
 func (g *GenericPage[T]) Serialize() []byte {
 	return Serialize(Byte(g.PageTyp),
 		I32(g.NextPage),
-		g.SlottedPageHeader,
+		g.data.Header(),
 		&g.data)
+}
+
+func (g *GenericPage[T]) Data() []T {
+	return nil
 }
 
 type BaseHeader struct {

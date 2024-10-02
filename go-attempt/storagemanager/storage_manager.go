@@ -15,6 +15,10 @@ type StorageManager struct {
 	Directory page.GenericPage[page.DirectoryEntry]
 	Schema page.GenericPage[page.SchemaEntry]
 
+
+	dirEntries []page.DirectoryEntry // todo: for now just in mem
+	schemaEntries []page.SchemaEntry // todo: for now just in mem
+
 	os OsInterface
 }
 
@@ -41,22 +45,36 @@ func NewEmptyStorageManager() *StorageManager {
 	return out
 }
 
+func (s *StorageManager) nextFreeDataPage(name string) page.PageId {
+	for _, directoryEntry := range s.dirEntries {
+		if directoryEntry.ObjectName == page.String(name) {
+			
+			var lastPageId page.PageId
+			pageId := directoryEntry.DataRootPageID
+			for pageId != 0 {
+				lastPageId = pageId
+				pageId = directoryEntry.DataRootPageID
+			}
+			return lastPageId
+		}
+	}
+	return s.RootPage.LastFreePage
+}
+
 func (s *StorageManager) CreateTable(name string, schema []utils.Pair[string, page.FieldType]) {
-	schemaEntries := []page.SchemaEntry{}
 	for _, sch := range schema {
-		schemaEntries = append(schemaEntries, page.SchemaEntry{
+		s.schemaEntries = append(s.schemaEntries, page.SchemaEntry{
 			FieldTyp:  sch.B,
 			IsNull:    false,
-			FieldName: sch.A,
-			Next:      page.RecordID{}, // todo: fill with data when persisting
+			FieldName: page.String(sch.A),
+			// Next:      page.RecordID{}, // todo: fill with data when persisting
 		}) // this is a common pattern - create object, assign ids later
 	}
 
-	dirEntry := page.DirectoryEntry{
-		DataRootPageID:   0,
-		SchemaRootRecord: page.RecordID{},
-		ObjectType:       0,
-		ObjectName:       "",
-	}
-	_ = dirEntry
+	s.dirEntries = append(s.dirEntries, page.DirectoryEntry{
+		// DataRootPageID:   0,
+		// SchemaRootRecord: page.RecordID{},
+		ObjectType:       page.DataPageType,
+		ObjectName:       page.String(name),
+	})
 }
