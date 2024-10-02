@@ -9,9 +9,17 @@ type Statement interface{
 type SelectStatement struct {
 	Columns []string
 	HasWildcard bool
-	From string
+	Table string
 }
-func (s *SelectStatement) statementTag(){}
+func (*SelectStatement) statementTag(){}
+
+
+type InsertStatement struct {
+	Columns []string
+	Values  []string
+	Table string
+}
+func (*InsertStatement) statementTag(){}
 
 func Parse(tokens []Token) (Statement, error) {
 	p := &parser{toks: tokens}
@@ -26,10 +34,14 @@ type parser struct {
 func (p *parser) parse() (Statement, error) {
 	t := p.next()
 	switch t.Typ {
-	case Select:
-		return p.parseSelectStatement()
+	case Select: return p.parseSelectStatement()
+	case Insert: return p.parseInsertStatement()
 	}
 	return nil, fmt.Errorf("unknown token type: %v", t)
+}
+
+func (p *parser) parseInsertStatement() (Statement, error) {
+	panic("todo")
 }
 
 func (p *parser) parseSelectStatement() (Statement, error) {
