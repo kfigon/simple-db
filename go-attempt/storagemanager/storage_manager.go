@@ -18,6 +18,7 @@ type StorageManager struct {
 
 	dirEntries []page.DirectoryEntry // todo: for now just in mem
 	schemaEntries []page.SchemaEntry // todo: for now just in mem
+	data []page.SlottedPage
 
 	os OsInterface
 }
@@ -47,16 +48,17 @@ func NewEmptyStorageManager() *StorageManager {
 
 func (s *StorageManager) nextFreeDataPage(name string) page.PageId {
 	for _, directoryEntry := range s.dirEntries {
-		if directoryEntry.ObjectName == page.String(name) {
-			
-			var lastPageId page.PageId
-			pageId := directoryEntry.DataRootPageID
-			for pageId != 0 {
-				lastPageId = pageId
-				pageId = directoryEntry.DataRootPageID
-			}
-			return lastPageId
+		if directoryEntry.ObjectName != page.String(name) {
+			continue
 		}
+			
+		var lastPageId page.PageId
+		pageId := directoryEntry.DataRootPageID
+		for pageId != 0 {
+			lastPageId = pageId
+			pageId = directoryEntry.DataRootPageID
+		}
+		return lastPageId
 	}
 	return s.RootPage.LastFreePage
 }

@@ -8,7 +8,8 @@ import (
 
 type TokenType int
 const (
-	Select TokenType = iota
+	EOF TokenType = iota
+	Select
 	Identifier
 	Number
 	Comma
@@ -24,11 +25,11 @@ const (
 	OpenParen
 	CloseParen
 	Having
-	EOF
 )
 
 func (t TokenType) String() string {
 	return [...]string {
+		"EOF",
 		"Select",
 		"Identifier",
 		"Number",
@@ -45,7 +46,6 @@ func (t TokenType) String() string {
 		"OpenParen",
 		"CloseParen",
 		"Having",
-		"EOF",
 	}[int(t)]
 }
 
