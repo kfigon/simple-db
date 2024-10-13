@@ -15,6 +15,7 @@ const (
 	Table
 	Identifier
 	Number
+	Boolean
 	Comma
 	Dot
 	Wildcard
@@ -28,6 +29,8 @@ const (
 	OpenParen
 	CloseParen
 	Having
+	Values
+	Into
 )
 
 func (t TokenType) String() string {
@@ -39,6 +42,7 @@ func (t TokenType) String() string {
 		"Table",
 		"Identifier",
 		"Number",
+		"Boolean",
 		"Comma",
 		"Dot",
 		"Wildcard",
@@ -52,6 +56,8 @@ func (t TokenType) String() string {
 		"OpenParen",
 		"CloseParen",
 		"Having",
+		"Values",
+		"Into",
 	}[int(t)]
 }
 
@@ -90,10 +96,15 @@ func Lex(in string) []Token {
 		"insert": Insert,
 		"table": Table,
 		"create": Create,
+		"values": Values,
+		"into": Into,
 	}
 	stringToType := func(w string) TokenType {
-		if t, ok := keyword[w]; ok {
+		lower := strings.ToLower(w)
+		if t, ok := keyword[lower]; ok {
 			return t
+		} else if lower == "true" || lower == "false" {
+			return Boolean
 		}
 		return Identifier
 	}

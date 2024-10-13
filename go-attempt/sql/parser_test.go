@@ -45,6 +45,16 @@ func TestParser(t *testing.T) {
 				Table: "foobar",
 			},
 		},
+		{
+			desc: "insert1",
+			input: `INSERT INTO foobar (colA, colB, colC)
+VALUES (true, 1234, asfg)`,
+			expected: &InsertStatement{
+				Table: "foobar",
+				Columns: []string{"colA", "colB", "colC"},
+				Values: []string{"true", "1234", "asfg"},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

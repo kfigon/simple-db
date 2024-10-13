@@ -13,6 +13,12 @@ type SelectStatement struct {
 }
 func (*SelectStatement) statementTag(){}
 
+type InsertStatement struct {
+	Columns []string
+	Values []string
+	Table string
+}
+func (*InsertStatement) statementTag(){}
 
 type CreateStatement struct {
 	Columns []ColumnDefinition
@@ -40,6 +46,7 @@ func (p *parser) parse() (Statement, error) {
 	switch t.Typ {
 	case Select: return p.parseSelectStatement()
 	case Create: return p.parseCreateStatement()
+	case Insert: return p.parseInsertStatement()
 	}
 	return nil, fmt.Errorf("unknown token type: %v", t)
 }
@@ -111,6 +118,60 @@ func (p *parser) parseCreateStatement() (*CreateStatement, error) {
 		return &CreateStatement{Columns: columns, Table: identifier.Lexeme}, nil
 	}
 	return nil, fmt.Errorf("create table: unknown token at the end of column definition: %v", t)
+}
+
+func (p *parser) parseInsertStatement() (*InsertStatement, error) {
+	if next := p.next(); next.Typ != Into {
+		return nil, fmt.Errorf("insert table: expected 'into' after 'insert' token, got: %v", next)
+	}
+	
+	identifier := p.next()
+	if identifier.Typ != Identifier {
+		return nil, fmt.Errorf("insert table: expected identifier after 'insert into' token, got: %v", identifier)
+	}
+	if open := p.next(); open.Typ != OpenParen {
+		return nil, fmt.Errorf("insert table: expected open param after 'insert into identifier' tokens, got: %v", open)
+	}
+
+	var columns []string
+	for t := p.next(); !eof(t) && t.Typ != CloseParen; t = p.next() {
+		if t.Typ == Identifier {
+			columns = append(columns, t.Lexeme)
+			if next := p.peek(); next.Typ == Comma {
+				p.next()
+			}
+		} else {
+			return nil, fmt.Errorf("insert table: unknown token when defining columns. Expected identifier, got %v", t)
+		}
+	}
+
+	if values := p.next(); values.Typ != Values {
+		return nil, fmt.Errorf("insert table: expected 'values' after defining columns, got: %v", values)
+	}
+	if open := p.next(); open.Typ != OpenParen {
+		return nil, fmt.Errorf("insert table: expected open param 'values', got: %v", open)
+	}
+
+	var t Token
+	var vals []string
+	for t = p.next(); !eof(t) && t.Typ != CloseParen; t = p.next() {
+		if t.Typ == Identifier || t.Typ == Number || t.Typ == Boolean {
+			vals = append(vals, t.Lexeme)
+			
+			if next := p.peek(); next.Typ == Comma {
+				p.next()
+			}
+		} else {
+			return nil, fmt.Errorf("insert table: unknown token when defining values. Expected identifier, boolean or number, got %v", t)
+		}
+	}
+	if t.Typ == CloseParen {
+		if len(vals) != len(columns) {
+			return nil, fmt.Errorf("insert table: mismatched number of columns and values: %v, %v", vals, columns)		
+		}
+		return &InsertStatement{Columns: columns, Values: vals, Table: identifier.Lexeme}, nil
+	}
+	return nil, fmt.Errorf("insert table: unknown token at the end of values: %v", t)
 }
 
 func (p *parser) next() Token {
