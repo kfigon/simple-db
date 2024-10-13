@@ -27,7 +27,7 @@ real project start 17.09.24
 
 # backlog
 * [x] page design
-* [ ] phil eaton blog
+* [x] phil eaton blog
 * [ ] storage manager
     * [x] pages - separete data format from objects
     * [ ] linked list pages

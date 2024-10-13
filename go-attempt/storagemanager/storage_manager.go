@@ -2,6 +2,7 @@ package storagemanager
 
 import (
 	"simple-db/page"
+	"simple-db/sql"
 	"simple-db/utils"
 )
 
@@ -79,4 +80,8 @@ func (s *StorageManager) CreateTable(name string, schema []utils.Pair[string, pa
 		ObjectType:       page.DataPageType,
 		ObjectName:       page.String(name),
 	})
+}
+
+func (s *StorageManager) Select(statement sql.SelectStatement) ([]string, [][]string){
+	return nil, nil
 }

@@ -14,12 +14,16 @@ type SelectStatement struct {
 func (*SelectStatement) statementTag(){}
 
 
-type InsertStatement struct {
-	Columns []string
-	Values  []string
+type CreateStatement struct {
+	Columns []ColumnDefinition
 	Table string
 }
-func (*InsertStatement) statementTag(){}
+type ColumnDefinition struct {
+	Name string
+	Typ  string
+}
+
+func (*CreateStatement) statementTag(){}
 
 func Parse(tokens []Token) (Statement, error) {
 	p := &parser{toks: tokens}
@@ -35,20 +39,16 @@ func (p *parser) parse() (Statement, error) {
 	t := p.next()
 	switch t.Typ {
 	case Select: return p.parseSelectStatement()
-	case Insert: return p.parseInsertStatement()
+	case Create: return p.parseCreateStatement()
 	}
 	return nil, fmt.Errorf("unknown token type: %v", t)
 }
 
-func (p *parser) parseInsertStatement() (Statement, error) {
-	panic("todo")
-}
-
 func (p *parser) parseSelectStatement() (Statement, error) {
-	columns := []string{}
+	var columns []string
 	hasWildcard := false
 	var t Token
-	for t = p.next(); !eof(t); t = p.next() {
+	for t = p.next(); !eof(t) && t.Typ != From; t = p.next() {
 		if t.Typ == Identifier {
 			columns = append(columns, t.Lexeme)
 			if next := p.peek().Typ; next == Comma {
@@ -61,9 +61,9 @@ func (p *parser) parseSelectStatement() (Statement, error) {
 			hasWildcard = true
 			t = p.next()
 			break
+		} else {
+			return nil, fmt.Errorf("error parsing Select statement, unknown token when parsing columns: %v", t)
 		}
-
-		return nil, fmt.Errorf("error parsing Select statement, unknown token when parsing columns: %v", t)
 	}
 	
 	if t.Typ == From {
@@ -71,7 +71,46 @@ func (p *parser) parseSelectStatement() (Statement, error) {
 			return &SelectStatement{columns, hasWildcard, t.Lexeme}, nil
 		}
 	}
-	return nil, fmt.Errorf("error parsing Select statement, unknown token when parsing columns: %v", t)
+	return nil, fmt.Errorf("error parsing Select statement, unknown token: %v", t)
+}
+
+func (p *parser) parseCreateStatement() (*CreateStatement, error) {
+	if next := p.next(); next.Typ != Table {
+		return nil, fmt.Errorf("create table: expected 'table' after 'create' token, got: %v", next)
+	}
+	
+	identifier := p.next()
+	if identifier.Typ != Identifier {
+		return nil, fmt.Errorf("create table: expected identifier after 'create table' token, got: %v", identifier)
+	}
+
+	if open := p.next(); open.Typ != OpenParen {
+		return nil, fmt.Errorf("create table: expected open param after 'create table identifier' tokens, got: %v", open)
+	}
+
+	var t Token
+	var columns []ColumnDefinition
+	for t = p.next(); !eof(t) && t.Typ != CloseParen; t = p.next() {
+		if t.Typ == Identifier {
+			next := p.next()
+			comma := p.next()
+			if next.Typ == Identifier && comma.Typ == Comma {
+				columns = append(columns, ColumnDefinition{
+					Name: t.Lexeme,
+					Typ: next.Lexeme,
+				})
+			} else {
+				return nil, fmt.Errorf("create table: unknown token when defining column. Expected id, id and comma, got %v, %v, %v", t, next, comma)
+			}
+		} else {
+			return nil, fmt.Errorf("create table: unknown token when defining column. Expected identifier, got %v", t)
+		}
+	}
+
+	if t.Typ == CloseParen {
+		return &CreateStatement{Columns: columns, Table: identifier.Lexeme}, nil
+	}
+	return nil, fmt.Errorf("create table: unknown token at the end of column definition: %v", t)
 }
 
 func (p *parser) next() Token {

@@ -27,6 +27,29 @@ func TestLex(t *testing.T) {
 				{EOF, "", 1},
 			},
 		},
+		{
+			desc: "create1",
+			input: `create table foobar(
+				abc int,
+				asdf boolean,
+			)`,
+			expected: []Token{
+				{Create, "create", 1},
+				{Table, "table", 1},
+				{Identifier, "foobar", 1},
+				{OpenParen, "(", 1},
+				
+				{Identifier, "abc", 2},
+				{Identifier, "int", 2},
+				{Comma, ",", 2},
+				{Identifier, "asdf", 3},
+				{Identifier, "boolean", 3},
+				{Comma, ",", 3},
+				
+				{CloseParen, ")", 4},
+				{EOF, "", 4},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

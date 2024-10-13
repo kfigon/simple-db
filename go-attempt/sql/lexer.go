@@ -11,6 +11,8 @@ const (
 	EOF TokenType = iota
 	Select
 	Insert
+	Create
+	Table
 	Identifier
 	Number
 	Comma
@@ -33,6 +35,8 @@ func (t TokenType) String() string {
 		"EOF",
 		"Select",
 		"Insert",
+		"Create",
+		"Table",
 		"Identifier",
 		"Number",
 		"Comma",
@@ -84,6 +88,8 @@ func Lex(in string) []Token {
 		"right": Right,
 		"outer": Outer,
 		"insert": Insert,
+		"table": Table,
+		"create": Create,
 	}
 	stringToType := func(w string) TokenType {
 		if t, ok := keyword[w]; ok {
