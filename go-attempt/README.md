@@ -34,7 +34,7 @@ real project start 17.09.24
     * [ ] page iterator
     * [x] slotted pages
     * [x] primitive de/serialization
-    * [x] page serialization
+    * [ ] page serialization
     * [ ] page deserialization
     * [x] catalog
     * [x] schema
@@ -51,6 +51,8 @@ real project start 17.09.24
     * [ ] protocol
 * [ ] go stdlib db interface
 
+next step:
+* end to end sql select, insert, create. In memory persistance
 
 
 # materials
