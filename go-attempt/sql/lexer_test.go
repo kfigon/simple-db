@@ -50,6 +50,20 @@ func TestLex(t *testing.T) {
 				{EOF, "", 4},
 			},
 		},
+		{
+			desc: "tokenize string",
+			input: `create "foobar", "asd abc
+cd" 12`,
+			expected: []Token{
+				{Create, "create", 1},
+				{String, "foobar", 1},
+				{Comma, ",", 1},
+				{String, `asd abc
+cd`, 2},
+				{Number, "12", 2},
+				{EOF, "", 2},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

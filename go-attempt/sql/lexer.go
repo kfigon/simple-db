@@ -16,6 +16,7 @@ const (
 	Identifier
 	Number
 	Boolean
+	String
 	Comma
 	Dot
 	Wildcard
@@ -43,6 +44,7 @@ func (t TokenType) String() string {
 		"Identifier",
 		"Number",
 		"Boolean",
+		"String",
 		"Comma",
 		"Dot",
 		"Wildcard",
@@ -73,7 +75,7 @@ func (t Token) String() string {
 
 func Lex(in string) []Token {
 	var out []Token
-	it := &strIter{strings.NewReader(in)}
+	it := &strIter{strings.NewReader(in), 1}
 
 	singleCharTokens := map[rune]TokenType {
 		'.': Dot,
@@ -109,31 +111,32 @@ func Lex(in string) []Token {
 		return Identifier
 	}
 
-	line := 1
 	for c, ok := it.next(); ok; c, ok = it.next() {
-		if c == '\n' {
-			line++
-		} else if unicode.IsSpace(c) {
+		if unicode.IsSpace(c) {
 			continue
 		} else if c == '!' || c == '<' || c == '>' {
 			if next, ok := it.peek(); ok && next == '=' {
 				it.next()
-				out = append(out, emit(Operator, string(c+next), line))
+				out = append(out, emit(Operator, string(c+next), it.line))
 			} else {
-				out = append(out, emit(Operator, string(c), line))
+				out = append(out, emit(Operator, string(c), it.line))
 			}
 		} else if typ, ok := singleCharTokens[c]; ok {
-			out = append(out, emit(typ, string(c), line))
+			out = append(out, emit(typ, string(c), it.line))
 		} else if unicode.IsDigit(c) {
 			dig := readUntil(c, it, unicode.IsDigit)
-			out = append(out, emit(Number, dig, line))
+			out = append(out, emit(Number, dig, it.line))
+		} else if c == '"' {
+			word := readUntil(c, it, func(r rune) bool { return r != '"'})
+			it.next() // consume trailing "
+			out = append(out, emit(String, word[1:], it.line))
 		} else {
 			word := readUntil(c, it, unicode.IsLetter)
-			out = append(out, emit(stringToType(word), word, line))
+			out = append(out, emit(stringToType(word), word, it.line))
 		}
 	}
 
-	out = append(out, emit(EOF, "", line))
+	out = append(out, emit(EOF, "", it.line))
 	return out
 }
 
@@ -152,6 +155,7 @@ func readUntil(first rune, si *strIter, fn func(rune)bool) string {
 
 type strIter struct {
 	*strings.Reader
+	line int
 }
 
 func(l *strIter) next() (rune, bool) {
@@ -159,11 +163,17 @@ func(l *strIter) next() (rune, bool) {
 	if err != nil {
 		return r, false
 	}
+	if r == '\n' {
+		l.line++
+	}
 	return r, true
 }
 
 func(l *strIter) peek() (rune, bool) {
 	r, ok := l.next()
+	if r == '\n' {
+		l.line--
+	}
 	l.UnreadRune()
 	return r, ok
 }
