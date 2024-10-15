@@ -126,14 +126,14 @@ func (p *parser) parseInsertStatement() (*InsertStatement, error) {
 	var t Token
 	var vals []string
 	for t = p.next(); !eof(t) && t.Typ != CloseParen; t = p.next() {
-		if t.Typ == Identifier || t.Typ == Number || t.Typ == Boolean {
+		if t.Typ == Identifier || t.Typ == Number || t.Typ == Boolean || t.Typ == String {
 			vals = append(vals, t.Lexeme)
 			
 			if next := p.peek(); next.Typ == Comma {
 				p.next()
 			}
 		} else {
-			return nil, fmt.Errorf("insert table: unknown token when defining values. Expected identifier, boolean or number, got %v", t)
+			return nil, fmt.Errorf("insert table: unknown token when defining values. Expected identifier, boolean, string or number, got %v", t)
 		}
 	}
 	if t.Typ == CloseParen {
