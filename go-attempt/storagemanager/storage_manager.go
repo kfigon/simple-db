@@ -3,7 +3,6 @@ package storagemanager
 import (
 	"simple-db/page"
 	"simple-db/sql"
-	"simple-db/utils"
 )
 
 type OsInterface interface {
@@ -47,41 +46,15 @@ func NewEmptyStorageManager() *StorageManager {
 	return out
 }
 
-func (s *StorageManager) nextFreeDataPage(name string) page.PageId {
-	for _, directoryEntry := range s.dirEntries {
-		if directoryEntry.ObjectName != page.String(name) {
-			continue
-		}
-			
-		var lastPageId page.PageId
-		pageId := directoryEntry.DataRootPageID
-		for pageId != 0 {
-			lastPageId = pageId
-			pageId = directoryEntry.DataRootPageID
-		}
-		return lastPageId
-	}
-	return s.RootPage.LastFreePage
+func (s *StorageManager) CreateTable(statement *sql.CreateStatement) error {
+	return nil
 }
 
-func (s *StorageManager) CreateTable(name string, schema []utils.Pair[string, page.FieldType]) {
-	for _, sch := range schema {
-		s.schemaEntries = append(s.schemaEntries, page.SchemaEntry{
-			FieldTyp:  sch.B,
-			IsNull:    false,
-			FieldName: page.String(sch.A),
-			// Next:      page.RecordID{}, // todo: fill with data when persisting
-		}) // this is a common pattern - create object, assign ids later
-	}
-
-	s.dirEntries = append(s.dirEntries, page.DirectoryEntry{
-		// DataRootPageID:   0,
-		// SchemaRootRecord: page.RecordID{},
-		ObjectType:       page.DataPageType,
-		ObjectName:       page.String(name),
-	})
+func (s *StorageManager) Insert(statement *sql.InsertStatement) (page.RecordID, error) {
+	var out page.RecordID
+	return out, nil
 }
 
-func (s *StorageManager) Select(statement sql.SelectStatement) ([]string, [][]string){
+func (s *StorageManager) Select(statement *sql.SelectStatement) ([]string, [][]string){
 	return nil, nil
 }

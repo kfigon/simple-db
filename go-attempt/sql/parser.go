@@ -71,15 +71,15 @@ func (p *parser) parseCreateStatement() (*CreateStatement, error) {
 	for t = p.next(); !eof(t) && t.Typ != CloseParen; t = p.next() {
 		if t.Typ == Identifier {
 			next := p.next()
-			comma := p.next()
-			if next.Typ == Identifier && comma.Typ == Comma {
-				columns = append(columns, ColumnDefinition{
-					Name: t.Lexeme,
-					Typ: next.Lexeme,
-				})
-			} else {
-				return nil, fmt.Errorf("create table: unknown token when defining column. Expected id, id and comma, got %v, %v, %v", t, next, comma)
-			}
+			columns = append(columns, ColumnDefinition{
+				Name: t.Lexeme,
+				Typ: next.Lexeme,
+			})
+
+			
+			if comma := p.peek(); comma.Typ == Comma {
+				p.next()	
+			} 
 		} else {
 			return nil, fmt.Errorf("create table: unknown token when defining column. Expected identifier, got %v", t)
 		}

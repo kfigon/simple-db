@@ -46,6 +46,17 @@ func TestParser(t *testing.T) {
 			},
 		},
 		{
+			desc: "create 2",
+			input: `create table foobar(abc int, asdf boolean)`,
+			expected: &CreateStatement{
+				Columns: []ColumnDefinition{
+					{"abc", "int"},
+					{"asdf", "boolean"},
+				},
+				Table: "foobar",
+			},
+		},
+		{
 			desc: "insert1",
 			input: `INSERT INTO foobar (colA, colB, colC)
 VALUES (true, 1234, "asfg")`,
