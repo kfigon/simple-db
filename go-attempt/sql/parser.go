@@ -76,7 +76,6 @@ func (p *parser) parseCreateStatement() (*CreateStatement, error) {
 				Typ: next.Lexeme,
 			})
 
-			
 			if comma := p.peek(); comma.Typ == Comma {
 				p.next()	
 			} 
