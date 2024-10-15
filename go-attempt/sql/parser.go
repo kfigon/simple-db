@@ -31,7 +31,7 @@ func (p *parser) parseSelectStatement() (Statement, error) {
 			columns = append(columns, t.Lexeme)
 			if next := p.peek().Typ; next == Comma {
 				p.next()
-			}
+			} // todo: currently separating by whitespace also works, fix it
 		} else if t.Typ == Wildcard {
 			if len(columns) != 0 {
 				return nil, fmt.Errorf("sql error: found select wildcard and other columns")
@@ -70,7 +70,7 @@ func (p *parser) parseCreateStatement() (*CreateStatement, error) {
 	var columns []ColumnDefinition
 	for t = p.next(); !eof(t) && t.Typ != CloseParen; t = p.next() {
 		if t.Typ == Identifier {
-			next := p.next()
+			next := p.next() // todo: check type
 			columns = append(columns, ColumnDefinition{
 				Name: t.Lexeme,
 				Typ: next.Lexeme,
