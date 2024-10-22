@@ -9,14 +9,11 @@ import (
 )
 
 func TestCreate(t *testing.T) {
-	st := parseSql(t, "create table foo(id int, name string)")
-	v, ok := st.(*sql.CreateStatement)
-	assert.True(t, ok)
-
 	storage := NewEmptyStorageManager()
-	err := storage.CreateTable(v)
 
-	assert.NoError(t, err)
+	v := parseSql[*sql.CreateStatement](t, "create table foo(id int, name string)")
+
+	assert.NoError(t, storage.CreateTable(v))
 	assert.Len(t, storage.data, 1)
 	assert.Len(t, storage.dirEntries, 1)
 	assert.Len(t, storage.schemaEntries, 2)
@@ -43,10 +40,27 @@ func TestCreate(t *testing.T) {
 	})
 }
 
-func parseSql(t *testing.T, input string) sql.Statement {
+func TestInsert(t *testing.T) {
+	storage := NewEmptyStorageManager()
+
+	v := parseSql[*sql.CreateStatement](t, "create table foo(id int, name string)")
+	assert.NoError(t, storage.CreateTable(v))
+
+	ins := parseSql[*sql.InsertStatement](t, `insert into foo(id, name) VALUES (123, "foobar")`)
+	rec, err := storage.Insert(ins)
+
+	assert.NoError(t, err)
+	_ = rec
+	assert.Fail(t, "todo")
+}
+
+func parseSql[T sql.Statement](t *testing.T, input string) T {
 	t.Helper()
 
 	s, err := sql.Parse(sql.Lex(input))
 	assert.NoError(t, err)
-	return s
+	v, ok := s.(T)
+	assert.True(t, ok)
+	
+	return v
 }
