@@ -1,6 +1,7 @@
 package storagemanager
 
 import (
+	"fmt"
 	"simple-db/page"
 	"simple-db/sql"
 )
@@ -47,7 +48,58 @@ func NewEmptyStorageManager() *StorageManager {
 }
 
 func (s *StorageManager) CreateTable(statement *sql.CreateStatement) error {
+	for _, v := range s.dirEntries {
+		if string(v.ObjectName) == statement.Table {
+			return fmt.Errorf("error creating table: %v already present in the db", statement.Table)
+		}
+	}
+
+	newDirEntry := page.DirectoryEntry{
+		DataRootPageID:   page.PageId(len(s.data)), // todo: get next free page
+		SchemaRootRecord: page.RecordID{
+			PageID: 1,  // todo
+			SlotID: page.SlotIdx(len(s.schemaEntries)),
+		},
+		ObjectType:       page.DataPageType,
+		ObjectName:       page.String(statement.Table),
+	}
+	s.dirEntries = append(s.dirEntries, newDirEntry)
+	s.data = append(s.data, *page.NewEmptySlottedPage())
+
+	for i, column := range statement.Columns {
+		field, err := toFieldType(column.Typ)
+		if err != nil {
+			return fmt.Errorf("error creating table: %w", err)
+		}
+
+		var nextPage page.RecordID
+		if i < len(statement.Columns)-1 {
+			nextPage = page.RecordID{
+				PageID: 1,
+				SlotID: page.SlotIdx(len(s.schemaEntries) + 1),
+			}
+		}
+
+		s.schemaEntries = append(s.schemaEntries, page.SchemaEntry{
+			Next:      nextPage,
+			FieldTyp:  field,
+			IsNull:    false,
+			FieldName: page.String(column.Name),
+		})
+	}
+
 	return nil
+}
+
+func toFieldType(typ string) (page.FieldType, error) {
+	switch typ {
+	case "varchar", "string": return page.StringType, nil
+	case "boolean": return page.I8Type, nil
+	case "short": return page.I16Type, nil
+	case "int": return page.I32Type, nil
+	case "int64": return page.I64Type, nil
+	default: return 0, fmt.Errorf("unknown column type: %v", typ)
+	}
 }
 
 func (s *StorageManager) Insert(statement *sql.InsertStatement) (page.RecordID, error) {

@@ -5,6 +5,7 @@ type FieldType byte
 const (
 	I8Type FieldType = iota
 	I16Type
+	I32Type
 	I64Type
 	StringType
 	BinaryBlobType
@@ -88,10 +89,10 @@ func (d DirectoryEntry) Serialize() []byte {
 
 // ============ Schema
 type SchemaEntry struct {
+	Next      RecordID // linked list - next column for this table
 	FieldTyp  FieldType
 	IsNull    bool // todo - make it bitfield for more efficiency
 	FieldName String
-	Next      RecordID
 }
 
 func NewSchemaPage() GenericPage[SchemaEntry] {

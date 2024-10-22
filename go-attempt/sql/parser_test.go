@@ -59,7 +59,7 @@ func TestParser(t *testing.T) {
 		{
 			desc: "insert1",
 			input: `INSERT INTO foobar (colA, colB, colC)
-VALUES (true, 1234, "asfg")`,
+					VALUES (true, 1234, "asfg")`,
 			expected: &InsertStatement{
 				Table: "foobar",
 				Columns: []string{"colA", "colB", "colC"},

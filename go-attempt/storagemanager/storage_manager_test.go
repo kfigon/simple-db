@@ -1,6 +1,7 @@
 package storagemanager
 
 import (
+	"simple-db/page"
 	"simple-db/sql"
 	"testing"
 
@@ -16,7 +17,30 @@ func TestCreate(t *testing.T) {
 	err := storage.CreateTable(v)
 
 	assert.NoError(t, err)
-	assert.Fail(t, "assert result")
+	assert.Len(t, storage.data, 1)
+	assert.Len(t, storage.dirEntries, 1)
+	assert.Len(t, storage.schemaEntries, 2)
+
+	assert.Equal(t, storage.dirEntries[0], page.DirectoryEntry{
+		DataRootPageID:   0,
+		SchemaRootRecord: page.RecordID{1, 0},
+		ObjectType:       page.DataPageType,
+		ObjectName:       "foo",
+	})
+
+	assert.Equal(t, storage.schemaEntries[0], page.SchemaEntry{
+		Next:      page.RecordID{1, 1},
+		FieldTyp:  page.I32Type,
+		IsNull:    false,
+		FieldName: "id",
+	})
+
+	assert.Equal(t, storage.schemaEntries[1], page.SchemaEntry{
+		Next:      page.RecordID{},
+		FieldTyp:  page.StringType,
+		IsNull:    false,
+		FieldName: "name",
+	})
 }
 
 func parseSql(t *testing.T, input string) sql.Statement {
