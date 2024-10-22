@@ -15,28 +15,29 @@ func TestCreate(t *testing.T) {
 
 	assert.NoError(t, storage.CreateTable(v))
 	assert.Len(t, storage.data, 1)
-	assert.Len(t, storage.dirEntries, 1)
-	assert.Len(t, storage.schemaEntries, 2)
 
-	assert.Equal(t, storage.dirEntries[0], page.DirectoryEntry{
-		DataRootPageID:   0,
-		SchemaRootRecord: page.RecordID{1, 0},
-		ObjectType:       page.DataPageType,
-		ObjectName:       "foo",
+	assert.Equal(t, storage.dirEntries, []page.DirectoryEntry{
+		{
+			DataRootPageID:   0,
+			SchemaRootRecord: page.RecordID{1, 0},
+			ObjectType:       page.DataPageType,
+			ObjectName:       "foo",
+		},
 	})
 
-	assert.Equal(t, storage.schemaEntries[0], page.SchemaEntry{
-		Next:      page.RecordID{1, 1},
-		FieldTyp:  page.I32Type,
-		IsNull:    false,
-		FieldName: "id",
-	})
-
-	assert.Equal(t, storage.schemaEntries[1], page.SchemaEntry{
-		Next:      page.RecordID{},
-		FieldTyp:  page.StringType,
-		IsNull:    false,
-		FieldName: "name",
+	assert.Equal(t, storage.schemaEntries, []page.SchemaEntry{
+		{
+			Next:      page.RecordID{1, 1},
+			FieldTyp:  page.I32Type,
+			IsNull:    false,
+			FieldName: "id",
+		},
+		{
+			Next:      page.RecordID{},
+			FieldTyp:  page.StringType,
+			IsNull:    false,
+			FieldName: "name",
+		},
 	})
 }
 
@@ -48,8 +49,8 @@ func TestInsert(t *testing.T) {
 
 	ins := parseSql[*sql.InsertStatement](t, `insert into foo(id, name) VALUES (123, "foobar")`)
 	rec, err := storage.Insert(ins)
-
 	assert.NoError(t, err)
+
 	_ = rec
 	assert.Fail(t, "todo")
 }
