@@ -57,7 +57,7 @@ func (s *StorageManager) CreateTable(statement *sql.CreateStatement) error {
 	newDirEntry := page.DirectoryEntry{
 		DataRootPageID:   page.PageId(len(s.data)), // todo: get next free page
 		SchemaRootRecord: page.RecordID{
-			PageID: 1,  // todo
+			PageID: nextPageId(),
 			SlotID: page.SlotIdx(len(s.schemaEntries)),
 		},
 		ObjectType:       page.DataPageType,
@@ -75,7 +75,7 @@ func (s *StorageManager) CreateTable(statement *sql.CreateStatement) error {
 		var nextPage page.RecordID
 		if i < len(statement.Columns)-1 {
 			nextPage = page.RecordID{
-				PageID: 1,
+				PageID: nextPageId(),
 				SlotID: page.SlotIdx(len(s.schemaEntries) + 1),
 			}
 		}
@@ -89,6 +89,10 @@ func (s *StorageManager) CreateTable(statement *sql.CreateStatement) error {
 	}
 
 	return nil
+}
+
+func nextPageId() page.PageId {
+	return 1 // todo
 }
 
 func toFieldType(typ string) (page.FieldType, error) {
