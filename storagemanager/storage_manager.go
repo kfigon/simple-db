@@ -107,6 +107,19 @@ func toFieldType(typ string) (page.FieldType, error) {
 }
 
 func (s *StorageManager) Insert(statement *sql.InsertStatement) (page.RecordID, error) {
+	found := func() bool {
+		for _, dir := range s.dirEntries {
+			if string(dir.ObjectName) == statement.Table {
+				return true
+			}
+		}
+		return false
+	}
+	
+	if !found() {
+		return page.RecordID{}, fmt.Errorf("error on insert: %v table not found", statement.Table)
+	}
+
 	var out page.RecordID
 	return out, nil
 }
