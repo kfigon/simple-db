@@ -2,6 +2,7 @@ package page
 
 
 type SlottedPage struct {
+	baseHeaderSize int
 	lastOffset PageOffset
 
 	slots SlotArray
@@ -12,14 +13,11 @@ const slotEntrySize = 2 // PageOffset = I16 -> 2
 
 type SlotArray []PageOffset
 
-func NewSlottedPage(lastOffset PageOffset) *SlottedPage {
+func NewEmptySlottedPage(baseHeaderSize int) *SlottedPage {
 	return &SlottedPage{
-		lastOffset: lastOffset,
+		baseHeaderSize: baseHeaderSize,
+		lastOffset: PageSize,
 	}
-}
-
-func NewEmptySlottedPage() *SlottedPage {
-	return NewSlottedPage(PageSize)
 }
 
 func (s *SlottedPage) Header() SlottedPageHeader {
@@ -30,7 +28,7 @@ func (s *SlottedPage) Header() SlottedPageHeader {
 }
 
 func (s *SlottedPage) Serialize() []byte {
-	length := PageSize
+	length := PageSize - s.baseHeaderSize
 	out := make([]byte, length)
 	offset := 0
 	
@@ -50,11 +48,11 @@ func (s *SlottedPage) Serialize() []byte {
 	return out
 }
 
-// todo: overflow checks including header
+// todo: overflow checks including both headers
 func (s *SlottedPage) AppendCell(cell Bytes) SlotIdx {
 	payload := cell.Serialize()
 	s.lastOffset -= PageOffset(len(payload))
-	if s.lastOffset < 0 {
+	if int(s.lastOffset) < s.baseHeaderSize {
 		panic("data page overflow")
 	}
 

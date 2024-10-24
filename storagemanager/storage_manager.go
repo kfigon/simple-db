@@ -64,7 +64,7 @@ func (s *StorageManager) CreateTable(statement *sql.CreateStatement) error {
 		ObjectName:       page.String(statement.Table),
 	}
 	s.dirEntries = append(s.dirEntries, newDirEntry)
-	s.data = append(s.data, *page.NewEmptySlottedPage())
+	s.data = append(s.data, *page.NewEmptySlottedPage(5))
 
 	for i, column := range statement.Columns {
 		field, err := toFieldType(column.Typ)

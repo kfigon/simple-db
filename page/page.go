@@ -103,7 +103,7 @@ func NewSchemaPage() GenericPage[SchemaEntry] {
 // todo: need table name/tableid? Or put associate schema with data in catalog?
 
 // ============ generic page definiton
-type GenericPage[T any] struct { // todo: use that generic in slotted page
+type GenericPage[T any] struct {
 	BaseHeader
 	SlottedPageHeader
 
@@ -120,13 +120,12 @@ func NewPage[T any](pageType PageType) GenericPage[T] {
 			SlotArrayLen:        0,
 			SlotArrayLastOffset: 0,
 		},
-		data: *NewEmptySlottedPage(),
+		data: *NewEmptySlottedPage(1 + 4),
 	}
 }
 
 func (g *GenericPage[T]) Serialize() []byte {
-	return Serialize(Byte(g.PageTyp),
-		I32(g.NextPage),
+	return Serialize(g.BaseHeader,
 		g.data.Header(),
 		&g.data)
 }
@@ -138,6 +137,10 @@ func (g *GenericPage[T]) Data() []T {
 type BaseHeader struct {
 	PageTyp  PageType
 	NextPage PageId
+}
+
+func (b BaseHeader) Serialize() []byte {
+	return Serialize(Byte(b.PageTyp), I32(b.NextPage))
 }
 
 type SlottedPageHeader struct {
