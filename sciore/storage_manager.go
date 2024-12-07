@@ -20,7 +20,7 @@ func NewPage() *Page {
 }
 
 func (p *Page) StoreByte(offset PageOffset, b byte) error {
-	if int(offset) > len(p.data) {
+	if int(offset) + 1 > len(p.data) {
 		return fmt.Errorf("too big offset %d", offset)
 	}
 
