@@ -41,7 +41,7 @@ func TestNaiveStorage(t *testing.T) {
 			"name": String,
 		})
 
-		assert.Equal(t, s.AllData["foobar"], []TableData{
+		expected := []TableData{
 			{
 				"id": {
 					Typ: Int32,
@@ -49,7 +49,7 @@ func TestNaiveStorage(t *testing.T) {
 				},
 				"name":{
 					Typ: String,
-					Data: "asdfx",
+					Data: "asdf",
 				},
 			},
 			{
@@ -62,7 +62,8 @@ func TestNaiveStorage(t *testing.T) {
 					Data: "baz",
 				},
 			},
-		})
+		}
+		assert.Equal(t, expected, s.AllData["foobar"])
 	})
 }
 
@@ -77,7 +78,8 @@ func execute(t *testing.T, s *Storage, statement string) error {
 		return s.CreateTable(*stmt)
 	case *sql.InsertStatement:
 		return s.Insert(*stmt)
-		// case *sql.SelectStatement:
+	case *sql.SelectStatement:
+		assert.Fail(t, "todo select statement in the helper")
 	}
 	assert.Fail(t, "unreachable, invalid statement")
 	return nil

@@ -3,6 +3,7 @@ package naive
 import (
 	"fmt"
 	"simple-db/sql"
+	"strconv"
 )
 
 type FieldType int
@@ -68,31 +69,48 @@ func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
 }
 
 func (s *Storage) Insert(stmt sql.InsertStatement) error {
-	if _, ok := s.SchemaMetadata[TableName(stmt.Table)]; !ok {
+	schema, ok := s.SchemaMetadata[TableName(stmt.Table)]; 
+	if !ok {
 		return fmt.Errorf("table %v does not exist", stmt.Table)
 	}
 
 	tables, ok := s.AllData[TableName(stmt.Table)]
 	if !ok {
 		tables = []TableData{}
-		defer func () {
-			s.AllData[TableName(stmt.Table)] = tables
-		}()
 	}
 
 	table := TableData{}
 	for i := 0; i < len(stmt.Columns); i++ {
 		col := stmt.Columns[i]
 		val := stmt.Values[i]
-		table[FieldName(col)] = ColumnFromString(val, col)
+		
+		fieldType, ok := schema[FieldName(col)]
+		if !ok {
+			return fmt.Errorf("invalid column %v, not defined in schema for table %v", col, stmt.Table)
+		}
+
+		parsed, err := parseType(val, fieldType)
+		if err != nil {
+			return err
+		}
+		
+		table[FieldName(col)] = ColumnData{
+			Typ: fieldType,
+			Data: parsed,
+		}
 	}
+
 	tables = append(tables, table)
+	s.AllData[TableName(stmt.Table)] = tables
 	return nil
 }
 
-func ColumnFromString(data string, typ string) ColumnData {
-	return ColumnData{
-		Typ: String,
-		Data: "oopsie",
+func parseType(v string, typ FieldType) (any, error) {
+	switch typ {
+	case Int32: return strconv.Atoi(v)
+	case String: return v, nil
+	case Boolean: return strconv.ParseBool(v)
+	case Float: return strconv.ParseFloat(v, 64)
+	default: return nil, fmt.Errorf("invalid data type %v", typ)
 	}
 }
