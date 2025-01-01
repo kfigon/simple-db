@@ -47,8 +47,22 @@ func main() {
 			if err != nil {
 				fmt.Println(err)
 			} else {
-				fmt.Println(res)
+				fmt.Println(fmtQueryRes(res))
 			}
 		}
 	}
+}
+
+func fmtQueryRes(r naive.QueryResult) string {
+	var out string
+	out += strings.Join(r.Header, "\t")
+	out += "\n"
+	out += "------------------"
+	out += "\n"
+	for _, v := range r.Values {
+		out += strings.Join(v, "\t")
+		out += "\n"
+	}
+	out += fmt.Sprintf("%d lines found", len(r.Values))
+	return out
 }
