@@ -121,5 +121,46 @@ type QueryResult struct {
 }
 
 func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
-	return QueryResult{}, nil
+	schema, ok := s.SchemaMetadata[TableName(stmt.Table)]
+	if !ok {
+		return QueryResult{}, fmt.Errorf("unknown table %v", stmt.Table)
+	}
+	columnsToQuery, err := colsToQuery(stmt, schema)
+	if err != nil {
+		return QueryResult{}, err
+	}
+
+	out := QueryResult{
+		Header: columnsToQuery,
+	}
+
+	rows := s.AllData[TableName(stmt.Table)]
+	for _, row := range rows {
+		vals := []string{}
+		for _, col := range columnsToQuery {
+			vals = append(vals, fmt.Sprint(row[FieldName(col)].Data))
+		}
+		out.Values = append(out.Values, vals)
+	}
+
+	return out, nil
+}
+
+func colsToQuery(stmt sql.SelectStatement, schema TableSchema) ([]string, error) {
+	if stmt.HasWildcard {
+		cols := []string{}
+		for name := range schema {
+			cols = append(cols, string(name))
+		}
+		return cols, nil
+	}
+	out := []string{}
+	for _, v := range stmt.Columns {
+		if _, ok := schema[FieldName(v)]; !ok {
+			return nil, fmt.Errorf("unknown column %v in table %v", v, stmt.Table)
+		}
+
+		out = append(out, v)
+	}
+	return out, nil
 }

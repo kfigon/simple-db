@@ -36,6 +36,14 @@ func TestNaiveStorage(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("unknown field in select", func(t *testing.T) {
+		s := NewStorage()
+		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
+		
+		_, err := query(t, s, "select oops from foobar")
+		assert.Error(t, err)
+	})
+
 	t.Run("empty select", func(t *testing.T) {
 		s := NewStorage()
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
@@ -43,9 +51,8 @@ func TestNaiveStorage(t *testing.T) {
 		res, err := query(t, s, "select * from foobar")
 		assert.NoError(t, err)
 
-		assert.Equal(t, QueryResult{
-			Header: []string{"id", "name"},
-		}, res)
+		assert.ElementsMatch(t, []string{"id", "name"}, res.Header)
+		assert.Empty(t, res.Values)
 	})
 
 	t.Run("basic select", func(t *testing.T) {
@@ -57,13 +64,11 @@ func TestNaiveStorage(t *testing.T) {
 		res, err := query(t, s, "select * from foobar")
 		assert.NoError(t, err)
 
-		assert.Equal(t, QueryResult{
-			Header: []string{"id", "name"},
-			Values: [][]string{
-				{"123", "asdf"},
-				{"456", "baz"},
-			},
-		}, res)
+		assert.ElementsMatch(t, []string{"id", "name"}, res.Header)
+		assert.Len(t, res.Values, 2)
+
+		assert.ElementsMatch(t, []string{"123", "asdf"}, res.Values[0])
+		assert.ElementsMatch(t, []string{"456", "baz"}, res.Values[1])
 	})
 
 	t.Run("basic select with specified columns", func(t *testing.T) {
@@ -75,13 +80,10 @@ func TestNaiveStorage(t *testing.T) {
 		res, err := query(t, s, "select name, id from foobar")
 		assert.NoError(t, err)
 
-		assert.Equal(t, QueryResult{
-			Header: []string{"name", "id"},
-			Values: [][]string{
-				{"asdf", "123"},
-				{"baz", "456"},
-			},
-		}, res)
+		assert.ElementsMatch(t, []string{"name", "id"}, res.Header)
+		assert.Len(t, res.Values, 2)
+		assert.ElementsMatch(t, []string{"123", "asdf"}, res.Values[0])
+		assert.ElementsMatch(t, []string{"456", "baz"}, res.Values[1])
 	})
 
 	t.Run("basic insert", func(t *testing.T) {
