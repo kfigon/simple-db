@@ -93,7 +93,7 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 		if err != nil {
 			return err
 		}
-		
+
 		table[FieldName(col)] = ColumnData{
 			Typ: fieldType,
 			Data: parsed,
@@ -113,4 +113,13 @@ func parseType(v string, typ FieldType) (any, error) {
 	case Float: return strconv.ParseFloat(v, 64)
 	default: return nil, fmt.Errorf("invalid data type %v", typ)
 	}
+}
+
+type QueryResult struct {
+	Header []string
+	Values [][]string
+}
+
+func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
+	return QueryResult{}, nil
 }

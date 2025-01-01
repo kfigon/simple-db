@@ -29,6 +29,61 @@ func TestNaiveStorage(t *testing.T) {
 		assert.Error(t, execute(t, s, `create table foobar(opps int)`))
 	})
 
+	t.Run("select for nonexisting table", func(t *testing.T) {
+		s := NewStorage()
+		
+		_, err := query(t, s, "select * from foobar")
+		assert.Error(t, err)
+	})
+
+	t.Run("empty select", func(t *testing.T) {
+		s := NewStorage()
+		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
+		
+		res, err := query(t, s, "select * from foobar")
+		assert.NoError(t, err)
+
+		assert.Equal(t, QueryResult{
+			Header: []string{"id", "name"},
+		}, res)
+	})
+
+	t.Run("basic select", func(t *testing.T) {
+		s := NewStorage()
+		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
+		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (123, "asdf")`))
+		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (456, "baz")`))
+
+		res, err := query(t, s, "select * from foobar")
+		assert.NoError(t, err)
+
+		assert.Equal(t, QueryResult{
+			Header: []string{"id", "name"},
+			Values: [][]string{
+				{"123", "asdf"},
+				{"456", "baz"},
+			},
+		}, res)
+	})
+
+	t.Run("basic select with specified columns", func(t *testing.T) {
+		s := NewStorage()
+		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
+		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (123, "asdf")`))
+		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (456, "baz")`))
+
+		res, err := query(t, s, "select name, id from foobar")
+		assert.NoError(t, err)
+
+		assert.Equal(t, QueryResult{
+			Header: []string{"name", "id"},
+			Values: [][]string{
+				{"asdf", "123"},
+				{"baz", "456"},
+			},
+		}, res)
+	})
+
 	t.Run("basic insert", func(t *testing.T) {
 		s := NewStorage()
 
@@ -69,8 +124,8 @@ func TestNaiveStorage(t *testing.T) {
 
 func execute(t *testing.T, s *Storage, statement string) error {
 	t.Helper()
-	stmt, err := sql.Parse(sql.Lex(statement))
 
+	stmt, err := sql.Parse(sql.Lex(statement))
 	assert.NoError(t, err)
 
 	switch stmt := stmt.(type) {
@@ -78,9 +133,22 @@ func execute(t *testing.T, s *Storage, statement string) error {
 		return s.CreateTable(*stmt)
 	case *sql.InsertStatement:
 		return s.Insert(*stmt)
-	case *sql.SelectStatement:
-		assert.Fail(t, "todo select statement in the helper")
 	}
+
 	assert.Fail(t, "unreachable, invalid statement")
 	return nil
+}
+
+func query(t *testing.T, s *Storage, statement string) (QueryResult, error) {
+	t.Helper()
+
+	stmt, err := sql.Parse(sql.Lex(statement))
+	assert.NoError(t, err)
+
+	sel, ok := stmt.(*sql.SelectStatement)
+	if !ok {
+		assert.Fail(t, "unreachable, invalid statement")
+		return QueryResult{}, nil
+	}
+	return s.Select(*sel)
 }
