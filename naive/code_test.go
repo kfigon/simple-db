@@ -146,11 +146,7 @@ func query(t *testing.T, s *Storage, statement string) (QueryResult, error) {
 
 	stmt, err := sql.Parse(sql.Lex(statement))
 	assert.NoError(t, err)
-
-	sel, ok := stmt.(*sql.SelectStatement)
-	if !ok {
-		assert.Fail(t, "unreachable, invalid statement")
-		return QueryResult{}, nil
-	}
-	return s.Select(*sel)
+	assert.IsType(t, &sql.SelectStatement{}, stmt)
+	
+	return s.Select(*stmt.(*sql.SelectStatement))
 }
