@@ -59,6 +59,8 @@ next step:
 * [guy writing a db from scratch](https://www.youtube.com/watch?v=5Pc18ge9ohI)
 * [Let's Build a Simple Database](https://cstack.github.io/db_tutorial/)
 * [CMU lectures](https://www.youtube.com/playlist?list=PLA5Lqm4uh9Bbq-E0ZnqTIa8LRaL77ica6)
+* [impl from scratch](https://www.youtube.com/watch?v=HHO2K23XxbM&list=PLWRwj01AnyEtjaw-ZnnAQWnVYPZF5WayV)
+* 
 
 btree:
 * [wiki](https://en.wikipedia.org/wiki/B-tree)
