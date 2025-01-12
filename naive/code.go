@@ -46,8 +46,8 @@ type Storage struct {
 
 func NewStorage() *Storage {
 	return &Storage{
-		SchemaMetadata: map[TableName]TableSchema{},
-		AllData: map[TableName][]TableData{},
+		SchemaMetadata: Schema{},
+		AllData: Data{},
 	}
 }
 

@@ -1,6 +1,7 @@
 package naive
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 )
@@ -24,14 +25,12 @@ func SerializeString(s string) []byte {
 }
 
 func DeserializeBool(b []byte) (bool, error) {
-	if len(b) < 1 {
-		return false, deserializationErr(len(b), 1, "bool")
-	} else if b[0] == 0 {
-		return false, nil
-	} else if b[0] == 1 {
-		return true, nil
+	switch {
+	case len(b) < 1: return false, deserializationErr(len(b), 1, "bool")
+	case b[0] == 0: return false, nil
+	case b[0] == 1: return true, nil
+	default: return false, fmt.Errorf("invalid boolean, expected 0 or 1, got %v", b[0])
 	}
-	return false, fmt.Errorf("invalid boolean, expected 0 or 1, got %v", b[0])
 }
 
 func DeserializeInt(b []byte) (int32, error) {
@@ -56,6 +55,33 @@ func deserializationErr(got, exp int, typ string) error {
 	return fmt.Errorf("cant deserialize into %v, expected lenght %v, got %v", typ, exp, got)
 }
 
+type PageType int32
+const (
+	RootPage PageType = iota
+	DataPage
+	SchemaPage
+)
+
+type PageID int32
+type PageOffset int32
+
 type Page struct {
-	
+	Header struct {
+		PageTyp PageType
+		NextPage PageID
+		Size int32
+	}
+	PageData []byte
+}
+
+func SerializeSchema(s Schema) []byte {
+	var buf bytes.Buffer
+	for table, data := range s {
+
+	}
+	return buf.Bytes()
+}
+
+func SerializeData(d Data) []byte {
+	return nil
 }
