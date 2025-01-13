@@ -277,3 +277,11 @@ func DeserializeData(r io.Reader, s Schema) (Data, error) {
 
 	return d, nil
 }
+
+func SerializeDb(s Storage) []byte {
+
+}
+
+func DeserializeDb(r io.Reader) (*Storage, error) {
+
+}
