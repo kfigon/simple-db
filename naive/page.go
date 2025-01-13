@@ -55,24 +55,24 @@ func deserializationErr(got, exp int, typ string) error {
 	return fmt.Errorf("cant deserialize into %v, expected lenght %v, got %v", typ, exp, got)
 }
 
-type PageType int32
-const (
-	RootPage PageType = iota
-	DataPage
-	SchemaPage
-)
+// type PageType int32
+// const (
+// 	RootPage PageType = iota
+// 	DataPage
+// 	SchemaPage
+// )
 
-type PageID int32
-type PageOffset int32
+// type PageID int32
+// type PageOffset int32
 
-type Page struct {
-	Header struct {
-		PageTyp PageType
-		NextPage PageID
-		Size int32
-	}
-	PageData []byte
-}
+// type Page struct {
+// 	Header struct {
+// 		PageTyp PageType
+// 		NextPage PageID
+// 		Size int32
+// 	}
+// 	PageData []byte
+// }
 
 func SerializeSchema(s Schema) []byte {
 	var buf bytes.Buffer
