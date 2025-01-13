@@ -125,6 +125,7 @@ func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 	if !ok {
 		return QueryResult{}, fmt.Errorf("unknown table %v", stmt.Table)
 	}
+
 	columnsToQuery, err := colsToQuery(stmt, schema)
 	if err != nil {
 		return QueryResult{}, err
@@ -154,6 +155,7 @@ func colsToQuery(stmt sql.SelectStatement, schema TableSchema) ([]string, error)
 		}
 		return cols, nil
 	}
+	
 	out := []string{}
 	for _, v := range stmt.Columns {
 		if _, ok := schema[FieldName(v)]; !ok {
