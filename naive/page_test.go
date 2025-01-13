@@ -1,6 +1,7 @@
 package naive
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,5 +42,34 @@ func TestSerialize(t *testing.T) {
 		got, err := DeserializeString(bytes)
 		assert.NoError(t, err)
 		assert.Equal(t, "hello world", got)
+	})
+}
+
+func TestSerializeStorage(t *testing.T) {
+	t.Run("schema", func(t *testing.T) {
+		s := NewStorage() 
+		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
+		assert.NoError(t, execute(t, s, `create table asdf(email string)`))
+
+		data := SerializeSchema(s.SchemaMetadata)
+		assert.Len(t, data, 65)
+
+		schema, err := DeserializeSchema(bytes.NewReader(data))
+		assert.NoError(t, err)
+		assert.Equal(t, s.SchemaMetadata, schema)
+	})
+
+	t.Run("data", func(t *testing.T) {
+		s := NewStorage() 
+		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
+		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (123, "asdf")`))
+		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (456, "baz")`))
+
+		data := SerializeData(s.AllData)
+		assert.Len(t, data, 65)
+
+		dbData, err := DeserializeData(bytes.NewReader(data), s.SchemaMetadata)
+		assert.NoError(t, err)
+		assert.Equal(t, s.AllData, dbData)
 	})
 }

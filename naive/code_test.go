@@ -56,7 +56,7 @@ func TestNaiveStorage(t *testing.T) {
 	})
 
 	t.Run("basic select", func(t *testing.T) {
-		s := NewStorage()
+		s := NewStorage() 
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
 		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (123, "asdf")`))
 		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (456, "baz")`))
