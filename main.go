@@ -30,16 +30,14 @@ func main() {
 		} else if s == "quit" || s == "exit" {
 			fmt.Println("auf wiedersehen!")
 			break
-		} else if strings.HasPrefix(s, "dump ") {
-			fileName := strings.TrimPrefix(s, "dump ")
+		} else if ok, fileName := hasPrefixAndTrim(s, "dump "); ok {
 			if err = dumpDbToFile(storage, fileName); err != nil {
 				fmt.Println(err)
 			} else {
 				fmt.Printf("db wrote to %q\n", fileName)
 			}
 			continue
-		} else if strings.HasPrefix(s, "load ") {
-			fileName := strings.TrimPrefix(s, "load ")
+		} else if ok, fileName := hasPrefixAndTrim(s, "load "); ok {
 			if err = loadFile(&storage, fileName); err != nil {
 				fmt.Printf("failed to load file: %q. Current db is not changed", fileName)
 			} else {
@@ -86,6 +84,13 @@ func fmtQueryRes(r naive.QueryResult) string {
 	}
 	out += fmt.Sprintf("%d lines found", len(r.Values))
 	return out
+}
+
+func hasPrefixAndTrim(s string, prefix string) (bool, string) {
+	if strings.HasPrefix(s, prefix) {
+		return true, strings.TrimPrefix(s, prefix)
+	}
+	return false, s
 }
 
 func dumpDbToFile(s *naive.Storage, fileName string) error {
