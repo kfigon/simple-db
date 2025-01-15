@@ -7,8 +7,8 @@
     * [x] just serialize the content, then recover. No live updates. No overflow pages
         * [x] serialize schema
         * [x] serialize data
-        * [ ] header
-        * [ ] dump/load in cli
+        * [x] header
+        * [x] dump/load in cli
     * [ ] serialization in pages, but just ONE page per type. Serialize everything in single page
     * [ ] slot array for live updates
 * [ ] indexes
