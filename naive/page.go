@@ -278,10 +278,47 @@ func DeserializeData(r io.Reader, s Schema) (Data, error) {
 	return d, nil
 }
 
-func SerializeDb(s Storage) []byte {
+func SerializeDb(s *Storage) []byte {
+	serializedSchema := SerializeSchema(s.SchemaMetadata)
+	serializedData := SerializeData(s.AllData)
 
+	var buf bytes.Buffer
+	buf.Write(SerializeInt(int32(len(serializedSchema))))
+	buf.Write(SerializeInt(int32(len(serializedData))))
+	buf.Write(serializedSchema)
+	buf.Write(serializedData)
+	return buf.Bytes()
 }
 
 func DeserializeDb(r io.Reader) (*Storage, error) {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
 
+	schemaLen, err := DeserializeIntAndEat(&data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read schema length: %w", err)
+	}
+
+	_, err = DeserializeIntAndEat(&data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read data length: %w", err)
+	}
+
+	schema, err := DeserializeSchema(bytes.NewBuffer(data))
+	if err != nil {
+		return nil, err
+	}
+
+	// NewBuffer takes ownership of the byte array. Here Im reusing it, so split it here
+	dataContent, err := DeserializeData(bytes.NewBuffer(data[schemaLen:]), schema)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Storage{
+		SchemaMetadata: schema,
+		AllData: dataContent,
+	}, nil
 }
