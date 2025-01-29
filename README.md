@@ -2,6 +2,8 @@
 
 based on [chidb](http://chi.cs.uchicago.edu/chidb/index.html) from university of chicago
 
+[sqlite sourcecode](https://github.com/davideuler/SQLite-2.5.0-for-code-reading)
+
 # db
 single file - sequence of pages. Page is our storage unit, being a set of disk blocks. Different kind of pages - tables, indexes etc.
 
