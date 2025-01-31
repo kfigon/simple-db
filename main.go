@@ -14,6 +14,7 @@ func main() {
 	fmt.Println("'quit' or 'exit' to stop")
 	fmt.Println("'dump <filename>' to dump current db to <filename>")
 	fmt.Println("'load <filename>' to load <filename> to db")
+	fmt.Println("or type <sql statement> to execute")
 
 	storage := naive.NewStorage()
 	reader := bufio.NewReader(os.Stdin)
@@ -38,7 +39,7 @@ func main() {
 			}
 		} else if ok, fileName := hasPrefixAndTrim(s, "load "); ok {
 			if err = loadFile(&storage, fileName); err != nil {
-				fmt.Printf("failed to load file: %q. Current db is not changed", fileName)
+				fmt.Printf("failed to load file: %q. Current db is not changed\n", fileName)
 			} else {
 				fmt.Printf("db refreshed from %q\n", fileName)
 			}
@@ -71,6 +72,8 @@ func handleSql(storage *naive.Storage, s string) error {
 			return fmt.Errorf("statement error: %w", err)
 		}
 		fmt.Println(fmtQueryRes(res))
+	default:
+		return fmt.Errorf("invalid statement for sql: %q", s)
 	}
 	return nil
 }
