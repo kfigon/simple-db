@@ -9,8 +9,10 @@
         * [x] serialize data
         * [x] header
         * [x] dump/load in cli
-    * [ ] serialization in pages, but just ONE page per type. Serialize everything in single page
-    * [ ] slot array for live updates
+    * [ ] slot array
+        * [ ] serialization in pages, but just ONE page per type. Serialize everything in single page
+        * [ ] proper 4kB page layout
+        * [ ] overflow pages
 * [ ] indexes
 * [ ] transactions, acid
 * [ ] concurrency

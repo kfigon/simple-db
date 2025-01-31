@@ -29,47 +29,50 @@ func main() {
 			return
 		} else if s == "quit" || s == "exit" {
 			fmt.Println("auf wiedersehen!")
-			break
+			return
 		} else if ok, fileName := hasPrefixAndTrim(s, "dump "); ok {
 			if err = dumpDbToFile(storage, fileName); err != nil {
 				fmt.Println(err)
 			} else {
 				fmt.Printf("db wrote to %q\n", fileName)
 			}
-			continue
 		} else if ok, fileName := hasPrefixAndTrim(s, "load "); ok {
 			if err = loadFile(&storage, fileName); err != nil {
 				fmt.Printf("failed to load file: %q. Current db is not changed", fileName)
 			} else {
 				fmt.Printf("db refreshed from %q\n", fileName)
 			}
-			continue
-		}
-
-		stmt, err := sql.Parse(sql.Lex(s))
-		if err != nil {
-			fmt.Println("error:", err)
-			continue
-		}
-
-		switch stmt := stmt.(type) {
-		case *sql.CreateStatement:
-			if err = storage.CreateTable(*stmt); err != nil {
-				fmt.Println(err)
-			}
-		case *sql.InsertStatement:
-			if err = storage.Insert(*stmt); err != nil {
-				fmt.Println(err)
-			}
-		case *sql.SelectStatement:
-			res, err := storage.Select(*stmt)
-			if err != nil {
-				fmt.Println(err)
-			} else {
-				fmt.Println(fmtQueryRes(res))
+		} else {
+			if err := handleSql(storage, s); err != nil {
+				fmt.Println("error:", err)
 			}
 		}
 	}
+}
+
+func handleSql(storage *naive.Storage, s string) error {
+	stmt, err := sql.Parse(sql.Lex(s))
+	if err != nil {
+		return fmt.Errorf("error parsing sql: %w", err)
+	}
+
+	switch stmt := stmt.(type) {
+	case *sql.CreateStatement:
+		if err = storage.CreateTable(*stmt); err != nil {
+			return fmt.Errorf("statement error: %w", err)
+		}
+	case *sql.InsertStatement:
+		if err = storage.Insert(*stmt); err != nil {
+			return fmt.Errorf("statement error: %w", err)
+		}
+	case *sql.SelectStatement:
+		res, err := storage.Select(*stmt)
+		if err != nil {
+			return fmt.Errorf("statement error: %w", err)
+		}
+		fmt.Println(fmtQueryRes(res))
+	}
+	return nil
 }
 
 func fmtQueryRes(r naive.QueryResult) string {
