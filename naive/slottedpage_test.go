@@ -20,8 +20,34 @@ func TestSlotted(t *testing.T) {
 		}
 	})
 	
-	t.Run("put", func(t *testing.T) {
-		t.Skip("not implemented")
+	t.Run("put when smaller", func(t *testing.T) {
+		p := NewSlotted(50)
+		initWithData(t, p)
+
+		v, err := p.Read(0)
+		assert.NoError(t, err)
+		assert.Equal(t, "hello", string(v))
+
+		assert.NoError(t, p.Put(0, []byte("asdf")))
+
+		v, err = p.Read(0)
+		assert.NoError(t, err)
+		assert.Equal(t, "asdf", string(v))
+	})
+
+	t.Run("put when bigger", func(t *testing.T) {
+		p := NewSlotted(100)
+		initWithData(t, p)
+
+		v, err := p.Read(0)
+		assert.NoError(t, err)
+		assert.Equal(t, "hello", string(v))
+
+		assert.NoError(t, p.Put(0, []byte("hello world!")))
+
+		v, err = p.Read(0)
+		assert.NoError(t, err)
+		assert.Equal(t, "hello world!", string(v))
 	})
 }
 

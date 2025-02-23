@@ -38,9 +38,26 @@ func (s *Slotted) Add(buf []byte) (RowId, error) {
 	return RowId(len(s.Indexes) - 1), nil
 }
 
-func (s *Slotted) Put(id RowId, buf []byte) (RowId, error) {
-	// todo
-	return 0, nil
+func (s *Slotted) Put(id RowId, buf []byte) error {
+	existing, err := s.Read(id)
+	if err != nil {
+		return err
+	}
+	if len(buf) <= len(existing) {
+		bytesWithHeader := SerializeBytes(buf)
+		offset := s.Indexes[id]
+		copy(s.CellData[offset:], bytesWithHeader)
+
+		return nil
+	} 
+	newRowId, err := s.Add(buf)
+	if err != nil {
+		return err
+	}
+	s.Indexes[id] = s.Indexes[newRowId]
+	s.Indexes[newRowId] = -1 // tombstone value
+	return nil
+	// todo: reclaim page space
 }
 
 func (s *Slotted) Read(idx RowId) ([]byte, error) {
