@@ -9,6 +9,8 @@ import (
 
 var endinanness = binary.BigEndian
 
+type BytesWithHeader []byte
+
 func SerializeBool(b bool) []byte {
 	if b {
 		return []byte{1}
@@ -20,13 +22,11 @@ func SerializeInt(i int32) []byte {
 	return endinanness.AppendUint32([]byte{}, uint32(i))
 }
 
-// same code as bytes, but don't reuse - it causes allocations when casting to []byte()
 func SerializeString(s string) []byte {
-	header := SerializeInt(int32(len(s)))
-	return append(header, []byte(s)...)
+	return SerializeBytes([]byte(s))
 }
 
-func SerializeBytes(b []byte) []byte {
+func SerializeBytes(b []byte) BytesWithHeader {
 	header := SerializeInt(int32(len(b)))
 	return append(header, b...) 
 }
@@ -57,7 +57,7 @@ func DeserializeString(b []byte) (string, error) {
 	return string(v), nil
 }
 
-func DeserializeBytes(b []byte) ([]byte, error) {
+func DeserializeBytes(b BytesWithHeader) ([]byte, error) {
 	exp := 4
 	got := len(b)
 	if got < exp {

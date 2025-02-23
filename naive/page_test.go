@@ -46,7 +46,7 @@ func TestSerialize(t *testing.T) {
 
 	t.Run("bytes", func(t *testing.T) {
 		input := []byte("hello world")
-		expected := []byte{0, 0, 0, 11, 'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'}
+		expected := BytesWithHeader([]byte{0, 0, 0, 11, 'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'})
 
 		assert.Equal(t, expected, SerializeBytes(input))
 
