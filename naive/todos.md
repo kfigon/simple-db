@@ -12,7 +12,10 @@
     * [x] slot array
         * [x] serialization in pages, but just ONE page per type. Serialize everything in single page
     * [ ] integrate slotted pages in rest of the metadata and catalog
-        * [ ] seq scans with linked lists
+        * [ ] Storage - serialize db header page
+        * [ ] Storage - de/serialize schema in new format. Keep schema cached inmem for efficiency
+        * [ ] Storage - remove AllData, replace with page linked list read from catalog
+        * [ ] Storage - rework operators. Impl seq scans for select
     * [ ] consider using reflection for serialization for more abstracted usage
     * [ ] overflow pages
 * [ ] indexes with btree on disk
