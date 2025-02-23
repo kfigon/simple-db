@@ -8,19 +8,11 @@ import (
 )
 
 func TestSlotted(t *testing.T) {
-	t.Run("basic", func(t *testing.T) {
-		inserted := map[RowId]string{}
-		inputs := []string{"hello", "world", "foobar"} 
+	t.Run("basic insert", func(t *testing.T) {
 		p := NewSlotted(50)
-
-		for _, inStr := range inputs{
-			id, err := p.Add([]byte(inStr))
-			assert.NoError(t, err)
-
-			inserted[id] = inStr
-		}
+		inserted := initWithData(t, p)
 		
-		assert.Len(t, inserted, len(inputs))
+		assert.Len(t, inserted, 3)
 		for id, expStr := range inserted {
 			got, err := p.Read(id)
 			assert.NoError(t, err)
@@ -29,9 +21,51 @@ func TestSlotted(t *testing.T) {
 		}
 	})
 	
-
 	t.Run("put", func(t *testing.T) {
 		assert.Fail(t, "not implemented")
+	})
+}
+
+func initWithData(t *testing.T, p *Slotted) map[RowId]string {
+	inserted := map[RowId]string{}
+
+	for _, inStr := range []string{"hello", "world", "foobar"} {
+		id, err := p.Add([]byte(inStr))
+		assert.NoError(t, err)
+		inserted[id] = inStr
+	}
+	return inserted
+}
+
+func TestSerialization(t *testing.T) {
+	t.Run("serialization", func(t *testing.T) {
+		p := NewSlotted(50)
+		initWithData(t, p)
+		
+		data := p.Serialize()
+		assert.Len(t, data, 50)
+	})
+
+	t.Run("empty", func(t *testing.T) {
+		data := NewSlotted(50).Serialize()
+		assert.Equal(t, make([]byte, 50), data)
+	})
+
+	t.Run("deserialize", func(t *testing.T) {
+		p := NewSlotted(50)
+		inserted := initWithData(t, p)
+		data := p.Serialize()
+		
+		newP, err := DeserializeSlotted(data)
+		assert.NoError(t, err)
+
+		assert.Len(t, newP.Indexes, 3)
+		for id, expStr := range inserted {
+			got, err := p.Read(id)
+			assert.NoError(t, err)
+	
+			assert.Equal(t, []byte(expStr), got)
+		}
 	})
 }
 
@@ -90,4 +124,8 @@ func (s *Slotted) hasSpace(newData int) bool {
 func (s *Slotted) Serialize() []byte {
 	// indexes, padding, cells
 	return nil
+}
+
+func DeserializeSlotted(b []byte) (*Slotted, error) {
+	return nil, nil
 }
