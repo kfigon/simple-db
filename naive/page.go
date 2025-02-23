@@ -20,9 +20,15 @@ func SerializeInt(i int32) []byte {
 	return endinanness.AppendUint32([]byte{}, uint32(i))
 }
 
+// same code as bytes, but don't reuse - it causes allocations when casting to []byte()
 func SerializeString(s string) []byte {
 	header := SerializeInt(int32(len(s)))
 	return append(header, []byte(s)...)
+}
+
+func SerializeBytes(b []byte) []byte {
+	header := SerializeInt(int32(len(b)))
+	return append(header, b...) 
 }
 
 func DeserializeBool(b []byte) (bool, error) {
@@ -44,16 +50,24 @@ func DeserializeInt(b []byte) (int32, error) {
 }
 
 func DeserializeString(b []byte) (string, error) {
+	v, err := DeserializeBytes(b)
+	if err != nil {
+		return "", err
+	}
+	return string(v), nil
+}
+
+func DeserializeBytes(b []byte) ([]byte, error) {
 	exp := 4
 	got := len(b)
 	if got < exp {
-		return "", deserializationErr(got, exp, "string header")
+		return nil, deserializationErr(got, exp, "array header")
 	}
 	howMany, err := DeserializeInt(b[:4])
 	if err != nil {
-		return "", fmt.Errorf("error deserializing string length: %w", err)
+		return nil, fmt.Errorf("error deserializing header length: %w", err)
 	}
-	return string(b[4:4+howMany]), nil
+	return b[4:4+howMany], nil
 }
 
 func deserializationErr(got, exp int, typ string) error {
