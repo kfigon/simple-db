@@ -29,15 +29,19 @@ func SerializeString(s string) []byte {
 
 func SerializeBytes(b []byte) BytesWithHeader {
 	header := SerializeInt(int32(len(b)))
-	return append(header, b...) 
+	return append(header, b...)
 }
 
 func DeserializeBool(b []byte) (bool, error) {
 	switch {
-	case len(b) < 1: return false, deserializationErr(len(b), 1, "bool")
-	case b[0] == 0: return false, nil
-	case b[0] == 1: return true, nil
-	default: return false, fmt.Errorf("invalid boolean, expected 0 or 1, got %v", b[0])
+	case len(b) < 1:
+		return false, deserializationErr(len(b), 1, "bool")
+	case b[0] == 0:
+		return false, nil
+	case b[0] == 1:
+		return true, nil
+	default:
+		return false, fmt.Errorf("invalid boolean, expected 0 or 1, got %v", b[0])
 	}
 }
 
@@ -68,7 +72,7 @@ func DeserializeBytes(b BytesWithHeader) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error deserializing header length: %w", err)
 	}
-	return b[4:4+howMany], nil
+	return b[4 : 4+howMany], nil
 }
 
 func deserializationErr(got, exp int, typ string) error {
@@ -80,7 +84,7 @@ func DeserializeStringAndEat(b *[]byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	advanceBuf(b, 4 + len(v))
+	advanceBuf(b, 4+len(v))
 	return v, nil
 }
 
@@ -97,17 +101,16 @@ func advanceBuf(b *[]byte, howMany int) {
 	*b = (*b)[howMany:]
 }
 
-
 func SerializeSchema(s Schema) []byte {
 	type catalogHeader struct {
 		numberOfTables int32
 	}
 
 	type schemaHeader struct {
-		name TableName
+		name            TableName
 		numberOfColumns int32
-		columnMetadata []struct {
-			typ FieldType
+		columnMetadata  []struct {
+			typ  FieldType
 			name FieldName
 		}
 	}
@@ -117,7 +120,7 @@ func SerializeSchema(s Schema) []byte {
 	for table, data := range s {
 		buf.Write(SerializeString(string(table)))
 		buf.Write(SerializeInt(int32(len(data))))
-		for name,typ := range data {
+		for name, typ := range data {
 			buf.Write(SerializeInt(int32(typ)))
 			buf.Write(SerializeString(string(name)))
 		}
@@ -143,7 +146,7 @@ func DeserializeSchema(r io.Reader) (Schema, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to read %v table name: %w", i, err)
 		}
-		
+
 		columnCount, err := DeserializeIntAndEat(&bytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read num of columns for table %v: %w", name, err)
@@ -171,10 +174,10 @@ func DeserializeSchema(r io.Reader) (Schema, error) {
 func SerializeData(d Data) []byte {
 	// array like that
 	type dataHeader struct {
-		name TableName
+		name         TableName
 		numberOfRows int32
-		rowData []struct {
-			name FieldName
+		rowData      []struct {
+			name  FieldName
 			value any
 		}
 	}
@@ -185,10 +188,10 @@ func SerializeData(d Data) []byte {
 		buf.Write(SerializeInt(int32(len(rows))))
 		for _, row := range rows {
 			for fieldName, val := range row {
-				buf.Write(SerializeString(string(fieldName)))				
+				buf.Write(SerializeString(string(fieldName)))
 				var serializedColumn []byte
 				switch val.Typ {
-				case Int32: 
+				case Int32:
 					serializedColumn = SerializeInt(int32(val.Data.(int)))
 				case String:
 					serializedColumn = SerializeString(val.Data.(string))
@@ -196,7 +199,8 @@ func SerializeData(d Data) []byte {
 					serializedColumn = SerializeBool(val.Data.(bool))
 				case Float:
 					// todo: impl float
-				default: panic(fmt.Sprintf("unknown column typ %v", val.Typ)) // data corruption, fail now
+				default:
+					panic(fmt.Sprintf("unknown column typ %v", val.Typ)) // data corruption, fail now
 				}
 				buf.Write(serializedColumn)
 			}
@@ -211,7 +215,7 @@ func DeserializeData(r io.Reader, s Schema) (Data, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read row data: %w", err)
 	}
-	
+
 	d := Data{}
 	for i := range len(s) {
 		tableName, err := DeserializeStringAndEat(&bytes)
@@ -241,10 +245,10 @@ func DeserializeData(r io.Reader, s Schema) (Data, error) {
 				if !ok {
 					return nil, fmt.Errorf("unknown column %v for table %v", columnName, tableName)
 				}
-			
+
 				var v any
 				switch typ {
-				case Int32: 
+				case Int32:
 					if v, err = DeserializeIntAndEat(&bytes); err != nil {
 						return nil, fmt.Errorf("failed to read %v for %v: %w", columnName, tableName, err)
 					}
@@ -256,11 +260,12 @@ func DeserializeData(r io.Reader, s Schema) (Data, error) {
 					// todo: impl bool
 				case Float:
 					// todo: impl float
-				default: panic(fmt.Sprintf("unknown column typ %v in table %v", typ, tableName)) // data corruption, fail now
+				default:
+					panic(fmt.Sprintf("unknown column typ %v in table %v", typ, tableName)) // data corruption, fail now
 				}
-	
+
 				td[FieldName(columnName)] = ColumnData{
-					Typ: typ,
+					Typ:  typ,
 					Data: v,
 				}
 			}
@@ -315,15 +320,15 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 
 	return &Storage{
 		SchemaMetadata: schema,
-		AllData: dataContent,
+		AllData:        dataContent,
 	}, nil
 }
 
 type RootPage struct {
-	MagicNumber int32
-	PageSize int32
+	MagicNumber     int32
+	PageSize        int32
 	SchemaStartPage PageID
-	DataPageStart PageID
+	DataPageStart   PageID
 }
 
 const MagicNumber = 0xdeadc0de
@@ -366,14 +371,15 @@ func DeserializeRootPage(r io.Reader) (*RootPage, error) {
 		return nil, fmt.Errorf("error deserializing data start: %w", err)
 	}
 	return &RootPage{
-		MagicNumber: int32(magicNum),
-		PageSize: int32(pageSize),
+		MagicNumber:     int32(magicNum),
+		PageSize:        int32(pageSize),
 		SchemaStartPage: PageID(schemaStart),
-		DataPageStart: PageID(dataStart),
+		DataPageStart:   PageID(dataStart),
 	}, nil
 }
 
 type PageType int32
+
 const (
 	RootPageType PageType = iota
 	DataPageType
@@ -384,14 +390,14 @@ type PageID int32
 type PageOffset int32
 
 type GenericPageHeader struct {
-	PageTyp PageType
-	NextPage PageID
+	PageTyp       PageType
+	NextPage      PageID
 	SlotArraySize int32 // might be too big, leave for now
 }
 
 type GenericPage struct {
-	Header GenericPageHeader
-	SlotArray *Slotted 
+	Header    GenericPageHeader
+	SlotArray *Slotted
 }
 
 // todo: assign pageId, update new pageId in linked list
@@ -404,7 +410,7 @@ func NewPage(pageType PageType, pageSize int) *GenericPage {
 	}
 }
 
-func (g *GenericPage) Add(b []byte) (RowId, error) {
+func (g *GenericPage) Add(b []byte) (SlotIdx, error) {
 	r, err := g.SlotArray.Add(b)
 	if err != nil {
 		return 0, err
@@ -413,11 +419,11 @@ func (g *GenericPage) Add(b []byte) (RowId, error) {
 	return r, nil
 }
 
-func (g *GenericPage) Read(r RowId) ([]byte, error) {
+func (g *GenericPage) Read(r SlotIdx) ([]byte, error) {
 	return g.SlotArray.Read(r)
 }
 
-func (g *GenericPage) Put(r RowId, b []byte) error {
+func (g *GenericPage) Put(r SlotIdx, b []byte) error {
 	if err := g.SlotArray.Put(r, b); err != nil {
 		return err
 	}
@@ -462,8 +468,8 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 
 	return &GenericPage{
 		Header: GenericPageHeader{
-			PageTyp: PageType(pageType),
-			NextPage: PageID(nextPage),
+			PageTyp:       PageType(pageType),
+			NextPage:      PageID(nextPage),
 			SlotArraySize: int32(slotArraySize),
 		},
 		SlotArray: slotted,
@@ -471,6 +477,7 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 }
 
 type PageIterator iter.Seq2[PageID, *GenericPage]
+
 func NewPageIterator(storage *Storage, pageType PageType) PageIterator {
 	var currentPageId PageID
 	if pageType == DataPageType {

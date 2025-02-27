@@ -6,11 +6,11 @@ import (
 )
 
 // id within the slotpage
-type RowId int
+type SlotIdx int
 
 type Slotted struct {
-	Indexes []PageOffset // RowId -> offset within page
-	CellData []byte
+	Indexes    []PageOffset // RowId -> offset within page
+	CellData   []byte
 	lastOffset PageOffset
 }
 
@@ -18,28 +18,28 @@ type Slotted struct {
 func NewSlotted(slottedPageSize int) *Slotted {
 	return &Slotted{
 		lastOffset: PageOffset(slottedPageSize),
-		CellData: make([]byte, slottedPageSize), // redundant, as not counting slot array size
+		CellData:   make([]byte, slottedPageSize), // redundant, as not counting slot array size
 	}
 }
 
 var errNoSpace = fmt.Errorf("no space in slot array")
 
-func (s *Slotted) Add(buf []byte) (RowId, error) {
+func (s *Slotted) Add(buf []byte) (SlotIdx, error) {
 	bytesWithHeader := SerializeBytes(buf)
 	ln := len(bytesWithHeader)
 
 	if !s.hasSpace(ln) {
 		return 0, errNoSpace
 	}
-	copy(s.CellData[int(s.lastOffset) - ln:], bytesWithHeader)
+	copy(s.CellData[int(s.lastOffset)-ln:], bytesWithHeader)
 	s.lastOffset -= PageOffset(ln)
 
 	s.Indexes = append(s.Indexes, s.lastOffset)
 
-	return RowId(len(s.Indexes) - 1), nil
+	return SlotIdx(len(s.Indexes) - 1), nil
 }
 
-func (s *Slotted) Put(id RowId, buf []byte) error {
+func (s *Slotted) Put(id SlotIdx, buf []byte) error {
 	existing, err := s.Read(id)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func (s *Slotted) Put(id RowId, buf []byte) error {
 		copy(s.CellData[offset:], bytesWithHeader)
 
 		return nil
-	} 
+	}
 	newRowId, err := s.Add(buf)
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func (s *Slotted) Put(id RowId, buf []byte) error {
 	// todo: reclaim page space
 }
 
-func (s *Slotted) Read(idx RowId) ([]byte, error) {
+func (s *Slotted) Read(idx SlotIdx) ([]byte, error) {
 	if int(idx) >= len(s.Indexes) {
 		return nil, fmt.Errorf("invalid idx %d, got only %d", idx, len(s.Indexes))
 	}
@@ -72,7 +72,7 @@ func (s *Slotted) Read(idx RowId) ([]byte, error) {
 
 func (s *Slotted) hasSpace(newData int) bool {
 	const rowIdSize = 2
-	return int(s.lastOffset) - newData - (len(s.Indexes) * rowIdSize)  > 0
+	return int(s.lastOffset)-newData-(len(s.Indexes)*rowIdSize) > 0
 }
 
 // todo: when serializing wrapping page - remember to add size of slot array
@@ -95,7 +95,7 @@ func DeserializeSlotted(b []byte, slotArrayLen int) (*Slotted, error) {
 
 	p := NewSlotted(len(b))
 	var lastOffset *PageOffset
-	
+
 	for range slotArrayLen {
 		i, err := DeserializeIntAndEat(&b)
 		if err != nil {

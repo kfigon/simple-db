@@ -10,16 +10,16 @@ func TestSlotted(t *testing.T) {
 	t.Run("basic insert", func(t *testing.T) {
 		p := NewSlotted(50)
 		inserted := initWithData(t, p)
-		
+
 		assert.Len(t, inserted, 3)
 		for id, expStr := range inserted {
 			got, err := p.Read(id)
 			assert.NoError(t, err)
-	
+
 			assert.Equal(t, []byte(expStr), got)
 		}
 	})
-	
+
 	t.Run("put when smaller", func(t *testing.T) {
 		p := NewSlotted(50)
 		initWithData(t, p)
@@ -55,7 +55,7 @@ func TestSerialization(t *testing.T) {
 	t.Run("serialization", func(t *testing.T) {
 		p := NewSlotted(50)
 		initWithData(t, p)
-		
+
 		data := p.Serialize()
 		assert.Len(t, data, 50)
 	})
@@ -69,7 +69,7 @@ func TestSerialization(t *testing.T) {
 		p := NewSlotted(50)
 		inserted := initWithData(t, p)
 		data := p.Serialize()
-		
+
 		newP, err := DeserializeSlotted(data, len(inserted))
 		assert.NoError(t, err)
 
@@ -77,15 +77,15 @@ func TestSerialization(t *testing.T) {
 		for id, expStr := range inserted {
 			got, err := p.Read(id)
 			assert.NoError(t, err)
-	
+
 			assert.Equal(t, []byte(expStr), got)
 		}
 		assert.Equal(t, p, newP)
 	})
 }
 
-func initWithData(t *testing.T, p *Slotted) map[RowId]string {
-	inserted := map[RowId]string{}
+func initWithData(t *testing.T, p *Slotted) map[SlotIdx]string {
+	inserted := map[SlotIdx]string{}
 
 	for _, inStr := range []string{"hello", "world", "foobar"} {
 		id, err := p.Add([]byte(inStr))
