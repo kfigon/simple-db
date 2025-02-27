@@ -74,25 +74,6 @@ func deserializationErr(got, exp int, typ string) error {
 	return fmt.Errorf("cant deserialize into %v, expected lenght %v, got %v", typ, exp, got)
 }
 
-// type PageType int32
-// const (
-// 	RootPage PageType = iota
-// 	DataPage
-// 	SchemaPage
-// )
-
-// type PageID int32
-// type PageOffset int32
-
-// type Page struct {
-// 	Header struct {
-// 		PageTyp PageType
-// 		NextPage PageID
-// 		Size int32
-// 	}
-// 	PageData []byte
-// }
-
 func DeserializeStringAndEat(b *[]byte) (string, error) {
 	v, err := DeserializeString(*b)
 	if err != nil {
@@ -334,5 +315,156 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 	return &Storage{
 		SchemaMetadata: schema,
 		AllData: dataContent,
+	}, nil
+}
+
+type RootPage struct {
+	MagicNumber int32
+	PageSize int32
+	SchemaStartPage PageID
+	DataPageStart PageID
+}
+
+const MagicNumber = 0xdeadc0de
+
+func (r *RootPage) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.Write(SerializeInt(r.MagicNumber))
+	buf.Write(SerializeInt(r.PageSize))
+	buf.Write(SerializeInt(int32(r.SchemaStartPage)))
+	buf.Write(SerializeInt(int32(r.DataPageStart)))
+	return buf.Bytes()
+}
+
+func DeserializeRootPage(r io.Reader) (*RootPage, error) {
+	bytes, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("error reading root page: %w", err)
+	}
+	magicNum, err := DeserializeIntAndEat(&bytes)
+	if err != nil {
+		return nil, fmt.Errorf("error deserializing magic num: %w", err)
+	}
+
+	if magicNum != MagicNumber {
+		return nil, fmt.Errorf("invalid magic num, got: %x", magicNum)
+	}
+
+	pageSize, err := DeserializeIntAndEat(&bytes)
+	if err != nil {
+		return nil, fmt.Errorf("error deserializing page size: %w", err)
+	}
+
+	schemaStart, err := DeserializeIntAndEat(&bytes)
+	if err != nil {
+		return nil, fmt.Errorf("error deserializing schema start: %w", err)
+	}
+
+	dataStart, err := DeserializeIntAndEat(&bytes)
+	if err != nil {
+		return nil, fmt.Errorf("error deserializing data start: %w", err)
+	}
+	return &RootPage{
+		MagicNumber: int32(magicNum),
+		PageSize: int32(pageSize),
+		SchemaStartPage: PageID(schemaStart),
+		DataPageStart: PageID(dataStart),
+	}, nil
+}
+
+type PageType int32
+const (
+	RootPageType PageType = iota
+	DataPageType
+	SchemaPageType
+)
+
+type PageID int32
+type PageOffset int32
+
+type GenericPageHeader struct {
+	PageTyp PageType
+	NextPage PageID
+	SlotArraySize int32 // might be too big, leave for now
+}
+
+type GenericPage struct {
+	Header GenericPageHeader
+	SlotArray *Slotted 
+}
+
+// todo: assign pageId, update new pageId in linked list
+func NewPage(pageType PageType, pageSize int) *GenericPage {
+	return &GenericPage{
+		Header: GenericPageHeader{
+			PageTyp: pageType,
+		},
+		SlotArray: NewSlotted(pageSize - 4 - 4 - 4), //12 bytes for header
+	}
+}
+
+func (g *GenericPage) Add(b []byte) (RowId, error) {
+	r, err := g.SlotArray.Add(b)
+	if err != nil {
+		return 0, err
+	}
+	g.Header.SlotArraySize = int32(len(g.SlotArray.Indexes))
+	return r, nil
+}
+
+func (g *GenericPage) Read(r RowId) ([]byte, error) {
+	return g.SlotArray.Read(r)
+}
+
+func (g *GenericPage) Put(r RowId, b []byte) error {
+	if err := g.SlotArray.Put(r, b); err != nil {
+		return err
+	}
+	g.Header.SlotArraySize = int32(len(g.SlotArray.Indexes))
+	return nil
+}
+
+func (g *GenericPage) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.Write(SerializeInt(int32(g.Header.PageTyp)))
+	buf.Write(SerializeInt(int32(g.Header.NextPage)))
+	buf.Write(SerializeInt(int32(g.Header.SlotArraySize)))
+	buf.Write(g.SlotArray.Serialize())
+	return buf.Bytes()
+}
+
+func Deserialize(r io.Reader) (*GenericPage, error) {
+	bytes, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read schema: %w", err)
+	}
+
+	pageType, err := DeserializeIntAndEat(&bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read page type: %w", err)
+	}
+
+	nextPage, err := DeserializeIntAndEat(&bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read next page id: %w", err)
+	}
+
+	slotArraySize, err := DeserializeIntAndEat(&bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read slot array size: %w", err)
+	}
+
+	slotted, err := DeserializeSlotted(bytes, slotArraySize)
+	if err != nil {
+		return nil, err
+	}
+
+	return &GenericPage{
+		Header: GenericPageHeader{
+			PageTyp: PageType(pageType),
+			NextPage: PageID(nextPage),
+			SlotArraySize: int32(slotArraySize),
+		},
+		SlotArray: slotted,
 	}, nil
 }

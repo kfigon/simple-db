@@ -14,6 +14,7 @@ type Slotted struct {
 	lastOffset int
 }
 
+// pagesize - generic headers
 func NewSlotted(slottedPageSize int) *Slotted {
 	return &Slotted{
 		lastOffset: slottedPageSize,
