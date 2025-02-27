@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"iter"
 )
 
 var endinanness = binary.BigEndian
@@ -467,4 +468,24 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 		},
 		SlotArray: slotted,
 	}, nil
+}
+
+type PageIterator iter.Seq2[PageID, *GenericPage]
+func NewPageIterator(storage *Storage, pageType PageType) PageIterator {
+	var currentPageId PageID
+	if pageType == DataPageType {
+		currentPageId = storage.root.DataPageStart
+	} else if pageType == SchemaPageType {
+		currentPageId = storage.root.SchemaStartPage
+	} // else - empty iter
+
+	return func(yield func(PageID, *GenericPage) bool) {
+		for currentPageId != 0 {
+			currentPage := &storage.allPages[currentPageId]
+			if !yield(currentPageId, currentPage) {
+				break
+			}
+			currentPageId = currentPage.Header.NextPage
+		}
+	}
 }

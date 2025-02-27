@@ -42,6 +42,9 @@ type Data map[TableName][]TableData
 type Storage struct {
 	SchemaMetadata Schema
 	AllData Data
+
+	root RootPage
+	allPages []GenericPage // pageId - just an index here. Page 0 is root, so noop
 }
 
 func NewStorage() *Storage {

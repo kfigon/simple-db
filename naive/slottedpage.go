@@ -9,15 +9,15 @@ import (
 type RowId int
 
 type Slotted struct {
-	Indexes []int // RowId -> offset within page
+	Indexes []PageOffset // RowId -> offset within page
 	CellData []byte
-	lastOffset int
+	lastOffset PageOffset
 }
 
 // pagesize - generic headers
 func NewSlotted(slottedPageSize int) *Slotted {
 	return &Slotted{
-		lastOffset: slottedPageSize,
+		lastOffset: PageOffset(slottedPageSize),
 		CellData: make([]byte, slottedPageSize), // redundant, as not counting slot array size
 	}
 }
@@ -31,8 +31,8 @@ func (s *Slotted) Add(buf []byte) (RowId, error) {
 	if !s.hasSpace(ln) {
 		return 0, errNoSpace
 	}
-	copy(s.CellData[s.lastOffset - ln:], bytesWithHeader)
-	s.lastOffset -= ln
+	copy(s.CellData[int(s.lastOffset) - ln:], bytesWithHeader)
+	s.lastOffset -= PageOffset(ln)
 
 	s.Indexes = append(s.Indexes, s.lastOffset)
 
@@ -72,7 +72,7 @@ func (s *Slotted) Read(idx RowId) ([]byte, error) {
 
 func (s *Slotted) hasSpace(newData int) bool {
 	const rowIdSize = 2
-	return s.lastOffset - newData - (len(s.Indexes) * rowIdSize)  > 0
+	return int(s.lastOffset) - newData - (len(s.Indexes) * rowIdSize)  > 0
 }
 
 // todo: when serializing wrapping page - remember to add size of slot array
@@ -82,7 +82,7 @@ func (s *Slotted) Serialize() []byte {
 		buf.Write(SerializeInt(int32(id)))
 	}
 
-	paddingLen := s.lastOffset - len(s.Indexes)*4
+	paddingLen := int(s.lastOffset) - len(s.Indexes)*4
 
 	buf.Write(make([]byte, paddingLen))
 	buf.Write(s.CellData[s.lastOffset:])
@@ -94,17 +94,18 @@ func DeserializeSlotted(b []byte, slotArrayLen int) (*Slotted, error) {
 	originalSlice := b
 
 	p := NewSlotted(len(b))
-	var lastOffset *int
+	var lastOffset *PageOffset
 	
 	for range slotArrayLen {
 		i, err := DeserializeIntAndEat(&b)
 		if err != nil {
 			return nil, fmt.Errorf("error deserializing slot array: %w", err)
 		}
-		p.Indexes = append(p.Indexes, i)
+		ithPageOffset := PageOffset(i)
+		p.Indexes = append(p.Indexes, ithPageOffset)
 
-		if lastOffset == nil || *lastOffset > i { // just min
-			lastOffset = &i
+		if lastOffset == nil || *lastOffset > ithPageOffset { // just min
+			lastOffset = &ithPageOffset
 		}
 	}
 	p.lastOffset = *lastOffset

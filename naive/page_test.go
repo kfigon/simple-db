@@ -2,8 +2,6 @@ package naive
 
 import (
 	"bytes"
-	"fmt"
-	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
