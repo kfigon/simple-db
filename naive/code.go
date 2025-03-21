@@ -110,7 +110,9 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 
 func parseType(v string, typ FieldType) (any, error) {
 	switch typ {
-	case Int32: return strconv.Atoi(v)
+	case Int32: 
+		v, err := strconv.ParseInt(v, 10, 32)
+		return int32(v), err
 	case String: return v, nil
 	case Boolean: return strconv.ParseBool(v)
 	case Float: return strconv.ParseFloat(v, 64)

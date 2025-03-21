@@ -27,3 +27,7 @@
 * [ ] concurrency
 * [ ] recovery
 * [ ] operators
+
+priorities - finish reflection based ser/deser
+directory page
+schema page

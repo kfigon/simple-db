@@ -102,7 +102,7 @@ func TestNaiveStorage(t *testing.T) {
 			{
 				"id": {
 					Typ: Int32,
-					Data: 123,
+					Data: int32(123),
 				},
 				"name":{
 					Typ: String,
@@ -112,7 +112,7 @@ func TestNaiveStorage(t *testing.T) {
 			{
 				"id": {
 					Typ: Int32,
-					Data: 456,
+					Data: int32(456),
 				},
 				"name":{
 					Typ: String,

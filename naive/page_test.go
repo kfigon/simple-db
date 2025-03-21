@@ -56,6 +56,25 @@ func TestSerialize(t *testing.T) {
 	})
 }
 
+func TestSerializeReflection(t *testing.T) {
+	t.Run("serialize basic struct with int", func(t *testing.T) {
+		type data struct {
+			Integer int32 `bin:""`
+		}
+		expectedBytes := []byte{0, 255, 18, 52}
+		d := data{0xff1234}
+		assert.Equal(t, expectedBytes, SerializeReflection(d))
+
+		got, err := DeserializeReflection[data](expectedBytes)
+		assert.NoError(t, err)
+		assert.Equal(t, data{0xff1234}, got)
+	})
+
+	t.Run("impl more", func(t *testing.T) {
+		assert.Fail(t, "to impl")
+	})
+}
+
 func TestSerializeStorage(t *testing.T) {
 	t.Run("schema", func(t *testing.T) {
 		s := NewStorage()

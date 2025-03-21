@@ -88,13 +88,22 @@ func DeserializeStringAndEat(b *[]byte) (string, error) {
 	return v, nil
 }
 
-func DeserializeIntAndEat(b *[]byte) (int, error) {
+func DeserializeBoolAndEat(b *[]byte) (bool, error) {
+	v, err := DeserializeBool(*b)
+	if err != nil {
+		return false, err
+	}
+	advanceBuf(b, 1)
+	return v, nil
+}
+
+func DeserializeIntAndEat(b *[]byte) (int32, error) {
 	v, err := DeserializeInt(*b)
 	if err != nil {
 		return 0, err
 	}
 	advanceBuf(b, 4)
-	return int(v), nil
+	return v, nil
 }
 
 func advanceBuf(b *[]byte, howMany int) {
@@ -192,7 +201,7 @@ func SerializeData(d Data) []byte {
 				var serializedColumn []byte
 				switch val.Typ {
 				case Int32:
-					serializedColumn = SerializeInt(int32(val.Data.(int)))
+					serializedColumn = SerializeInt(val.Data.(int32))
 				case String:
 					serializedColumn = SerializeString(val.Data.(string))
 				case Boolean:
@@ -352,7 +361,7 @@ func DeserializeRootPage(r io.Reader) (*RootPage, error) {
 		return nil, fmt.Errorf("error deserializing magic num: %w", err)
 	}
 
-	if magicNum != MagicNumber {
+	if int(magicNum) != MagicNumber {
 		return nil, fmt.Errorf("invalid magic num, got: %x", magicNum)
 	}
 
@@ -461,7 +470,7 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 		return nil, fmt.Errorf("failed to read slot array size: %w", err)
 	}
 
-	slotted, err := DeserializeSlotted(bytes, slotArraySize)
+	slotted, err := DeserializeSlotted(bytes, int(slotArraySize))
 	if err != nil {
 		return nil, err
 	}
