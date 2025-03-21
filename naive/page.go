@@ -496,3 +496,17 @@ func NewPageIterator(storage *Storage, pageType PageType) PageIterator {
 		}
 	}
 }
+
+type PageTupleIterator iter.Seq[[]byte]
+
+func NewTupleIterator(storage *Storage, pageType PageType) PageTupleIterator {
+	return func(yield func([]byte) bool) {
+		for _, thisPage := range NewPageIterator(storage, pageType) {
+			for tuple := range thisPage.SlotArray.Iterator() {
+				if !yield(tuple) {
+					return
+				}
+			}
+		}
+	}
+}

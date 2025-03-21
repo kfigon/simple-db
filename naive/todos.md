@@ -17,11 +17,13 @@
         * [ ] Storage - pageID allocations
         * [ ] Storage - remove AllData, replace with page linked list read from catalog
         * [x] Storage - page iterator
-    * [ ] consider using reflection for serialization for more abstracted usage
+        * [x] Storage - slot array cell iterator. Connect with page iterator
+    * [ ] directory page on disk, rebuild on startup
+    * [ ] schema page on disk, rebuild on startup
+    * [ ] use reflection for serialization for more abstracted usage
     * [ ] overflow pages
 * [ ] indexes with btree on disk
 * [ ] transactions, acid
 * [ ] concurrency
 * [ ] recovery
 * [ ] operators
-

@@ -49,6 +49,17 @@ func TestSlotted(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "hello world!", string(v))
 	})
+
+	t.Run("iterator", func(t *testing.T) {
+		p := NewSlotted(100)
+		initWithData(t, p)
+
+		tuples := []string{}
+		for d := range p.Iterator() {
+			tuples = append(tuples, string(d))
+		}
+		assert.Equal(t, []string{"hello", "world", "foobar"}, tuples)
+	})
 }
 
 func TestSerialization(t *testing.T) {

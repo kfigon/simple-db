@@ -3,6 +3,7 @@ package naive
 import (
 	"bytes"
 	"fmt"
+	"iter"
 )
 
 // id within the slotpage
@@ -112,4 +113,27 @@ func DeserializeSlotted(b []byte, slotArrayLen int) (*Slotted, error) {
 	copy(p.CellData[*lastOffset:], originalSlice[*lastOffset:])
 
 	return p, nil
+}
+
+func (s *Slotted) SlotIdxIterator() iter.Seq[SlotIdx] {
+	return func(yield func(SlotIdx) bool) {
+		for slotIds := 0; slotIds < len(s.Indexes); slotIds++ {
+			if !yield(SlotIdx(slotIds)) {
+				return
+			}
+		}
+	}
+}
+
+type TupleIterator iter.Seq[[]byte]
+func (s *Slotted) Iterator() TupleIterator {
+	return func(yield func([]byte) bool) {
+		for slotId := range s.SlotIdxIterator(){
+			d, err := s.Read(SlotIdx(slotId))
+			// todo: we should handle the error
+			if  err != nil || !yield(d) {
+				return
+			}
+		}
+	}
 }
