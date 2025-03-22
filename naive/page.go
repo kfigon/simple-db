@@ -5,11 +5,23 @@ import (
 	"io"
 	"iter"
 )
+
 type RootPage struct {
+	PageTyp PageType
 	MagicNumber     int32
 	PageSize        int32
 	SchemaStartPage PageID
 	DataPageStart   PageID
+}
+
+func NewRootPage(schemaStart PageID, dataStart PageID) RootPage {
+	return RootPage{
+		PageTyp: RootPageType,
+		MagicNumber: 	 MagicNumber,
+		PageSize:        PageSize,
+		SchemaStartPage: schemaStart,
+		DataPageStart: 	 dataStart,
+	}
 }
 
 const MagicNumber int32 = 0xc0de
@@ -49,6 +61,7 @@ const (
 	RootPageType PageType = iota
 	DataPageType
 	SchemaPageType
+	DirectoryPageType
 )
 
 type PageID int32

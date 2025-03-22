@@ -52,17 +52,23 @@ type Storage struct {
 }
 
 func NewStorage() *Storage {
-	return &Storage{
+	s := &Storage{
 		SchemaMetadata: Schema{},
 		AllData: Data{},
-
+		allPages: []GenericPage{GenericPage{}}, // empty 'root' page in the beginning
 	}
+
+	dirID, _ := s.allocatePage(DirectoryPageType)
+	schemaID, _ := s.allocatePage(SchemaPageType)
+	s.root = NewRootPage(schemaID, dirID)
+
+	return s
 }
 
 func (s *Storage) allocatePage(pageTyp PageType) (PageID, *GenericPage) {
 	p := NewPage(pageTyp, PageSize)
-	s.allPages = append(s.allPages, *p)
 	newPageID := PageID(len(s.allPages))
+	s.allPages = append(s.allPages, *p)
 
 	var lastPage *GenericPage
 	for _, i := range NewPageIterator(s, pageTyp) {
