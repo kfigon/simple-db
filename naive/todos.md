@@ -20,7 +20,7 @@
         * [x] Storage - slot array cell iterator. Connect with page iterator
     * [ ] directory page on disk, rebuild on startup
     * [ ] schema page on disk, rebuild on startup
-    * [ ] use reflection for serialization for more abstracted usage
+    * [x] use reflection for serialization for more abstracted usage - used typesafe generic approach
     * [ ] overflow pages
 * [ ] indexes with btree on disk
 * [ ] transactions, acid
@@ -28,6 +28,5 @@
 * [ ] recovery
 * [ ] operators
 
-priorities - finish reflection based ser/deser
-directory page
-schema page
+priorities:
+store schema and directory in Storage class
