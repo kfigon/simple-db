@@ -99,6 +99,40 @@ func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
 	return nil
 }
 
+func (s *Storage) CreateTable2(stmt sql.CreateStatement) error {
+	// todo: use directory. Scan is slow
+	for p := range NewTupleIterator(s, SchemaPageType) {
+		d, err := DeserializeSchemaTuple(p)
+		if err != nil {
+			return err
+		} else if d.TableNameV == TableName(stmt.Table) {
+			return fmt.Errorf("table %v already present", stmt.Table)
+		}
+	}
+
+	entries := []SchemaTuple{}	
+	for _, v := range stmt.Columns {
+		f, err := FieldTypeFromString(v.Typ)
+		if err != nil {
+			return err
+		}
+		entries = append(entries, SchemaTuple{
+			TableNameV: TableName(stmt.Table),
+			FieldNameV: FieldName(v.Name),
+			FieldTypeV: f,
+		})
+	}
+
+	_, page := s.allocatePage(SchemaPageType)
+	for _, e := range entries {
+		_, err := page.Add(e.Serialize())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *Storage) Insert(stmt sql.InsertStatement) error {
 	schema, ok := s.SchemaMetadata[TableName(stmt.Table)]; 
 	if !ok {
@@ -134,6 +168,57 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 	tables = append(tables, table)
 	s.AllData[TableName(stmt.Table)] = tables
 	return nil
+}
+
+func (s *Storage) Insert2(stmt sql.InsertStatement) error {
+	found := false
+	// todo: use directory for lookup. Scan is slow
+	for p := range NewTupleIterator(s, SchemaPageType) {
+		d, err := DeserializeSchemaTuple(p)
+		if err != nil {
+			return err
+		} else if d.TableNameV == TableName(stmt.Table) {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("table %v does not exist", stmt.Table)
+	}
+
+	// maybe not map? We need to somehow persist order of columns within tuple
+	schema := TableSchema{}
+	for p := range NewTupleIterator(s, SchemaPageType) {
+		d, err := DeserializeSchemaTuple(p)
+		if err != nil {
+			return err
+		}
+		schema[d.FieldNameV] = d.FieldTypeV
+	}
+
+	for i := 0; i < len(stmt.Columns); i++ {
+		col := stmt.Columns[i]
+		val := stmt.Values[i]
+		
+		fieldType, ok := schema[FieldName(col)]
+		if !ok {
+			return fmt.Errorf("invalid column %v, not defined in schema for table %v", col, stmt.Table)
+		}
+
+		parsed, err := parseType(val, fieldType)
+		if err != nil {
+			return err
+		}
+
+		// todo: persist that in data page
+		_ = ColumnData{
+			Typ: fieldType,
+			Data: parsed,
+		}
+	}
+
+	// todo: finish this
 }
 
 func parseType(v string, typ FieldType) (any, error) {
