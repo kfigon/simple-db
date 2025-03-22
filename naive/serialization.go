@@ -81,14 +81,25 @@ func DeserializeReflection[T any](bytes []byte) (T, error) {
 type demapper[T any]func(*T, *[]byte) error
 
 // sometimes you need also the parent for some context
-type demapperWithParrent[T any, V any]func(*T, *V, *[]byte) error
+type demapperWithParent[T any, V any]func(*T, *V, *[]byte) error
 type extract[T any, V any]func(*T)*V
 
 type Demapper[T any] struct {
 	funs []demapper[T]	
 }
 
-func compose[T any,V any](fieldName string, ex extract[T,V], dem demapperWithParrent[T, V]) demapper[T] {
+func compose[T any,V any](fieldName string, ex extract[T,V], dem demapper[V]) demapper[T] {
+	return func(t *T, b *[]byte) error {
+		v := ex(t)
+		err := dem(v, b)
+		if err != nil {
+			return fmt.Errorf("error deserializing %s: %w", fieldName, err)
+		}
+		return nil
+	}
+}
+
+func composeWithParent[T any,V any](fieldName string, ex extract[T,V], dem demapperWithParent[T, V]) demapper[T] {
 	return func(t *T, b *[]byte) error {
 		v := ex(t)
 		err := dem(t, v, b)
@@ -98,8 +109,7 @@ func compose[T any,V any](fieldName string, ex extract[T,V], dem demapperWithPar
 		return nil
 	}
 }
-
-func intDeser[T any](_ *T, v *int32, b *[]byte) error {
+func intDeser(v *int32, b *[]byte) error {
 	got, err := DeserializeIntAndEat(b)
 	if err != nil {
 		return err
@@ -108,7 +118,7 @@ func intDeser[T any](_ *T, v *int32, b *[]byte) error {
 	return nil
 }
 
-func strDeser[T any](_ *T, v *string, b *[]byte) error {
+func strDeser(v *string, b *[]byte) error {
 	got, err := DeserializeStringAndEat(b)
 	if err != nil {
 		return err

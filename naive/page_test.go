@@ -133,7 +133,7 @@ func TestSerializeReflection(t *testing.T) {
 			funs: []demapper[data]{
 				compose("Str", func(t *data) *string {return &t.Str}, strDeser),
 				compose("Int", func(t *data) *int32 {return &t.Int}, intDeser),
-				compose("Vals", func(t *data) *[]int32 {return &t.Vals},
+				composeWithParent("Vals", func(t *data) *[]int32 {return &t.Vals},
 					func(d *data, v *[]int32, b *[]byte) error {
 						for range d.Int {
 							got, err := DeserializeIntAndEat(b)
