@@ -77,6 +77,8 @@ func DeserializeReflection[T any](bytes []byte) (T, error) {
 }
 
 // todo: experimental type safe deserializer. Reflection is killing me
+// should work fine for struct based serialization. Or just keep everything explicit,
+// that's also good
 
 type demapper[T any]func(*T, *[]byte) error
 
