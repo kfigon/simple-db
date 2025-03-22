@@ -79,6 +79,8 @@ func DeserializeReflection[T any](bytes []byte) (T, error) {
 // todo: experimental type safe deserializer. Reflection is killing me
 
 type demapper[T any]func(*T, *[]byte) error
+
+// sometimes you need also the parent for some context
 type demapperWithParrent[T any, V any]func(*T, *V, *[]byte) error
 type extract[T any, V any]func(*T)*V
 
@@ -86,11 +88,33 @@ type Demapper[T any] struct {
 	funs []demapper[T]	
 }
 
-func compose[T any,V any](ex extract[T,V], dem demapperWithParrent[T, V]) demapper[T] {
+func compose[T any,V any](fieldName string, ex extract[T,V], dem demapperWithParrent[T, V]) demapper[T] {
 	return func(t *T, b *[]byte) error {
 		v := ex(t)
-		return dem(t, v, b)
+		err := dem(t, v, b)
+		if err != nil {
+			return fmt.Errorf("error deserializing %s: %w", fieldName, err)
+		}
+		return nil
 	}
+}
+
+func intDeser[T any](_ *T, v *int32, b *[]byte) error {
+	got, err := DeserializeIntAndEat(b)
+	if err != nil {
+		return err
+	}
+	*v = got
+	return nil
+}
+
+func strDeser[T any](_ *T, v *string, b *[]byte) error {
+	got, err := DeserializeStringAndEat(b)
+	if err != nil {
+		return err
+	}
+	*v = got
+	return nil
 }
 
 func DeserializeIt[T any](d Demapper[T], b []byte) (*T, error) {
