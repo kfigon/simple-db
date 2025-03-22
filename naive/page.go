@@ -144,14 +144,19 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 
 type PageIterator iter.Seq2[PageID, *GenericPage]
 
-func NewPageIterator(storage *Storage, pageType PageType) PageIterator {
-	var currentPageId PageID
+func NewPageIteratorByType(storage *Storage, pageType PageType) PageIterator {
+	var startPage PageID
 	if pageType == DataPageType {
-		currentPageId = storage.root.DataPageStart
+		startPage = storage.root.DataPageStart
 	} else if pageType == SchemaPageType {
-		currentPageId = storage.root.SchemaStartPage
-	} // else: currentPageId == 0 -> empty iter
+		startPage = storage.root.SchemaStartPage
+	} // else: startPage == 0 -> empty iter
 
+	return NewPageIteratorFromPageID(storage, startPage)
+}
+
+func NewPageIteratorFromPageID(storage *Storage, startingPage PageID) PageIterator {
+	currentPageId := startingPage
 	return func(yield func(PageID, *GenericPage) bool) {
 		for currentPageId != 0 {
 			currentPage := &storage.allPages[currentPageId]
@@ -165,9 +170,9 @@ func NewPageIterator(storage *Storage, pageType PageType) PageIterator {
 
 type PageTupleIterator iter.Seq[[]byte]
 
-func NewTupleIterator(storage *Storage, pageType PageType) PageTupleIterator {
+func IterTuplesByPages(storage *Storage, pages PageIterator) PageTupleIterator {
 	return func(yield func([]byte) bool) {
-		for _, thisPage := range NewPageIterator(storage, pageType) {
+		for _, thisPage := range pages {
 			for tuple := range thisPage.SlotArray.Iterator() {
 				if !yield(tuple) {
 					return
@@ -177,6 +182,26 @@ func NewTupleIterator(storage *Storage, pageType PageType) PageTupleIterator {
 	}
 }
 
+func NewTupleIterator(storage *Storage, pageType PageType) PageTupleIterator {
+	return IterTuplesByPages(storage, NewPageIteratorByType(storage, pageType))
+}
+
+func NewDataIterator(storage *Storage, tableName TableName) PageTupleIterator {
+	var startId PageID
+	for d := range NewTupleIterator(storage, DirectoryPageType){
+		dir, err := DeserializeDirectoryTuple(d)
+		if err != nil {
+			break
+		} else if string(tableName) == dir.Name {
+			startId = dir.StartingPage
+			break
+		}
+	}
+
+	return IterTuplesByPages(storage, NewPageIteratorFromPageID(storage, startId))
+}
+
+// for lookup where given data/index page starts 
 type DirectoryTuple struct {
 	PageTyp PageType
 	StartingPage PageID

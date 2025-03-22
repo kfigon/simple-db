@@ -71,7 +71,7 @@ func (s *Storage) allocatePage(pageTyp PageType) (PageID, *GenericPage) {
 	s.allPages = append(s.allPages, *p)
 
 	var lastPage *GenericPage
-	for _, i := range NewPageIterator(s, pageTyp) {
+	for _, i := range NewPageIteratorByType(s, pageTyp) {
 		lastPage = i
 	}
 
@@ -100,7 +100,6 @@ func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
 }
 
 func (s *Storage) CreateTable2(stmt sql.CreateStatement) error {
-	// todo: use directory. Scan is slow
 	for p := range NewTupleIterator(s, SchemaPageType) {
 		d, err := DeserializeSchemaTuple(p)
 		if err != nil {
@@ -172,7 +171,6 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 
 func (s *Storage) Insert2(stmt sql.InsertStatement) error {
 	found := false
-	// todo: use directory for lookup. Scan is slow
 	for p := range NewTupleIterator(s, SchemaPageType) {
 		d, err := DeserializeSchemaTuple(p)
 		if err != nil {
