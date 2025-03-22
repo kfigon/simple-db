@@ -292,12 +292,10 @@ func SerializeDb(s *Storage) []byte {
 	serializedSchema := SerializeSchema(s.SchemaMetadata)
 	serializedData := SerializeData(s.AllData)
 
-	var buf bytes.Buffer
-	buf.Write(SerializeInt(int32(len(serializedSchema))))
-	buf.Write(SerializeInt(int32(len(serializedData))))
-	buf.Write(serializedSchema)
-	buf.Write(serializedData)
-	return buf.Bytes()
+	return SerializeAll(SerializeInt(int32(len(serializedSchema))),
+		SerializeInt(int32(len(serializedData))),
+		serializedSchema,
+		serializedData)
 }
 
 func DeserializeDb(r io.Reader) (*Storage, error) {
@@ -343,12 +341,11 @@ type RootPage struct {
 const MagicNumber = 0xdeadc0de
 
 func (r *RootPage) Serialize() []byte {
-	var buf bytes.Buffer
-	buf.Write(SerializeInt(r.MagicNumber))
-	buf.Write(SerializeInt(r.PageSize))
-	buf.Write(SerializeInt(int32(r.SchemaStartPage)))
-	buf.Write(SerializeInt(int32(r.DataPageStart)))
-	return buf.Bytes()
+	return SerializeAll(
+		SerializeInt(r.MagicNumber),
+		SerializeInt(r.PageSize),
+		SerializeInt(int32(r.SchemaStartPage)),
+		SerializeInt(int32(r.DataPageStart)))
 }
 
 func DeserializeRootPage(r io.Reader) (*RootPage, error) {
@@ -440,12 +437,11 @@ func (g *GenericPage) Put(r SlotIdx, b []byte) error {
 }
 
 func (g *GenericPage) Serialize() []byte {
-	var buf bytes.Buffer
-	buf.Write(SerializeInt(int32(g.Header.PageTyp)))
-	buf.Write(SerializeInt(int32(g.Header.NextPage)))
-	buf.Write(SerializeInt(int32(g.Header.SlotArraySize)))
-	buf.Write(g.SlotArray.Serialize())
-	return buf.Bytes()
+	return SerializeAll(
+		SerializeInt(int32(g.Header.PageTyp)),
+		SerializeInt(int32(g.Header.NextPage)),
+		SerializeInt(int32(g.Header.SlotArraySize)),
+		g.SlotArray.Serialize())
 }
 
 func Deserialize(r io.Reader) (*GenericPage, error) {
@@ -526,11 +522,10 @@ type DirectoryTuple struct {
 }
 
 func (d DirectoryTuple) Serialize() []byte {
-	var buf bytes.Buffer
-	buf.Write(SerializeInt(int32(d.PageTyp)))
-	buf.Write(SerializeInt(int32(d.StartingPage)))
-	buf.Write(SerializeString(d.Name))
-	return buf.Bytes()
+	return SerializeAll(
+		SerializeInt(int32(d.PageTyp)),
+		SerializeInt(int32(d.StartingPage)),
+		SerializeString(d.Name))
 }
 
 func DeserializeDirectoryTuple(b []byte) (*DirectoryTuple, error) {
@@ -562,11 +557,10 @@ type SchemaTuple struct {
 }
 
 func (s SchemaTuple) Serialize() []byte {
-	var buf bytes.Buffer
-	buf.Write(SerializeString(string(s.TableNameV)))
-	buf.Write(SerializeString(string(s.FieldNameV)))
-	buf.Write(SerializeInt(int32(s.FieldTypeV)))
-	return buf.Bytes()
+	return SerializeAll(
+		SerializeString(string(s.TableNameV)),
+		SerializeString(string(s.FieldNameV)),
+		SerializeInt(int32(s.FieldTypeV)))
 }
 
 func DeserializeSchemaTuple(b []byte) (*SchemaTuple, error) {

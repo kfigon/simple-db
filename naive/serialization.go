@@ -1,9 +1,17 @@
 package naive
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 )
+func SerializeAll(chunks ...[]byte) []byte {
+	var buf bytes.Buffer
+	for _, c := range chunks {
+		buf.Write(c)
+	}
+	return buf.Bytes()
+}
 
 func SerializeReflection[T any](obj T) []byte {
 	out := []byte{}
