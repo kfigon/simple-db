@@ -14,17 +14,13 @@ func SerializeAll(chunks ...[]byte) []byte {
 	return buf.Bytes()
 }
 
-type demapper[T any]func(*T, *[]byte) error
+type setter[T any]func(*T, *[]byte) error
 
 // sometimes you need also the parent for some context
-type demapperWithParent[T any, V any]func(*T, *V, *[]byte) error
+type setterWithParent[T any, V any]func(*T, *V, *[]byte) error
 type extract[T any, V any]func(*T)*V
 
-type Demapper[T any] struct {
-	funs []demapper[T]	
-}
-
-func compose[T any,V any](fieldName string, ex extract[T,V], dem demapper[V]) demapper[T] {
+func compose[T any,V any](fieldName string, ex extract[T,V], dem setter[V]) setter[T] {
 	return func(t *T, b *[]byte) error {
 		v := ex(t)
 		err := dem(v, b)
@@ -35,7 +31,7 @@ func compose[T any,V any](fieldName string, ex extract[T,V], dem demapper[V]) de
 	}
 }
 
-func composeWithParent[T any,V any](fieldName string, ex extract[T,V], dem demapperWithParent[T, V]) demapper[T] {
+func composeWithParent[T any,V any](fieldName string, ex extract[T,V], dem setterWithParent[T, V]) setter[T] {
 	return func(t *T, b *[]byte) error {
 		v := ex(t)
 		err := dem(t, v, b)
@@ -63,17 +59,7 @@ func strDeser(v *string, b *[]byte) error {
 	return nil
 }
 
-func DeserializeIt[T any](d Demapper[T], b []byte) (*T, error) {
-	var out T
-	for _, v := range d.funs {
-		if err := v(&out, &b); err != nil{
-			return nil, err
-		}	
-	}
-	return &out, nil
-}
-
-func DeserializeAll[T any](b []byte, funs ...demapper[T]) (*T, error) {
+func DeserializeAll[T any](b []byte, funs ...setter[T]) (*T, error) {
 	var out T
 	for _, v := range funs{
 		if err := v(&out, &b); err != nil{
