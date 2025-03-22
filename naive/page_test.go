@@ -56,106 +56,42 @@ func TestSerialize(t *testing.T) {
 	})
 }
 
-func TestSerializeReflection(t *testing.T) {
-	t.Run("serialize basic struct with int", func(t *testing.T) {
-		type data struct {
-			Integer int32 `bin:""`
-		}
-		expectedBytes := []byte{0, 255, 18, 52}
-		d := data{0xff1234}
-		assert.Equal(t, expectedBytes, SerializeReflection(d))
+func TestSerializeGeneric(t *testing.T) {
+	type data struct {
+		Str string
+		Int int32
+		Vals []int32
+	}
 
-		got, err := DeserializeReflection[data](expectedBytes)
-		assert.NoError(t, err)
-		assert.Equal(t, data{0xff1234}, got)
-	})
+	bytes := []byte{
+		0, 0, 0, 11, 'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd',
+		0,0,0,3,
+		0,0,0,10,   0,0,0,0xff,  0,0,0,5 }
 
-	t.Run("string", func(t *testing.T) {
-		type data struct {
-			Str string `bin:""`
-		}
-		bytes := []byte{0, 0, 0, 11, 'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'}
-		d := data{"hello world"}
-		assert.Equal(t, bytes, SerializeReflection(d))
-
-		got, err := DeserializeReflection[data](bytes)
-		assert.NoError(t, err)
-		assert.Equal(t, d, got)
-	})
-
-	t.Run("complex struct", func(t *testing.T) {
-		type data struct {
-			Str string `bin:""`
-			Int int32 `bin:""`
-			i int32 // don't serialize this one 
-		}
-		bytes := []byte{0, 0, 0, 11, 'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd',0, 255, 18, 52}
-		d := data{"hello world", 0xff1234, 88}
-		expected := data{"hello world", 0xff1234, 0}
-		assert.Equal(t, bytes, SerializeReflection(d))
-
-		got, err := DeserializeReflection[data](bytes)
-		assert.NoError(t, err)
-		assert.Equal(t, expected, got)
-	})
-	t.Run("with array inside", func(t *testing.T) {
-		t.Skip("failure")
-
-		type data struct {
-			Str string `bin:""`
-			Int int32 `bin:""`
-			Vals []int32 `bin:""`
-			i int32 // don't serialize this one 
-		}
-		bytes := []byte{
-			0, 0, 0, 11, 'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd',
-			0,0,0,10,   0,0,0,0xff,  0,0,0, 5,
-			0, 255, 18, 52}
-		d := data{"hello world", 0xff1234, []int32{10,0xff, 5}, 88}
-		expected := data{"hello world", 0xff1234, []int32{10,0xff, 5}, 0}
-		assert.Equal(t, bytes, SerializeReflection(d))
-
-		got, err := DeserializeReflection[data](bytes)
-		assert.NoError(t, err)
-		assert.Equal(t, expected, got)
-	})
-	t.Run("generic solution", func(t *testing.T) {
-		type data struct {
-			Str string
-			Int int32
-			Vals []int32
-		}
-
-		bytes := []byte{
-			0, 0, 0, 11, 'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd',
-			0,0,0,3,
-			0,0,0,10,   0,0,0,0xff,  0,0,0,5 }
-
-		dem := Demapper[data]{
-			funs: []demapper[data]{
-				compose("Str", func(t *data) *string {return &t.Str}, strDeser),
-				compose("Int", func(t *data) *int32 {return &t.Int}, intDeser),
-				composeWithParent("Vals", func(t *data) *[]int32 {return &t.Vals},
-					func(d *data, v *[]int32, b *[]byte) error {
-						for range d.Int {
-							got, err := DeserializeIntAndEat(b)
-							if err != nil {
-								return err
-							}
-							*v = append(*v, got)
+	dem := Demapper[data]{
+		funs: []demapper[data]{
+			compose("Str", func(t *data) *string {return &t.Str}, strDeser),
+			compose("Int", func(t *data) *int32 {return &t.Int}, intDeser),
+			composeWithParent("Vals", func(t *data) *[]int32 {return &t.Vals},
+				func(d *data, v *[]int32, b *[]byte) error {
+					for range d.Int {
+						got, err := DeserializeIntAndEat(b)
+						if err != nil {
+							return err
 						}
-						return nil 
-					}),
-			},
-		}
+						*v = append(*v, got)
+					}
+					return nil 
+				}),
+		},
+	}
 
-		got, err := DeserializeIt(dem, bytes)
-		assert.NoError(t, err)
-		assert.Equal(t, got, &data{
-			Str: "hello world",
-			Int: 3,
-			Vals: []int32{10,0xff,5},
-		})
+	got, err := DeserializeIt(dem, bytes)
+	assert.NoError(t, err)
+	assert.Equal(t, got, &data{
+		Str: "hello world",
+		Int: 3,
+		Vals: []int32{10,0xff,5},
 	})
 }
 
