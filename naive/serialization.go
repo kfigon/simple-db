@@ -20,10 +20,10 @@ type setter[T any]func(*T, *[]byte) error
 type setterWithParent[T any, V any]func(*T, *V, *[]byte) error
 type extract[T any, V any]func(*T)*V
 
-func compose[T any,V any](fieldName string, ex extract[T,V], dem setter[V]) setter[T] {
+func compose[T any,V any](fieldName string, ex extract[T,V], setFn setter[V]) setter[T] {
 	return func(t *T, b *[]byte) error {
 		v := ex(t)
-		err := dem(v, b)
+		err := setFn(v, b)
 		if err != nil {
 			return fmt.Errorf("error deserializing %s: %w", fieldName, err)
 		}
@@ -31,10 +31,10 @@ func compose[T any,V any](fieldName string, ex extract[T,V], dem setter[V]) sett
 	}
 }
 
-func composeWithParent[T any,V any](fieldName string, ex extract[T,V], dem setterWithParent[T, V]) setter[T] {
+func composeWithParent[T any,V any](fieldName string, ex extract[T,V], setFn setterWithParent[T, V]) setter[T] {
 	return func(t *T, b *[]byte) error {
 		v := ex(t)
-		err := dem(t, v, b)
+		err := setFn(t, v, b)
 		if err != nil {
 			return fmt.Errorf("error deserializing %s: %w", fieldName, err)
 		}
