@@ -518,3 +518,76 @@ func NewTupleIterator(storage *Storage, pageType PageType) PageTupleIterator {
 		}
 	}
 }
+
+type DirectoryTuple struct {
+	PageTyp PageType
+	StartingPage PageID
+	Name string
+}
+
+func (d DirectoryTuple) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.Write(SerializeInt(int32(d.PageTyp)))
+	buf.Write(SerializeInt(int32(d.StartingPage)))
+	buf.Write(SerializeString(d.Name))
+	return buf.Bytes()
+}
+
+func DeserializeDirectoryTuple(b []byte) (*DirectoryTuple, error) {
+	pageType, err := DeserializeIntAndEat(&b)
+	if err != nil {
+		return nil, fmt.Errorf("error deserializing page type: %w", err)
+	}
+
+	startingPage, err := DeserializeIntAndEat(&b)
+	if err != nil {
+		return nil, fmt.Errorf("error deserializing starting page id: %w", err)
+	}
+
+	name, err := DeserializeStringAndEat(&b)
+	if err != nil {
+		return nil, fmt.Errorf("error deserializing name: %w", err)
+	}
+	return &DirectoryTuple{
+		PageTyp: PageType(pageType),
+		StartingPage: PageID(startingPage),
+		Name: name,
+	}, nil
+}
+
+type SchemaTuple struct {
+	TableNameV TableName
+	FieldNameV FieldName
+	FieldTypeV FieldType
+}
+
+func (s SchemaTuple) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.Write(SerializeString(string(s.TableNameV)))
+	buf.Write(SerializeString(string(s.FieldNameV)))
+	buf.Write(SerializeInt(int32(s.FieldTypeV)))
+	return buf.Bytes()
+}
+
+func DeserializeSchemaTuple(b []byte) (*SchemaTuple, error) {
+	tableName, err := DeserializeStringAndEat(&b)
+	if err != nil {
+		return nil, fmt.Errorf("error deserializing table name: %w", err)
+	}
+
+	fieldName, err := DeserializeStringAndEat(&b)
+	if err != nil {
+		return nil, fmt.Errorf("error deserializing field name: %w", err)
+	}
+
+	fieldType, err := DeserializeIntAndEat(&b)
+	if err != nil {
+		return nil, fmt.Errorf("error deserializing field type: %w", err)
+	}
+
+	return &SchemaTuple{
+		TableNameV: TableName(tableName),
+		FieldNameV: FieldName(fieldName),
+		FieldTypeV: FieldType(fieldType),
+	}, nil
+}

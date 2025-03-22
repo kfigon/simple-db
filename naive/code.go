@@ -8,7 +8,7 @@ import (
 
 const PageSize = 4*1096
 
-type FieldType int
+type FieldType int32
 const (
 	Int32 FieldType = iota
 	String
@@ -57,7 +57,7 @@ func NewStorage() *Storage {
 	}
 }
 
-func (s *Storage) allocatePage(pageTyp PageType) PageID {
+func (s *Storage) allocatePage(pageTyp PageType) (PageID, *GenericPage) {
 	p := NewPage(pageTyp, PageSize)
 	s.allPages = append(s.allPages, *p)
 	newPageID := PageID(len(s.allPages))
@@ -71,7 +71,7 @@ func (s *Storage) allocatePage(pageTyp PageType) PageID {
 		lastPage.Header.NextPage = newPageID
 	}
 
-	return newPageID
+	return newPageID, p
 }
 
 func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
