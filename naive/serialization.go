@@ -75,3 +75,30 @@ func DeserializeReflection[T any](bytes []byte) (T, error) {
 	}
 	return obj, nil
 }
+
+// todo: experimental type safe deserializer. Reflection is killing me
+
+type demapper[T any]func(*T, *[]byte) error
+type demapperWithParrent[T any, V any]func(*T, *V, *[]byte) error
+type extract[T any, V any]func(*T)*V
+
+type Demapper[T any] struct {
+	funs []demapper[T]	
+}
+
+func compose[T any,V any](ex extract[T,V], dem demapperWithParrent[T, V]) demapper[T] {
+	return func(t *T, b *[]byte) error {
+		v := ex(t)
+		return dem(t, v, b)
+	}
+}
+
+func DeserializeIt[T any](d Demapper[T], b []byte) (*T, error) {
+	var out T
+	for _, v := range d.funs {
+		if err := v(&out, &b); err != nil{
+			return nil, err
+		}	
+	}
+	return &out, nil
+}
