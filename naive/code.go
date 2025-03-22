@@ -6,6 +6,8 @@ import (
 	"strconv"
 )
 
+const PageSize = 4*1096
+
 type FieldType int
 const (
 	Int32 FieldType = iota
@@ -51,7 +53,25 @@ func NewStorage() *Storage {
 	return &Storage{
 		SchemaMetadata: Schema{},
 		AllData: Data{},
+
 	}
+}
+
+func (s *Storage) allocatePage(pageTyp PageType) PageID {
+	p := NewPage(pageTyp, PageSize)
+	s.allPages = append(s.allPages, *p)
+	newPageID := PageID(len(s.allPages))
+
+	var lastPage *GenericPage
+	for _, i := range NewPageIterator(s, pageTyp) {
+		lastPage = i
+	}
+
+	if lastPage != nil {
+		lastPage.Header.NextPage = newPageID
+	}
+
+	return newPageID
 }
 
 func (s *Storage) CreateTable(stmt sql.CreateStatement) error {

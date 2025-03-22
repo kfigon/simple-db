@@ -409,7 +409,6 @@ type GenericPage struct {
 	SlotArray *Slotted
 }
 
-// todo: assign pageId, update new pageId in linked list
 func NewPage(pageType PageType, pageSize int) *GenericPage {
 	return &GenericPage{
 		Header: GenericPageHeader{
