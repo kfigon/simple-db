@@ -14,7 +14,7 @@
     * [ ] integrate slotted pages in rest of the metadata and catalog
         * [x] Storage - serialize db header page
         * [ ] Storage - de/serialize schema in new format. How to format it on disk? Keep schema cached inmem for efficiency
-        * [ ] Storage - pageID allocations
+        * [x] Storage - pageID allocations
         * [ ] Storage - remove AllData, replace with page linked list read from catalog
         * [x] Storage - page iterator
         * [x] Storage - slot array cell iterator. Connect with page iterator
