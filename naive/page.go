@@ -493,7 +493,7 @@ func NewPageIterator(storage *Storage, pageType PageType) PageIterator {
 		currentPageId = storage.root.DataPageStart
 	} else if pageType == SchemaPageType {
 		currentPageId = storage.root.SchemaStartPage
-	} // else - empty iter
+	} // else: currentPageId == 0 -> empty iter
 
 	return func(yield func(PageID, *GenericPage) bool) {
 		for currentPageId != 0 {
