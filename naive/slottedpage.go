@@ -125,8 +125,8 @@ func (s *Slotted) SlotIdxIterator() iter.Seq[SlotIdx] {
 	}
 }
 
-type TupleIterator iter.Seq[[]byte]
-func (s *Slotted) Iterator() TupleIterator {
+type CellIterator iter.Seq[[]byte]
+func (s *Slotted) Iterator() CellIterator {
 	return func(yield func([]byte) bool) {
 		for slotId := range s.SlotIdxIterator(){
 			d, err := s.Read(SlotIdx(slotId))

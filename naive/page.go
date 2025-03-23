@@ -10,17 +10,15 @@ type RootPage struct {
 	PageTyp PageType
 	MagicNumber     int32
 	PageSize        int32
-	SchemaStartPage PageID
-	DataPageStart   PageID
+	DirectoryPageStart   PageID
 }
 
-func NewRootPage(schemaStart PageID, dataStart PageID) RootPage {
+func NewRootPage(directoryStart PageID) RootPage {
 	return RootPage{
 		PageTyp: RootPageType,
 		MagicNumber: 	 MagicNumber,
 		PageSize:        PageSize,
-		SchemaStartPage: schemaStart,
-		DataPageStart: 	 dataStart,
+		DirectoryPageStart: 	 directoryStart,
 	}
 }
 
@@ -30,8 +28,7 @@ func (r *RootPage) Serialize() []byte {
 	return SerializeAll(
 		SerializeInt(r.MagicNumber),
 		SerializeInt(r.PageSize),
-		SerializeInt(int32(r.SchemaStartPage)),
-		SerializeInt(int32(r.DataPageStart)))
+		SerializeInt(int32(r.DirectoryPageStart)))
 }
 
 func DeserializeRootPage(r io.Reader) (*RootPage, error) {
@@ -42,8 +39,7 @@ func DeserializeRootPage(r io.Reader) (*RootPage, error) {
 	root, err := DeserializeAll(bytes,
 		compose("magic num", func(st *RootPage) *int32 { return &st.MagicNumber}, intDeser),
 		compose("page size", func(st *RootPage) *int32 { return &st.PageSize}, intDeser),
-		compose("schema starting page", func(st *RootPage) *int32 { return (*int32)(&st.SchemaStartPage)}, intDeser),
-		compose("data page start", func(st *RootPage) *int32 { return (*int32)(&st.DataPageStart)}, intDeser),
+		compose("data page start", func(st *RootPage) *int32 { return (*int32)(&st.DirectoryPageStart)}, intDeser),
 	)
 	if err != nil {
 		return nil, err
@@ -144,18 +140,7 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 
 type PageIterator iter.Seq2[PageID, *GenericPage]
 
-func NewPageIteratorByType(storage *Storage, pageType PageType) PageIterator {
-	var startPage PageID
-	if pageType == DataPageType {
-		startPage = storage.root.DataPageStart
-	} else if pageType == SchemaPageType {
-		startPage = storage.root.SchemaStartPage
-	} // else: startPage == 0 -> empty iter
-
-	return NewPageIteratorFromPageID(storage, startPage)
-}
-
-func NewPageIteratorFromPageID(storage *Storage, startingPage PageID) PageIterator {
+func NewPageIterator(storage *Storage, startingPage PageID) PageIterator {
 	currentPageId := startingPage
 	return func(yield func(PageID, *GenericPage) bool) {
 		for currentPageId != 0 {
@@ -168,9 +153,13 @@ func NewPageIteratorFromPageID(storage *Storage, startingPage PageID) PageIterat
 	}
 }
 
-type PageTupleIterator iter.Seq[[]byte]
+func directoryPages(s *Storage) PageIterator {
+	return NewPageIterator(s, s.root.DirectoryPageStart)
+}
 
-func IterTuplesByPages(storage *Storage, pages PageIterator) PageTupleIterator {
+type TupleIterator iter.Seq[[]byte]
+
+func tuplesIterator(pages PageIterator) TupleIterator {
 	return func(yield func([]byte) bool) {
 		for _, thisPage := range pages {
 			for tuple := range thisPage.SlotArray.Iterator() {
@@ -182,23 +171,21 @@ func IterTuplesByPages(storage *Storage, pages PageIterator) PageTupleIterator {
 	}
 }
 
-func NewTupleIterator(storage *Storage, pageType PageType) PageTupleIterator {
-	return IterTuplesByPages(storage, NewPageIteratorByType(storage, pageType))
-}
-
-func NewDataIterator(storage *Storage, tableName TableName) PageTupleIterator {
-	var startId PageID
-	for d := range NewTupleIterator(storage, DirectoryPageType){
+func FindStartingPageForEntity(storage *Storage, pageType PageType, name string) (PageID, bool) {
+	for d := range tuplesIterator(directoryPages(storage)) {
 		dir, err := DeserializeDirectoryTuple(d)
 		if err != nil {
-			break
-		} else if string(tableName) == dir.Name {
-			startId = dir.StartingPage
-			break
+			return 0, false
+		} else if dir.Name == name && dir.PageTyp == pageType {
+			return dir.StartingPage, true
 		}
 	}
+	return 0, false
+}
 
-	return IterTuplesByPages(storage, NewPageIteratorFromPageID(storage, startId))
+func NewEntityIterator(storage *Storage, pageType PageType, name string) TupleIterator {
+	startId, _ := FindStartingPageForEntity(storage, pageType, name)
+	return tuplesIterator(NewPageIterator(storage, startId))
 }
 
 // for lookup where given data/index page starts 
@@ -224,21 +211,18 @@ func DeserializeDirectoryTuple(b []byte) (*DirectoryTuple, error) {
 }
 
 type SchemaTuple struct {
-	TableNameV TableName
 	FieldNameV FieldName
 	FieldTypeV FieldType
 }
 
 func (s SchemaTuple) Serialize() []byte {
 	return SerializeAll(
-		SerializeString(string(s.TableNameV)),
 		SerializeString(string(s.FieldNameV)),
 		SerializeInt(int32(s.FieldTypeV)))
 }
 
 func DeserializeSchemaTuple(b []byte) (*SchemaTuple, error) {
 	return DeserializeAll[SchemaTuple](b,
-		compose("table name", func(t *SchemaTuple) *string { return (*string)(&t.TableNameV) }, strDeser),
 		compose("field name", func(st *SchemaTuple) *string { return (*string)(&st.FieldNameV) }, strDeser),
 		compose("field type", func(st *SchemaTuple) *int32 { return (*int32)(&st.FieldTypeV) }, intDeser))
 }

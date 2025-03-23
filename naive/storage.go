@@ -58,25 +58,24 @@ func NewStorage() *Storage {
 		allPages: []GenericPage{GenericPage{}}, // empty 'root' page in the beginning
 	}
 
-	dirID, _ := s.allocatePage(DirectoryPageType)
-	schemaID, _ := s.allocatePage(SchemaPageType)
-	s.root = NewRootPage(schemaID, dirID)
+	dirID, _ := s.allocatePage(DirectoryPageType, "catalog_directory")
+	s.root = NewRootPage(dirID)
 
 	return s
 }
 
-func (s *Storage) allocatePage(pageTyp PageType) (PageID, *GenericPage) {
+func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericPage) {
 	p := NewPage(pageTyp, PageSize)
 	newPageID := PageID(len(s.allPages))
 	s.allPages = append(s.allPages, *p)
 
-	var lastPage *GenericPage
-	for _, i := range NewPageIteratorByType(s, pageTyp) {
-		lastPage = i
-	}
-
-	if lastPage != nil {
-		lastPage.Header.NextPage = newPageID
+	// link last page to the new one
+	if startId, ok := FindStartingPageForEntity(s, pageTyp, name); ok {
+		var lastId PageID
+		for id := range NewPageIterator(s, startId){
+			lastId = id
+		}
+		s.allPages[lastId].Header.NextPage = newPageID
 	}
 
 	return newPageID, p
@@ -96,39 +95,6 @@ func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
 		table[FieldName(v.Name)] = f
 	}
 	s.SchemaMetadata[TableName(stmt.Table)] = table
-	return nil
-}
-
-func (s *Storage) CreateTable2(stmt sql.CreateStatement) error {
-	for p := range NewTupleIterator(s, SchemaPageType) {
-		d, err := DeserializeSchemaTuple(p)
-		if err != nil {
-			return err
-		} else if d.TableNameV == TableName(stmt.Table) {
-			return fmt.Errorf("table %v already present", stmt.Table)
-		}
-	}
-
-	entries := []SchemaTuple{}	
-	for _, v := range stmt.Columns {
-		f, err := FieldTypeFromString(v.Typ)
-		if err != nil {
-			return err
-		}
-		entries = append(entries, SchemaTuple{
-			TableNameV: TableName(stmt.Table),
-			FieldNameV: FieldName(v.Name),
-			FieldTypeV: f,
-		})
-	}
-
-	_, page := s.allocatePage(SchemaPageType)
-	for _, e := range entries {
-		_, err := page.Add(e.Serialize())
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -167,56 +133,6 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 	tables = append(tables, table)
 	s.AllData[TableName(stmt.Table)] = tables
 	return nil
-}
-
-func (s *Storage) Insert2(stmt sql.InsertStatement) error {
-	found := false
-	for p := range NewTupleIterator(s, SchemaPageType) {
-		d, err := DeserializeSchemaTuple(p)
-		if err != nil {
-			return err
-		} else if d.TableNameV == TableName(stmt.Table) {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		return fmt.Errorf("table %v does not exist", stmt.Table)
-	}
-
-	// maybe not map? We need to somehow persist order of columns within tuple
-	schema := TableSchema{}
-	for p := range NewTupleIterator(s, SchemaPageType) {
-		d, err := DeserializeSchemaTuple(p)
-		if err != nil {
-			return err
-		}
-		schema[d.FieldNameV] = d.FieldTypeV
-	}
-
-	for i := 0; i < len(stmt.Columns); i++ {
-		col := stmt.Columns[i]
-		val := stmt.Values[i]
-		
-		fieldType, ok := schema[FieldName(col)]
-		if !ok {
-			return fmt.Errorf("invalid column %v, not defined in schema for table %v", col, stmt.Table)
-		}
-
-		parsed, err := parseType(val, fieldType)
-		if err != nil {
-			return err
-		}
-
-		// todo: persist that in data page
-		_ = ColumnData{
-			Typ: fieldType,
-			Data: parsed,
-		}
-	}
-
-	// todo: finish this
 }
 
 func parseType(v string, typ FieldType) (any, error) {
