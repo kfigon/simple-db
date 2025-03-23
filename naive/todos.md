@@ -20,6 +20,7 @@
         * [x] Storage - slot array cell iterator. Connect with page iterator
     * [ ] directory page on disk, rebuild on startup
     * [ ] schema page on disk, rebuild on startup
+    * [x] add tuple to last page, do not create pages excessively
     * [x] use reflection for serialization for more abstracted usage - used typesafe generic approach
     * [ ] overflow pages
 * [ ] indexes with btree on disk
@@ -29,4 +30,4 @@
 * [ ] operators
 
 priorities:
-store schema and directory in Storage class
+store schema and directory in Storage class - Insert and Select. Create is done

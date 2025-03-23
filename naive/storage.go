@@ -98,6 +98,73 @@ func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
 	return nil
 }
 
+func (s *Storage) CreateTable2(stmt sql.CreateStatement) error {
+	if _, ok := FindStartingPageForEntity(s, SchemaPageType, stmt.Table); ok {
+		return fmt.Errorf("table %v already present", stmt.Table)
+	}
+
+	schemaEntries := []SchemaTuple{}
+	for _, v := range stmt.Columns {
+		f, err := FieldTypeFromString(v.Typ)
+		if err != nil {
+			return err
+		}
+		schemaEntries = append(schemaEntries, SchemaTuple{
+			FieldNameV: FieldName(v.Name),
+			FieldTypeV: f,
+		})
+	}
+
+	var firstPageIDForSchema PageID
+	for _, v := range schemaEntries {
+		pageID := s.AddTuple(SchemaPageType, stmt.Table, v.Serialize())
+		if firstPageIDForSchema == 0 {
+			firstPageIDForSchema = pageID
+		}
+	}
+
+	// add directory entry for schema
+	s.AddTuple(
+		DirectoryPageType, stmt.Table,
+		DirectoryTuple{
+			PageTyp: SchemaPageType,
+			StartingPage: firstPageIDForSchema,
+			Name: stmt.Table,
+		}.Serialize(),
+	)
+
+	// add empty data page
+	dataPageID, _ := s.allocatePage(DataPageType, stmt.Table)
+	s.AddTuple(
+		DirectoryPageType, stmt.Table,
+		DirectoryTuple{
+			PageTyp: DataPageType,
+			StartingPage: dataPageID,
+			Name: stmt.Table,
+		}.Serialize(),
+	)
+	return nil
+}
+
+func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
+	var lastPage *GenericPage
+	var lastPageID PageID
+
+	if startPage, ok := FindStartingPageForEntity(s, pageType, name); !ok {
+		// allocatePage also links it
+		pageID, newPage := s.allocatePage(pageType, name) 
+		lastPage = newPage
+		lastPageID = pageID
+	} else {
+		for pageID, p := range NewPageIterator(s, startPage){
+			lastPage = p
+			lastPageID = pageID
+		}
+	}
+	lastPage.Add(b)
+	return lastPageID
+}
+
 func (s *Storage) Insert(stmt sql.InsertStatement) error {
 	schema, ok := s.SchemaMetadata[TableName(stmt.Table)]; 
 	if !ok {
