@@ -202,6 +202,60 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 	return nil
 }
 
+func (s *Storage) Insert2(stmt sql.InsertStatement) error {
+	schema := []FieldName{}
+	schemaLookup := map[FieldName]FieldType{} 
+	for d := range NewEntityIterator(s, SchemaPageType, stmt.Table) {
+		data, err := DeserializeSchemaTuple(d)
+		if err != nil {
+			return err
+		}
+		schemaLookup[data.FieldNameV] = data.FieldTypeV
+		schema = append(schema, data.FieldNameV)
+	}
+
+	if len(schema) == 0 {
+		return fmt.Errorf("table %v does not exist", stmt.Table)
+	}
+	
+	inputLookup := map[FieldName]ColumnData{}
+	for i := 0; i < len(stmt.Columns); i++ {
+		col := stmt.Columns[i]
+		val := stmt.Values[i]
+		
+		fieldType, ok := schemaLookup[FieldName(col)]
+		if !ok {
+			return fmt.Errorf("invalid column %v, not defined in schema for table %v", col, stmt.Table)
+		}
+
+		parsed, err := parseType(val, fieldType)
+		if err != nil {
+			return err
+		}
+		inputLookup[FieldName(col)] = ColumnData{
+			Typ: fieldType,
+			Data: parsed,
+		}
+	}
+
+	inputData := []byte{}
+	for _, col := range schema {
+		d := inputLookup[col]	
+
+		switch d.Typ {
+		case Int32: 
+			inputData = append(inputData, SerializeInt(d.Data.(int32))...)
+		case String:
+			inputData = append(inputData, SerializeString(d.Data.(string))...)
+		case Boolean:
+			inputData = append(inputData, SerializeBool(d.Data.(bool))...)
+		}
+	}
+
+	s.AddTuple(DataPageType, stmt.Table, inputData)
+	return nil
+}
+
 func parseType(v string, typ FieldType) (any, error) {
 	switch typ {
 	case Int32: 
