@@ -13,53 +13,22 @@ func SerializeAll(chunks ...[]byte) []byte {
 	}
 	return buf.Bytes()
 }
+type setter[T any, V any]func(*T, V) 
+type deserializeFn[T any, V any]func(*T, *V) error
+type mapper[T any, V any]func(*T) (V, error)
 
-type setter[T any]func(*T, *[]byte) error
-
-// sometimes you need also the parent for some context
-type setterWithParent[T any, V any]func(*T, *V, *[]byte) error
-type extract[T any, V any]func(*T)*V
-
-func compose[T any,V any](fieldName string, ex extract[T,V], setFn setter[V]) setter[T] {
+func compose[T any,V any](fieldName string, setFn setter[T,V], m mapper[[]byte, V]) deserializeFn[T,[]byte] {
 	return func(t *T, b *[]byte) error {
-		v := ex(t)
-		err := setFn(v, b)
+		v, err := m(b)
 		if err != nil {
 			return fmt.Errorf("error deserializing %s: %w", fieldName, err)
 		}
+		setFn(t, v)
 		return nil
 	}
 }
 
-func composeWithParent[T any,V any](fieldName string, ex extract[T,V], setFn setterWithParent[T, V]) setter[T] {
-	return func(t *T, b *[]byte) error {
-		v := ex(t)
-		err := setFn(t, v, b)
-		if err != nil {
-			return fmt.Errorf("error deserializing %s: %w", fieldName, err)
-		}
-		return nil
-	}
-}
-func intDeser(v *int32, b *[]byte) error {
-	got, err := DeserializeIntAndEat(b)
-	if err != nil {
-		return err
-	}
-	*v = got
-	return nil
-}
-
-func strDeser(v *string, b *[]byte) error {
-	got, err := DeserializeStringAndEat(b)
-	if err != nil {
-		return err
-	}
-	*v = got
-	return nil
-}
-
-func DeserializeAll[T any](b []byte, funs ...setter[T]) (*T, error) {
+func DeserializeAll[T any](b []byte, funs ...deserializeFn[T, []byte]) (*T, error) {
 	var out T
 	for _, v := range funs{
 		if err := v(&out, &b); err != nil{

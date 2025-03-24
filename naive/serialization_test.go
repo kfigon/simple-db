@@ -68,20 +68,19 @@ func TestSerializeGeneric(t *testing.T) {
 		0, 0, 0, 3,
 		0, 0, 0, 10, 0, 0, 0, 0xff, 0, 0, 0, 5}
 
-	funs := []setter[data]{
-		compose("Str", func(t *data) *string { return &t.Str }, strDeser),
-		compose("Int", func(t *data) *int32 { return &t.Int }, intDeser),
-		composeWithParent("Vals", func(t *data) *[]int32 { return &t.Vals },
-			func(d *data, v *[]int32, b *[]byte) error {
-				for range d.Int {
-					got, err := DeserializeIntAndEat(b)
-					if err != nil {
-						return err
-					}
-					*v = append(*v, got)
+	funs := []deserializeFn[data, []byte]{
+		compose("Str", func(t *data, s string) { t.Str = s}, DeserializeStringAndEat),
+		compose("Int", func(t *data, v int32) { t.Int = v}, DeserializeIntAndEat),
+		func(d *data, b *[]byte) error {
+			for range d.Int {
+				got, err := DeserializeIntAndEat(b)
+				if err != nil {
+					return err
 				}
-				return nil
-			}),
+				d.Vals = append(d.Vals, got)
+			}
+			return nil
+		},
 	}
 
 	got, err := DeserializeAll(bytes, funs...)
