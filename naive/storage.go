@@ -300,6 +300,50 @@ func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 	return out, nil
 }
 
+func (s *Storage) Select2(stmt sql.SelectStatement) (QueryResult, error) {
+	schema := []FieldName{}
+	schemaLookup := map[FieldName]FieldType{} 
+	var zero QueryResult
+
+	for d := range NewEntityIterator(s, SchemaPageType, stmt.Table) {
+		data, err := DeserializeSchemaTuple(d)
+		if err != nil {
+			return zero, err
+		}
+		schemaLookup[data.FieldNameV] = data.FieldTypeV
+		schema = append(schema, data.FieldNameV)
+	}
+
+	if len(schema) == 0 {
+		return zero, fmt.Errorf("table %v does not exist", stmt.Table)
+	}
+
+	columnsToQuery, err := colsToQuery(stmt, schemaLookup)
+	if err != nil {
+		return zero, err
+	}
+
+	out := QueryResult{
+		Header: columnsToQuery,
+	}
+
+	for d := range NewEntityIterator(s, DataPageType, stmt.Table) {
+		row := parseToRow(d, schema, schemaLookup)
+
+		vals := []string{}
+		for _, col := range columnsToQuery {
+			vals = append(vals, fmt.Sprint(row[FieldName(col)].Data))
+		}
+		out.Values = append(out.Values, vals)
+	}
+
+	return out, nil
+}
+
+func parseToRow(bytes []byte, schema []FieldName, lookup map[FieldName]FieldType) map[FieldName]ColumnData {
+	return nil
+}
+
 func colsToQuery(stmt sql.SelectStatement, schema TableSchema) ([]string, error) {
 	if stmt.HasWildcard {
 		cols := []string{}

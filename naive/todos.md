@@ -30,4 +30,4 @@
 * [ ] operators
 
 priorities:
-store schema and directory in Storage class - Insert and Select. Create is done
+store schema and directory in Storage class - Select todo
