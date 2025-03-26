@@ -30,4 +30,4 @@
 * [ ] operators
 
 priorities:
-store schema and directory in Storage class - Select todo
+store schema and directory in Storage class - serialize and deserialize

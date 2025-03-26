@@ -341,7 +341,24 @@ func (s *Storage) Select2(stmt sql.SelectStatement) (QueryResult, error) {
 }
 
 func parseToRow(bytes []byte, schema []FieldName, lookup map[FieldName]FieldType) map[FieldName]ColumnData {
-	return nil
+	out := map[FieldName]ColumnData{}
+	for _, f := range schema {
+		typ := lookup[f]
+		cd := ColumnData{Typ: typ}
+		switch typ {
+			case Int32:
+				cd.Data = must(DeserializeIntAndEat(&bytes))
+			case String:
+				cd.Data = must(DeserializeStringAndEat(&bytes))
+			case Boolean:
+				cd.Data = must(DeserializeBoolAndEat(&bytes))
+			case Float: fallthrough
+			default:
+				panic("data corruption on parsing")
+		}
+		out[f] = cd
+	}
+	return out
 }
 
 func colsToQuery(stmt sql.SelectStatement, schema TableSchema) ([]string, error) {
@@ -583,4 +600,11 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 		SchemaMetadata: schema,
 		AllData:        dataContent,
 	}, nil
+}
+
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
 }
