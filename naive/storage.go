@@ -9,6 +9,7 @@ import (
 )
 
 const PageSize = 4*1096
+const newPageSchema = false
 
 type FieldType int32
 const (
@@ -82,6 +83,9 @@ func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericP
 }
 
 func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
+	if newPageSchema {
+		return s.CreateTable2(stmt)
+	}
 	if _, ok := s.SchemaMetadata[TableName(stmt.Table)]; ok {
 		return fmt.Errorf("table %v already present", stmt.Table)
 	}
@@ -166,6 +170,9 @@ func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
 }
 
 func (s *Storage) Insert(stmt sql.InsertStatement) error {
+	if newPageSchema {
+		return s.Insert2(stmt)
+	}
 	schema, ok := s.SchemaMetadata[TableName(stmt.Table)]; 
 	if !ok {
 		return fmt.Errorf("table %v does not exist", stmt.Table)
@@ -274,6 +281,9 @@ type QueryResult struct {
 }
 
 func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
+	if newPageSchema {
+		return s.Select2(stmt)
+	}
 	schema, ok := s.SchemaMetadata[TableName(stmt.Table)]
 	if !ok {
 		return QueryResult{}, fmt.Errorf("unknown table %v", stmt.Table)
@@ -560,19 +570,45 @@ func DeserializeData(r io.Reader, s Schema) (Data, error) {
 }
 
 func SerializeDb(s *Storage) []byte {
-	serializedSchema := SerializeSchema(s.SchemaMetadata)
-	serializedData := SerializeData(s.AllData)
+	if !newPageSchema {
+		serializedSchema := SerializeSchema(s.SchemaMetadata)
+		serializedData := SerializeData(s.AllData)
 
-	return SerializeAll(SerializeInt(int32(len(serializedSchema))),
-		SerializeInt(int32(len(serializedData))),
-		serializedSchema,
-		serializedData)
+		return SerializeAll(SerializeInt(int32(len(serializedSchema))),
+			SerializeInt(int32(len(serializedData))),
+			serializedSchema,
+			serializedData)
+	}
+	var out bytes.Buffer
+	out.Write(s.root.Serialize())
+	for _, v := range s.allPages[1:] {
+		out.Write(v.Serialize())
+	}
+	return out.Bytes()
 }
 
 func DeserializeDb(r io.Reader) (*Storage, error) {
 	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
+	}
+
+	if newPageSchema {
+		pages := []GenericPage{{}}
+		root, err := DeserializeRootPage(bytes.NewBuffer(data))
+		if err != nil {
+			return nil, err
+		}
+		data = data[:PageSize]
+		for len(data) != 0 {
+			p, err := Deserialize(bytes.NewReader(data))
+			if err != nil {
+				return nil, err
+			}
+			data = data[:PageSize]
+			pages = append(pages, *p)
+		}
+		return &Storage{root: *root, allPages: pages}, nil
 	}
 
 	schemaLen, err := DeserializeIntAndEat(&data)
