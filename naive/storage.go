@@ -9,7 +9,8 @@ import (
 )
 
 const PageSize = 4*1096
-const newPageSchema = false
+const newPageSchema = true
+const directoryName =  "catalog_directory"
 
 type FieldType int32
 const (
@@ -59,7 +60,7 @@ func NewStorage() *Storage {
 		allPages: []GenericPage{GenericPage{}}, // empty 'root' page in the beginning
 	}
 
-	dirID, _ := s.allocatePage(DirectoryPageType, "catalog_directory")
+	dirID, _ := s.allocatePage(DirectoryPageType, directoryName)
 	s.root = NewRootPage(dirID)
 
 	return s
@@ -119,34 +120,32 @@ func (s *Storage) CreateTable2(stmt sql.CreateStatement) error {
 		})
 	}
 
-	var firstPageIDForSchema PageID
-	for _, v := range schemaEntries {
-		pageID := s.AddTuple(SchemaPageType, stmt.Table, v.Serialize())
-		if firstPageIDForSchema == 0 {
-			firstPageIDForSchema = pageID
-		}
+	if len(schemaEntries) == 0 {
+		return nil
 	}
 
-	// add directory entry for schema
-	s.AddTuple(
-		DirectoryPageType, stmt.Table,
-		DirectoryTuple{
-			PageTyp: SchemaPageType,
-			StartingPage: firstPageIDForSchema,
-			Name: stmt.Table,
-		}.Serialize(),
-	)
+	// need to add schema first, as inside we're looking into directory - but there's no directory entry yet
+	// but to create directory entry, we need first page id
+	firstPageIDForSchema := s.AddTuple(SchemaPageType, stmt.Table, schemaEntries[0].Serialize())
+
+	s.AddDirectoryTuple(DirectoryTuple{
+		PageTyp: SchemaPageType,
+		StartingPage: firstPageIDForSchema,
+		Name: stmt.Table,
+	})
+
+	for _, v := range schemaEntries[1:] {
+		s.AddTuple(SchemaPageType, stmt.Table, v.Serialize())
+	}
 
 	// add empty data page
 	dataPageID, _ := s.allocatePage(DataPageType, stmt.Table)
-	s.AddTuple(
-		DirectoryPageType, stmt.Table,
-		DirectoryTuple{
-			PageTyp: DataPageType,
-			StartingPage: dataPageID,
-			Name: stmt.Table,
-		}.Serialize(),
-	)
+
+	s.AddDirectoryTuple(DirectoryTuple{
+		PageTyp: DataPageType,
+		StartingPage: dataPageID,
+		Name: stmt.Table,
+	})
 	return nil
 }
 
@@ -167,6 +166,21 @@ func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
 	}
 	lastPage.Add(b)
 	return lastPageID
+}
+
+// todo: handle overflow
+func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
+	var lastPage *GenericPage
+	for _, p := range directoryPages(s){ 
+		lastPage = p
+	}
+	if lastPage == nil {
+		_, newPage := s.allocatePage(DirectoryPageType, directoryName)
+		lastPage = newPage
+	}
+	if _, err := lastPage.Add(dir.Serialize()); err != nil {
+		panic("overflow")
+	}
 }
 
 func (s *Storage) Insert(stmt sql.InsertStatement) error {
