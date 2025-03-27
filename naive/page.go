@@ -172,11 +172,8 @@ func tuplesIterator(pages PageIterator) TupleIterator {
 }
 
 func FindStartingPageForEntity(storage *Storage, pageType PageType, name string) (PageID, bool) {
-	for d := range tuplesIterator(directoryPages(storage)) {
-		dir, err := DeserializeDirectoryTuple(d)
-		if err != nil {
-			return 0, false
-		} else if dir.Name == name && dir.PageTyp == pageType {
+	for dir := range DirectoryEntriesIterator(storage) {
+		if dir.Name == name && dir.PageTyp == pageType {
 			return dir.StartingPage, true
 		}
 	}
@@ -186,6 +183,17 @@ func FindStartingPageForEntity(storage *Storage, pageType PageType, name string)
 func NewEntityIterator(storage *Storage, pageType PageType, name string) TupleIterator {
 	startId, _ := FindStartingPageForEntity(storage, pageType, name)
 	return tuplesIterator(NewPageIterator(storage, startId))
+}
+
+func DirectoryEntriesIterator(storage *Storage) iter.Seq[DirectoryTuple] {
+	return func(yield func(DirectoryTuple) bool) {
+		for d := range tuplesIterator(directoryPages(storage)) {
+			dir := must(DeserializeDirectoryTuple(d))
+			if !yield(*dir) {
+				break
+			}
+		}
+	}
 }
 
 // for lookup where given data/index page starts 

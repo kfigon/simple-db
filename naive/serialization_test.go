@@ -134,6 +134,6 @@ func TestSerializeStorage(t *testing.T) {
 		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
 		assert.NoError(t, err)
 		assert.Equal(t, s.AllData, recoveredDb.AllData)
-		assert.Equal(t, s.SchemaMetadata, recoveredDb.SchemaMetadata)
+		assert.Equal(t, s.allSchema(), recoveredDb.allSchema())
 	})
 }

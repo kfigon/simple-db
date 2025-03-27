@@ -350,6 +350,26 @@ func (s *Storage) Select2(stmt sql.SelectStatement) (QueryResult, error) {
 	return out, nil
 }
 
+func (s *Storage) allSchema() Schema {
+	if !newPageSchema {
+		return s.SchemaMetadata
+	}
+
+	schema := Schema{}
+	for dir := range DirectoryEntriesIterator(s) {
+		t := TableSchema{}
+		for sch := range NewEntityIterator(s, SchemaPageType, dir.Name) {
+			entry := must(DeserializeSchemaTuple(sch))
+			t[entry.FieldNameV] = entry.FieldTypeV	
+		}
+		if len(t) != 0 {
+			schema[TableName(dir.Name)] = t
+		}
+	}
+
+	return schema
+}
+
 func parseToRow(bytes []byte, schema []FieldName, lookup map[FieldName]FieldType) map[FieldName]ColumnData {
 	out := map[FieldName]ColumnData{}
 	for _, f := range schema {
