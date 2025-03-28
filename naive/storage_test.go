@@ -1,6 +1,7 @@
 package naive
 
 import (
+	"bytes"
 	"simple-db/sql"
 	"testing"
 
@@ -83,6 +84,25 @@ func TestNaiveStorage(t *testing.T) {
 		assert.Len(t, res.Values, 2)
 		assert.ElementsMatch(t, []string{"123", "asdf"}, res.Values[0])
 		assert.ElementsMatch(t, []string{"456", "baz"}, res.Values[1])
+	})
+}
+
+func TestSerializeStorage(t *testing.T) {
+	t.Run("whole db state", func(t *testing.T) {
+		s := NewStorage()
+		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
+		assert.NoError(t, execute(t, s, `create table xxx(email string)`))
+		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (123, "asdf")`))
+		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (456, "baz")`))
+		assert.NoError(t, execute(t, s, `insert into xxx(email) VALUES ("john@doe.com")`))
+
+		data := SerializeDb(s)
+
+		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
+		assert.NoError(t, err)
+		assert.Equal(t, s.allSchema(), recoveredDb.allSchema())
+		assert.Equal(t, len(s.allPages), len(recoveredDb.allPages))
+		assert.Equal(t, len(s.allPages), 1+1+2 +2) // root + directory + 2x schema + 2x data
 	})
 }
 
