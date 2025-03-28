@@ -2,6 +2,7 @@ package naive
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"simple-db/sql"
@@ -164,22 +165,30 @@ func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
 			lastPageID = pageID
 		}
 	}
-	lastPage.Add(b)
+	if _, err := lastPage.Add(b); err != nil {
+		panic("overflow")
+	}
 	return lastPageID
 }
 
-// todo: handle overflow
 func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
 	var lastPage *GenericPage
 	for _, p := range directoryPages(s){ 
 		lastPage = p
 	}
+
 	if lastPage == nil {
 		_, newPage := s.allocatePage(DirectoryPageType, directoryName)
 		lastPage = newPage
 	}
-	if _, err := lastPage.Add(dir.Serialize()); err != nil {
-		panic("overflow")
+
+	d := dir.Serialize()
+	_, err := lastPage.Add(d)
+	// retry if end of space
+	if errors.Is(err, errNoSpace) {
+		newPageID, p := s.allocatePage(DirectoryPageType, directoryName)
+		must(p.Add(d))
+		lastPage.Header.NextPage = newPageID
 	}
 }
 
