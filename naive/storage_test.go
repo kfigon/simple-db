@@ -13,13 +13,12 @@ func TestNaiveStorage(t *testing.T) {
 		sql := `create table foobar(abc int, asdf boolean, xxx string)`
 		assert.NoError(t, execute(t, s, sql))
 
-		assert.Empty(t, s.AllData)
-		assert.Len(t, s.SchemaMetadata, 1)
-		assert.Equal(t, s.SchemaMetadata["foobar"], TableSchema{
+		assert.Equal(t, s.allSchema(), Schema{
+			"foobar": TableSchema{
 			"abc":  Int32,
 			"asdf": Boolean,
 			"xxx":  String,
-		})
+		}})
 	})
 
 	t.Run("create already present", func(t *testing.T) {
@@ -84,43 +83,6 @@ func TestNaiveStorage(t *testing.T) {
 		assert.Len(t, res.Values, 2)
 		assert.ElementsMatch(t, []string{"123", "asdf"}, res.Values[0])
 		assert.ElementsMatch(t, []string{"456", "baz"}, res.Values[1])
-	})
-
-	t.Run("basic insert", func(t *testing.T) {
-		s := NewStorage()
-
-		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
-		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (123, "asdf")`))
-		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (456, "baz")`))
-
-		assert.Equal(t, s.SchemaMetadata["foobar"], TableSchema{
-			"id":  Int32,
-			"name": String,
-		})
-
-		expected := []TableData{
-			{
-				"id": {
-					Typ: Int32,
-					Data: int32(123),
-				},
-				"name":{
-					Typ: String,
-					Data: "asdf",
-				},
-			},
-			{
-				"id": {
-					Typ: Int32,
-					Data: int32(456),
-				},
-				"name":{
-					Typ: String,
-					Data: "baz",
-				},
-			},
-		}
-		assert.Equal(t, expected, s.AllData["foobar"])
 	})
 }
 

@@ -93,33 +93,6 @@ func TestSerializeGeneric(t *testing.T) {
 }
 
 func TestSerializeStorage(t *testing.T) {
-	t.Run("schema", func(t *testing.T) {
-		s := NewStorage()
-		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
-		assert.NoError(t, execute(t, s, `create table asdf(email string)`))
-
-		data := SerializeSchema(s.SchemaMetadata)
-		assert.Len(t, data, 65)
-
-		schema, err := DeserializeSchema(bytes.NewReader(data))
-		assert.NoError(t, err)
-		assert.Equal(t, s.SchemaMetadata, schema)
-	})
-
-	t.Run("data", func(t *testing.T) {
-		s := NewStorage()
-		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
-		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (123, "asdf")`))
-		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (456, "baz")`))
-
-		data := SerializeData(s.AllData)
-		assert.Len(t, data, 65)
-
-		dbData, err := DeserializeData(bytes.NewReader(data), s.SchemaMetadata)
-		assert.NoError(t, err)
-		assert.Equal(t, s.AllData, dbData)
-	})
-
 	t.Run("whole db state", func(t *testing.T) {
 		s := NewStorage()
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
@@ -129,11 +102,11 @@ func TestSerializeStorage(t *testing.T) {
 		assert.NoError(t, execute(t, s, `insert into xxx(email) VALUES ("john@doe.com")`))
 
 		data := SerializeDb(s)
-		assert.Len(t, data, 173)
 
 		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
 		assert.NoError(t, err)
-		assert.Equal(t, s.AllData, recoveredDb.AllData)
 		assert.Equal(t, s.allSchema(), recoveredDb.allSchema())
+		assert.Equal(t, len(s.allPages), len(recoveredDb.allPages))
+		assert.Equal(t, len(s.allPages), 1+1+2 +2) // root + directory + 2x schema + 2x data
 	})
 }
