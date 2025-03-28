@@ -134,8 +134,15 @@ func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
 			lastPageID = pageID
 		}
 	}
-	_, err := lastPage.Add(b);
-	debugAssert(err == nil, "overflow on add tuple")
+
+	_, err := lastPage.Add(b)
+	if errors.Is(err, errNoSpace) {
+		newPageID, p := s.allocatePage(pageType, name)
+		must(p.Add(b))
+		lastPage.Header.NextPage = newPageID
+		lastPageID = newPageID
+	}
+
 	return lastPageID
 }
 
@@ -360,7 +367,7 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 }
 
 func must[T any](v T, err error) T {
-	debugAssert(err == nil, err.Error())
+	debugAsserErr(err, "")
 	return v
 }
 
@@ -368,4 +375,8 @@ func debugAssert(expectTrue bool, format string, args ...any) {
 	if assertionsEnabled && !expectTrue {
 		panic(fmt.Sprintf(format, args...))
 	}
+}
+
+func debugAsserErr(err error, format string, args ...any) {
+	debugAssert(err == nil,  format + ". Unrecovable error: " + err.Error(), args...)
 }
