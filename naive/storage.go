@@ -92,7 +92,9 @@ func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
 			FieldTypeV: f,
 		})
 	}
-	debugAssert(len(schemaEntries) != 0, "no schema entries found")
+	if len(schemaEntries) == 0 {
+		return fmt.Errorf("empty schema provided")
+	}
 
 	// need to add schema first, as inside we're looking into directory - but there's no directory entry yet
 	// but to create directory entry, we need first page id
@@ -141,6 +143,8 @@ func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
 		must(p.Add(b))
 		lastPage.Header.NextPage = newPageID
 		lastPageID = newPageID
+	} else {
+		debugAsserErr(err, "unknown error when adding tuple")
 	}
 
 	return lastPageID
@@ -164,6 +168,8 @@ func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
 		newPageID, p := s.allocatePage(DirectoryPageType, directoryName)
 		must(p.Add(d))
 		lastPage.Header.NextPage = newPageID
+	} else {
+		debugAsserErr(err, "unknown error when adding dir tuple")
 	}
 }
 

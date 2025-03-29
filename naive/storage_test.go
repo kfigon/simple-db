@@ -123,9 +123,12 @@ func TestSerializeStorage(t *testing.T) {
 
 		data := SerializeDb(s)
 
+		assert.Equal(t, len(s.allPages), len(data) / PageSize)
+
 		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
 		assert.NoError(t, err)
-		assert.Equal(t, s.allSchema(), recoveredDb.allSchema()) // schema page is there. but slot is empty
+		assert.Equal(t, s.allPages, recoveredDb.allPages)
+		assert.Equal(t, s.allSchema(), recoveredDb.allSchema()) // schema page is there. but slot is empty. compare slot arrays
 		assert.Equal(t, len(s.allPages), len(recoveredDb.allPages))
 		assert.Equal(t, len(s.allPages), 1+1+2 +2) // root + directory + 2x schema + 2x data
 	})
