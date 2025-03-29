@@ -281,6 +281,9 @@ func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 func (s *Storage) allSchema() Schema {
 	schema := Schema{}
 	for dir := range DirectoryEntriesIterator(s) {
+		if dir.PageTyp != SchemaPageType {
+			continue
+		}
 		t := TableSchema{}
 		for sch := range NewEntityIterator(s, SchemaPageType, dir.Name) {
 			entry := must(DeserializeSchemaTuple(sch))
@@ -340,7 +343,9 @@ func SerializeDb(s *Storage) []byte {
 	for _, v := range s.allPages[1:] {
 		out.Write(v.Serialize())
 	}
-	return out.Bytes()
+	res := out.Bytes()
+	debugAssert(len(res) % PageSize == 0, "serialized database should be multiplication of page size")
+	return res
 }
 
 func DeserializeDb(r io.Reader) (*Storage, error) {

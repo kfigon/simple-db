@@ -109,11 +109,14 @@ func (g *GenericPage) Put(r SlotIdx, b []byte) error {
 }
 
 func (g *GenericPage) Serialize() []byte {
-	return SerializeAll(
+	got := SerializeAll(
 		SerializeInt(int32(g.Header.PageTyp)),
 		SerializeInt(int32(g.Header.NextPage)),
 		SerializeInt(int32(g.Header.SlotArraySize)),
 		g.SlotArray.Serialize())
+
+	debugAssert(len(got) == PageSize, "generic page size should be consistent")
+	return got
 }
 
 func Deserialize(r io.Reader) (*GenericPage, error) {
@@ -131,7 +134,7 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 		return nil, fmt.Errorf("error deserializing page header: %w", err)
 	}
 
-	slotted, err := DeserializeSlotted(bytes[4*3:], int(header.SlotArraySize))
+	slotted, err := DeserializeSlotted(bytes[4*3:PageSize], int(header.SlotArraySize))
 	if err != nil {
 		return nil, err
 	}

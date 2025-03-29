@@ -96,10 +96,10 @@ func TestSerializeStorage(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, s.allSchema(), recoveredDb.allSchema())
 		assert.Equal(t, len(s.allPages), len(recoveredDb.allPages))
-		assert.Equal(t, len(s.allPages), 1)
+		assert.Equal(t, len(s.allPages), 2) // root and directory
 	})
 
-	t.Run("sing table", func(t *testing.T) {
+	t.Run("single table", func(t *testing.T) {
 		s := NewStorage()
 		sql := `create table foobar(abc int, asdf boolean, xxx string)`
 		assert.NoError(t, execute(t, s, sql))
@@ -109,8 +109,8 @@ func TestSerializeStorage(t *testing.T) {
 		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
 		assert.NoError(t, err)
 		assert.Equal(t, s.allSchema(), recoveredDb.allSchema())
-		assert.Equal(t, len(s.allPages), len(recoveredDb.allPages))
-		assert.Equal(t, len(s.allPages), 1+1+1)
+		assert.Equal(t, len(s.allPages), len(recoveredDb.allPages), "length of old and recovered")
+		assert.Equal(t, 1+1+1+1, len(s.allPages)) // root, dir and schema and empty data
 	})
 
 	t.Run("whole db state", func(t *testing.T) {
@@ -125,7 +125,7 @@ func TestSerializeStorage(t *testing.T) {
 
 		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
 		assert.NoError(t, err)
-		assert.Equal(t, s.allSchema(), recoveredDb.allSchema())
+		assert.Equal(t, s.allSchema(), recoveredDb.allSchema()) // schema page is there. but slot is empty
 		assert.Equal(t, len(s.allPages), len(recoveredDb.allPages))
 		assert.Equal(t, len(s.allPages), 1+1+2 +2) // root + directory + 2x schema + 2x data
 	})

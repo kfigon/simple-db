@@ -76,7 +76,6 @@ func (s *Slotted) hasSpace(newData int) bool {
 	return int(s.lastOffset)-newData-(len(s.Indexes)*rowIdSize) > 0
 }
 
-// todo: when serializing wrapping page - remember to add size of slot array
 func (s *Slotted) Serialize() []byte {
 	var buf bytes.Buffer
 	for _, id := range s.Indexes {
@@ -95,7 +94,8 @@ func DeserializeSlotted(b []byte, slotArrayLen int) (*Slotted, error) {
 	originalSlice := b
 
 	p := NewSlotted(len(b))
-	var lastOffset *PageOffset
+	lastOffset := PageOffset(len(b))
+	debugAssert(lastOffset <= PageSize, "last offset can't be bigger than page size")
 
 	for range slotArrayLen {
 		i, err := DeserializeIntAndEat(&b)
@@ -105,12 +105,12 @@ func DeserializeSlotted(b []byte, slotArrayLen int) (*Slotted, error) {
 		ithPageOffset := PageOffset(i)
 		p.Indexes = append(p.Indexes, ithPageOffset)
 
-		if lastOffset == nil || *lastOffset > ithPageOffset { // just min
-			lastOffset = &ithPageOffset
+		if lastOffset > ithPageOffset { // just min
+			lastOffset = ithPageOffset
 		}
 	}
-	p.lastOffset = *lastOffset
-	copy(p.CellData[*lastOffset:], originalSlice[*lastOffset:])
+	p.lastOffset = lastOffset
+	copy(p.CellData[lastOffset:], originalSlice[lastOffset:])
 
 	return p, nil
 }
