@@ -143,7 +143,7 @@ type PageIterator iter.Seq2[PageID, *GenericPage]
 func NewPageIterator(storage *Storage, startingPage PageID) PageIterator {
 	currentPageId := startingPage
 	return func(yield func(PageID, *GenericPage) bool) {
-		for currentPageId != 0 {
+		for currentPageId != 0 && int(currentPageId) < len(storage.allPages){
 			currentPage := &storage.allPages[currentPageId]
 			if !yield(currentPageId, currentPage) {
 				break

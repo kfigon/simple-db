@@ -367,7 +367,7 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 }
 
 func must[T any](v T, err error) T {
-	debugAsserErr(err, "")
+	debugAsserErr(err, "expected no error")
 	return v
 }
 
@@ -378,5 +378,5 @@ func debugAssert(expectTrue bool, format string, args ...any) {
 }
 
 func debugAsserErr(err error, format string, args ...any) {
-	debugAssert(err == nil,  format + ". Unrecovable error: " + err.Error(), args...)
+	debugAssert(err == nil, format, args...)
 }

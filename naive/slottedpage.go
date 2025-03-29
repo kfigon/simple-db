@@ -129,9 +129,8 @@ type CellIterator iter.Seq[[]byte]
 func (s *Slotted) Iterator() CellIterator {
 	return func(yield func([]byte) bool) {
 		for slotId := range s.SlotIdxIterator(){
-			d, err := s.Read(SlotIdx(slotId))
-			// todo: we should handle the error
-			if  err != nil || !yield(d) {
+			d := must(s.Read(slotId))
+			if !yield(d) {
 				return
 			}
 		}
