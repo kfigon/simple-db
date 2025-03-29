@@ -25,10 +25,14 @@ func NewRootPage(directoryStart PageID) RootPage {
 const MagicNumber int32 = 0xc0de
 
 func (r *RootPage) Serialize() []byte {
-	return SerializeAll(
+	got := SerializeAll(
 		SerializeInt(r.MagicNumber),
 		SerializeInt(r.PageSize),
-		SerializeInt(int32(r.DirectoryPageStart)))
+		SerializeInt(int32(r.DirectoryPageStart)),
+		make([]byte, PageSize-4*3),
+	)
+	debugAssert(len(got) == PageSize, "root page should also be size of a page")
+	return got
 }
 
 func DeserializeRootPage(r io.Reader) (*RootPage, error) {

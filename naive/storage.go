@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-const PageSize = 4*1096
+const PageSize = 4*1024
 const directoryName =  "catalog_directory"
 const assertionsEnabled = true
 

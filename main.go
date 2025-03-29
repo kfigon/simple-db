@@ -62,10 +62,12 @@ func handleSql(storage *naive.Storage, s string) error {
 		if err = storage.CreateTable(*stmt); err != nil {
 			return fmt.Errorf("statement error: %w", err)
 		}
+		fmt.Println("created table", stmt.Table)
 	case *sql.InsertStatement:
 		if err = storage.Insert(*stmt); err != nil {
 			return fmt.Errorf("statement error: %w", err)
 		}
+		fmt.Println("inserted into table", stmt.Table)
 	case *sql.SelectStatement:
 		res, err := storage.Select(*stmt)
 		if err != nil {
