@@ -131,7 +131,7 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 		return nil, fmt.Errorf("error deserializing page header: %w", err)
 	}
 
-	slotted, err := DeserializeSlotted(bytes, int(header.SlotArraySize))
+	slotted, err := DeserializeSlotted(bytes[4*3:], int(header.SlotArraySize))
 	if err != nil {
 		return nil, err
 	}

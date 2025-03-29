@@ -88,6 +88,31 @@ func TestNaiveStorage(t *testing.T) {
 }
 
 func TestSerializeStorage(t *testing.T) {
+	t.Run("serialize empty", func(t *testing.T) {
+		s := NewStorage()
+		data := SerializeDb(s)
+
+		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
+		assert.NoError(t, err)
+		assert.Equal(t, s.allSchema(), recoveredDb.allSchema())
+		assert.Equal(t, len(s.allPages), len(recoveredDb.allPages))
+		assert.Equal(t, len(s.allPages), 1)
+	})
+
+	t.Run("sing table", func(t *testing.T) {
+		s := NewStorage()
+		sql := `create table foobar(abc int, asdf boolean, xxx string)`
+		assert.NoError(t, execute(t, s, sql))
+
+		data := SerializeDb(s)
+
+		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
+		assert.NoError(t, err)
+		assert.Equal(t, s.allSchema(), recoveredDb.allSchema())
+		assert.Equal(t, len(s.allPages), len(recoveredDb.allPages))
+		assert.Equal(t, len(s.allPages), 1+1+1)
+	})
+
 	t.Run("whole db state", func(t *testing.T) {
 		s := NewStorage()
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))

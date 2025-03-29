@@ -354,13 +354,13 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 	if err != nil {
 		return nil, err
 	}
-	data = data[:PageSize]
+	data = data[PageSize:]
 	for len(data) != 0 {
 		p, err := Deserialize(bytes.NewReader(data))
 		if err != nil {
 			return nil, err
 		}
-		data = data[:PageSize]
+		data = data[PageSize:]
 		pages = append(pages, *p)
 	}
 	return &Storage{root: *root, allPages: pages}, nil
