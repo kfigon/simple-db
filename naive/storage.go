@@ -44,12 +44,12 @@ type Schema map[TableName]TableSchema
 
 type Storage struct {
 	root RootPage
-	allPages []GenericPage // pageId - just an index here. Page 0 is root, so noop
+	allPages []*GenericPage // pageId - just an index here. Page 0 is root, so noop
 }
 
 func NewStorage() *Storage {
 	s := &Storage{
-		allPages: []GenericPage{GenericPage{}}, // empty 'root' page in the beginning
+		allPages: []*GenericPage{&GenericPage{}}, // empty 'root' page in the beginning
 	}
 
 	dirID, _ := s.allocatePage(DirectoryPageType, directoryName)
@@ -61,7 +61,7 @@ func NewStorage() *Storage {
 func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericPage) {
 	p := NewPage(pageTyp, PageSize)
 	newPageID := PageID(len(s.allPages))
-	s.allPages = append(s.allPages, *p)
+	s.allPages = append(s.allPages, p)
 
 	// link last page to the new one
 	if startId, ok := FindStartingPageForEntity(s, pageTyp, name); ok {
@@ -360,7 +360,11 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 		return nil, err
 	}
 
-	pages := []GenericPage{{}}
+	if len(data) % PageSize != 0 {
+		return nil, fmt.Errorf("read data should be multiplication of page size, got %d", len(data))
+	}
+	
+	pages := []*GenericPage{{}}
 	root, err := DeserializeRootPage(bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
@@ -372,7 +376,7 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 			return nil, err
 		}
 		data = data[PageSize:]
-		pages = append(pages, *p)
+		pages = append(pages, p)
 	}
 	return &Storage{root: *root, allPages: pages}, nil
 }
