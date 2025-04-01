@@ -135,7 +135,7 @@ func TestSerializeStorage(t *testing.T) {
 			assert.Equal(t, s.allPages[i].SlotArray, recoveredDb.allPages[i].SlotArray, "slot array on page %d", i)		
 		}
 		assert.Equal(t, s.allPages, recoveredDb.allPages)
-		assert.Equal(t, s.allSchema(), recoveredDb.allSchema())
+		assert.Equal(t, s.AllSchema(), recoveredDb.AllSchema())
 	})
 }
 

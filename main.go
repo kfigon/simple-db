@@ -14,6 +14,7 @@ func main() {
 	fmt.Println("'quit' or 'exit' to stop")
 	fmt.Println("'dump <filename>' to dump current db to <filename>")
 	fmt.Println("'load <filename>' to load <filename> to db")
+	fmt.Println("'schema' - to print tables and schema")
 	fmt.Println("or type <sql statement> to execute")
 
 	storage := naive.NewStorage()
@@ -42,6 +43,19 @@ func main() {
 				fmt.Printf("failed to load file: %q. Current db is not changed\n", fileName)
 			} else {
 				fmt.Printf("db refreshed from %q\n", fileName)
+			}
+		} else if ok, _ := hasPrefixAndTrim(s, "schema"); ok {
+			schema := storage.AllSchema()
+			fmt.Println()
+			if len(schema) == 0 {
+				fmt.Println("empty schema")
+				continue
+			}
+			for tableName, tableSchema := range schema{
+				fmt.Println(tableName+":")
+				q := schemaToQuery(tableSchema)
+				fmt.Println(fmtQueryRes(q))
+				fmt.Println()
 			}
 		} else {
 			if err := handleSql(storage, s); err != nil {
@@ -132,4 +146,15 @@ func loadFile(s **naive.Storage, fileName string) error {
 
 	*s = newDb
 	return nil
+}
+
+func schemaToQuery(sch naive.TableSchema) naive.QueryResult {
+	columns := [][]string{}
+	for fieldName, fieldType := range sch {
+		columns = append(columns, []string{ string(fieldName), fieldType.String() })
+	}
+	return naive.QueryResult{
+		Header: []string{"column name", "column type"},
+		Values: columns,
+	}
 }

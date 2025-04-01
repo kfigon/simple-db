@@ -21,6 +21,15 @@ const (
 	Float
 )
 
+func (f FieldType) String() string {
+	return [...]string {
+		"Int32",
+		"String",
+		"Boolean",
+		"Float",
+	}[f]
+}
+
 func FieldTypeFromString(s string) (FieldType, error) {
 	switch s {
 	case "int": return Int32, nil
@@ -284,7 +293,7 @@ func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 	return out, nil
 }
 
-func (s *Storage) allSchema() Schema {
+func (s *Storage) AllSchema() Schema {
 	schema := Schema{}
 	for dir := range DirectoryEntriesIterator(s) {
 		if dir.PageTyp != SchemaPageType {
