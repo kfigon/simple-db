@@ -12,9 +12,10 @@ import (
 func main() {
 	fmt.Println("hello, type commands:")
 	fmt.Println("'quit' or 'exit' to stop")
-	fmt.Println("'dump <filename>' to dump current db to <filename>")
-	fmt.Println("'load <filename>' to load <filename> to db")
+	fmt.Println("'dump_db <filename>' to dump current db to <filename>")
+	fmt.Println("'load_db <filename>' to load <filename> to db")
 	fmt.Println("'schema' - to print tables and schema")
+	fmt.Println("'load_sql <filename>' - execute sql file, statements separated by newlines")
 	fmt.Println("or type <sql statement> to execute")
 
 	storage := naive.NewStorage()
@@ -32,13 +33,13 @@ func main() {
 		} else if s == "quit" || s == "exit" {
 			fmt.Println("auf wiedersehen!")
 			return
-		} else if ok, fileName := hasPrefixAndTrim(s, "dump "); ok {
+		} else if ok, fileName := hasPrefixAndTrim(s, "dump_db "); ok {
 			if err = dumpDbToFile(storage, fileName); err != nil {
 				fmt.Println(err)
 			} else {
 				fmt.Printf("db wrote to %q\n", fileName)
 			}
-		} else if ok, fileName := hasPrefixAndTrim(s, "load "); ok {
+		} else if ok, fileName := hasPrefixAndTrim(s, "load_db "); ok {
 			if err = loadFile(&storage, fileName); err != nil {
 				fmt.Printf("failed to load file: %q. Current db is not changed\n", fileName)
 			} else {
@@ -56,6 +57,12 @@ func main() {
 				q := schemaToQuery(tableSchema)
 				fmt.Println(fmtQueryRes(q))
 				fmt.Println()
+			}
+		} else if ok, fileName := hasPrefixAndTrim(s, "load_sql "); ok {
+			if err = executeCommandsFromFile(storage, fileName); err != nil {
+				fmt.Println("error while processing file: ", err)
+			} else {
+				fmt.Println("file processed")
 			}
 		} else {
 			if err := handleSql(storage, s); err != nil {
@@ -130,6 +137,20 @@ func dumpDbToFile(s *naive.Storage, fileName string) error {
 		return fmt.Errorf("error writing to file %v: %w", fileName, err)
 	}
 
+	return nil
+}
+
+func executeCommandsFromFile(s *naive.Storage, fileName string) error {
+	f, err := os.ReadFile(fileName)
+	if err != nil {
+		return fmt.Errorf("error reading the file %v: %w", fileName, err)
+	}
+	data := strings.Replace(string(f), "\r", "", -1)
+	for _, line := range strings.Split(data, "\n") {
+		if err := handleSql(s, line); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

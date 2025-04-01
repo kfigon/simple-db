@@ -1,0 +1,5 @@
+create table foobar(id int, name string)
+create table xxx(email string)
+insert into foobar(id, name) VALUES (123, "asdf")
+insert into foobar(id, name) VALUES (456, "baz")
+insert into xxx(email) VALUES ("john@doe.com")
