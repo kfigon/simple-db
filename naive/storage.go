@@ -185,11 +185,7 @@ func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
 func (s *Storage) Insert(stmt sql.InsertStatement) error {
 	schema := []FieldName{}
 	schemaLookup := map[FieldName]FieldType{} 
-	for d := range NewEntityIterator(s, SchemaPageType, stmt.Table) {
-		data, err := DeserializeSchemaTuple(d)
-		if err != nil {
-			return err
-		}
+	for data := range SchemaEntriesIterator(s, stmt.Table){
 		schemaLookup[data.FieldNameV] = data.FieldTypeV
 		schema = append(schema, data.FieldNameV)
 	}
@@ -258,11 +254,7 @@ func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 	schemaLookup := map[FieldName]FieldType{} 
 	var zero QueryResult
 
-	for d := range NewEntityIterator(s, SchemaPageType, stmt.Table) {
-		data, err := DeserializeSchemaTuple(d)
-		if err != nil {
-			return zero, err
-		}
+	for data := range SchemaEntriesIterator(s, stmt.Table){
 		schemaLookup[data.FieldNameV] = data.FieldTypeV
 		schema = append(schema, data.FieldNameV)
 	}
@@ -300,8 +292,7 @@ func (s *Storage) AllSchema() Schema {
 			continue
 		}
 		t := TableSchema{}
-		for sch := range NewEntityIterator(s, SchemaPageType, dir.Name) {
-			entry := must(DeserializeSchemaTuple(sch))
+		for entry := range SchemaEntriesIterator(s, dir.Name){
 			t[entry.FieldNameV] = entry.FieldTypeV	
 		}
 		if len(t) != 0 {

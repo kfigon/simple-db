@@ -203,6 +203,17 @@ func DirectoryEntriesIterator(storage *Storage) iter.Seq[DirectoryTuple] {
 	}
 }
 
+func SchemaEntriesIterator(storage *Storage, name string) iter.Seq[SchemaTuple] {
+	return func(yield func(SchemaTuple) bool) {
+		for d := range NewEntityIterator(storage, SchemaPageType, name){
+			sch := must(DeserializeSchemaTuple(d))
+			if !yield(*sch) {
+				break
+			}
+		}
+	}
+}
+
 // for lookup where given data/index page starts 
 type DirectoryTuple struct {
 	PageTyp PageType
