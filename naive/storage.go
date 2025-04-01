@@ -283,7 +283,7 @@ func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 	for d := range NewEntityIterator(s, DataPageType, stmt.Table) {
 		row := parseToRow(d, schema, schemaLookup)
 
-		vals := []string{}
+		vals := make([]string, 0, len(columnsToQuery))
 		for _, col := range columnsToQuery {
 			vals = append(vals, fmt.Sprint(row[FieldName(col)].Data))
 		}

@@ -23,7 +23,7 @@
     * [x] add tuple to last page, do not create pages excessively
     * [x] generic serialization/deserialization
     * [ ] overflow pages
-* [ ] too for debugging data on disk
+* [ ] tool for debugging data on disk
 * [ ] indexes with btree on disk
 * [ ] transactions, acid
 * [ ] concurrency

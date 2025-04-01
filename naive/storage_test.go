@@ -14,7 +14,7 @@ func TestNaiveStorage(t *testing.T) {
 		sql := `create table foobar(abc int, asdf boolean, xxx string)`
 		assert.NoError(t, execute(t, s, sql))
 
-		assert.Equal(t, s.allSchema(), Schema{
+		assert.Equal(t, s.AllSchema(), Schema{
 			"foobar": TableSchema{
 			"abc":  Int32,
 			"asdf": Boolean,
@@ -94,7 +94,7 @@ func TestSerializeStorage(t *testing.T) {
 
 		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
 		assert.NoError(t, err)
-		assert.Equal(t, s.allSchema(), recoveredDb.allSchema())
+		assert.Equal(t, s.AllSchema(), recoveredDb.AllSchema())
 		assert.Equal(t, len(s.allPages), len(recoveredDb.allPages))
 		assert.Equal(t, len(s.allPages), 2) // root and directory
 	})
@@ -108,7 +108,7 @@ func TestSerializeStorage(t *testing.T) {
 
 		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
 		assert.NoError(t, err)
-		assert.Equal(t, s.allSchema(), recoveredDb.allSchema())
+		assert.Equal(t, s.AllSchema(), recoveredDb.AllSchema())
 		assert.Equal(t, len(s.allPages), len(recoveredDb.allPages), "length of old and recovered")
 		assert.Equal(t, 1+1+1+1, len(s.allPages)) // root, dir and schema and empty data
 	})
