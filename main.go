@@ -40,7 +40,7 @@ func main() {
 				fmt.Printf("db wrote to %q\n", fileName)
 			}
 		} else if ok, fileName := hasPrefixAndTrim(s, "load_db "); ok {
-			if err = loadFile(&storage, fileName); err != nil {
+			if err = loadFile(storage, fileName); err != nil {
 				fmt.Printf("failed to load file: %q. Current db is not changed\n", fileName)
 			} else {
 				fmt.Printf("db refreshed from %q\n", fileName)
@@ -154,7 +154,7 @@ func executeCommandsFromFile(s *naive.Storage, fileName string) error {
 	return nil
 }
 
-func loadFile(s **naive.Storage, fileName string) error {
+func loadFile(s *naive.Storage, fileName string) error {
 	f, err := os.Open(fileName)
 	if err != nil {
 		return fmt.Errorf("error reading the file: %w", err)
@@ -165,7 +165,7 @@ func loadFile(s **naive.Storage, fileName string) error {
 		return fmt.Errorf("error deserializing the file %q: %w", fileName, err)
 	}
 
-	*s = newDb
+	*s = *newDb
 	return nil
 }
 
