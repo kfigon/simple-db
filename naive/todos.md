@@ -3,7 +3,7 @@
     * [x] storage manager
     * [x] schema
     * [x] basic sql interpretation
-* [ ] binary serialization, pages, linked lists
+* [x] binary serialization, pages, linked lists
     * [x] just serialize the content, then recover. No live updates. No overflow pages
         * [x] serialize schema
         * [x] serialize data
@@ -13,7 +13,7 @@
         * [x] serialization in pages, but just ONE page per type. Serialize everything in single page
     * [x] integrate slotted pages in rest of the metadata and catalog
         * [x] Storage - serialize db header page
-        * [ ] Storage - de/serialize schema in new format. How to format it on disk? Keep schema cached inmem for efficiency
+        * [x] Storage - de/serialize schema in new format. How to format it on disk? Keep schema cached inmem for efficiency
         * [x] Storage - pageID allocations
         * [x] Storage - remove AllData, replace with page linked list read from catalog
         * [x] Storage - page iterator
