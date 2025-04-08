@@ -28,5 +28,5 @@
 * [ ] transactions, acid
 * [ ] concurrency
 * [ ] recovery
-* [x] operators
+* [x] operators - Row abstraction might be replaced by just array of columns, to reduce memory
 * [ ] use operators for queries
