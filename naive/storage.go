@@ -50,6 +50,7 @@ type ColumnData struct {
 
 type TableSchema map[FieldName]FieldType
 type Schema map[TableName]TableSchema
+type Row map[FieldName]ColumnData
 
 type Storage struct {
 	root RootPage
@@ -194,7 +195,7 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 		return fmt.Errorf("table %v does not exist", stmt.Table)
 	}
 	
-	inputLookup := map[FieldName]ColumnData{}
+	inputLookup := Row{}
 	for i := 0; i < len(stmt.Columns); i++ {
 		col := stmt.Columns[i]
 		val := stmt.Values[i]
@@ -303,8 +304,8 @@ func (s *Storage) AllSchema() Schema {
 	return schema
 }
 
-func parseToRow(bytes []byte, schema []FieldName, lookup map[FieldName]FieldType) map[FieldName]ColumnData {
-	out := map[FieldName]ColumnData{}
+func parseToRow(bytes []byte, schema []FieldName, lookup map[FieldName]FieldType) Row {
+	out := Row{}
 	for _, f := range schema {
 		typ := lookup[f]
 		cd := ColumnData{Typ: typ}

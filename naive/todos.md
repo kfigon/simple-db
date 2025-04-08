@@ -28,4 +28,5 @@
 * [ ] transactions, acid
 * [ ] concurrency
 * [ ] recovery
-* [ ] operators
+* [x] operators
+* [ ] use operators for queries
