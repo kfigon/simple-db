@@ -192,6 +192,18 @@ func NewEntityIterator(storage *Storage, pageType PageType, name string) TupleIt
 	return tuplesIterator(NewPageIterator(storage, startId))
 }
 
+func RowIterator(storage *Storage, name string, schema []FieldName, schemaLookup map[FieldName]FieldType) RowIter {
+	startId, _ := FindStartingPageForEntity(storage, DataPageType, name)
+	return func(yield func(Row) bool) {
+		for tup := range tuplesIterator(NewPageIterator(storage, startId)) {
+			row := parseToRow(tup, schema, schemaLookup)
+			if !yield(row) {
+				return
+			}
+		}
+	}
+}
+
 func DirectoryEntriesIterator(storage *Storage) iter.Seq[DirectoryTuple] {
 	return func(yield func(DirectoryTuple) bool) {
 		for d := range tuplesIterator(directoryPages(storage)) {

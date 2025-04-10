@@ -102,17 +102,22 @@ func handleSql(storage *naive.Storage, s string) error {
 }
 
 func fmtQueryRes(r naive.QueryResult) string {
-	var out string
-	out += strings.Join(r.Header, "\t")
-	out += "\n"
-	out += "------------------"
-	out += "\n"
-	for _, v := range r.Values {
-		out += strings.Join(v, "\t")
-		out += "\n"
+	header := make([]string, 0, len(r.Header))
+	for _, v := range r.Header {
+		header = append(header, string(v))
 	}
-	out += fmt.Sprintf("%d lines found", len(r.Values))
-	return out
+	
+	var out strings.Builder
+	out.WriteString(strings.Join(header, "\t"))
+	out.WriteString("\n")
+	out.WriteString("------------------")
+	out.WriteString("\n")
+	for _, v := range r.Values {
+		out.WriteString(strings.Join(v, "\t"))
+		out.WriteString("\n")
+	}
+	out.WriteString(fmt.Sprintf("%d lines found", len(r.Values)))
+	return out.String()
 }
 
 func hasPrefixAndTrim(s string, prefix string) (bool, string) {
@@ -175,7 +180,7 @@ func schemaToQuery(sch naive.TableSchema) naive.QueryResult {
 		columns = append(columns, []string{ string(fieldName), fieldType.String() })
 	}
 	return naive.QueryResult{
-		Header: []string{"column name", "column type"},
+		Header: []naive.FieldName{"column name", "column type"},
 		Values: columns,
 	}
 }

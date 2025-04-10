@@ -51,7 +51,7 @@ func TestNaiveStorage(t *testing.T) {
 		res, err := query(t, s, "select * from foobar")
 		assert.NoError(t, err)
 
-		assert.ElementsMatch(t, []string{"id", "name"}, res.Header)
+		assert.ElementsMatch(t, []FieldName{"id", "name"}, res.Header)
 		assert.Empty(t, res.Values)
 	})
 
@@ -64,7 +64,7 @@ func TestNaiveStorage(t *testing.T) {
 		res, err := query(t, s, "select * from foobar")
 		assert.NoError(t, err)
 
-		assert.ElementsMatch(t, []string{"id", "name"}, res.Header)
+		assert.ElementsMatch(t, []FieldName{"id", "name"}, res.Header)
 		assert.Len(t, res.Values, 2)
 
 		assert.ElementsMatch(t, []string{"123", "asdf"}, res.Values[0])
@@ -80,7 +80,7 @@ func TestNaiveStorage(t *testing.T) {
 		res, err := query(t, s, "select name, id from foobar")
 		assert.NoError(t, err)
 
-		assert.ElementsMatch(t, []string{"name", "id"}, res.Header)
+		assert.ElementsMatch(t, []FieldName{"name", "id"}, res.Header)
 		assert.Len(t, res.Values, 2)
 		assert.ElementsMatch(t, []string{"123", "asdf"}, res.Values[0])
 		assert.ElementsMatch(t, []string{"456", "baz"}, res.Values[1])

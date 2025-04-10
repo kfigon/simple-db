@@ -246,7 +246,7 @@ func parseType(v string, typ FieldType) (any, error) {
 }
 
 type QueryResult struct {
-	Header []string
+	Header []FieldName
 	Values [][]string
 }
 
@@ -273,11 +273,10 @@ func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 		Header: columnsToQuery,
 	}
 
-	for d := range NewEntityIterator(s, DataPageType, stmt.Table) {
-		row := parseToRow(d, schema, schemaLookup)
-
+	rowIt := RowIterator(s, stmt.Table, schema, schemaLookup)
+	for row := range Project(rowIt, columnsToQuery) {
 		vals := make([]string, 0, len(columnsToQuery))
-		for _, col := range columnsToQuery {
+		for _, col := range columnsToQuery{
 			vals = append(vals, fmt.Sprint(row[FieldName(col)].Data))
 		}
 		out.Values = append(out.Values, vals)
@@ -324,22 +323,21 @@ func parseToRow(bytes []byte, schema []FieldName, lookup map[FieldName]FieldType
 	return out
 }
 
-func colsToQuery(stmt sql.SelectStatement, schema TableSchema) ([]string, error) {
+func colsToQuery(stmt sql.SelectStatement, schema TableSchema) ([]FieldName, error) {
+	out := []FieldName{}
+
 	if stmt.HasWildcard {
-		cols := []string{}
 		for name := range schema {
-			cols = append(cols, string(name))
+			out = append(out, FieldName(name))
 		}
-		return cols, nil
+		return out, nil
 	}
 	
-	out := []string{}
 	for _, v := range stmt.Columns {
 		if _, ok := schema[FieldName(v)]; !ok {
 			return nil, fmt.Errorf("unknown column %v in table %v", v, stmt.Table)
 		}
-
-		out = append(out, v)
+		out = append(out, FieldName(v))
 	}
 	return out, nil
 }
