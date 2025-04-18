@@ -274,7 +274,12 @@ func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 	}
 
 	rowIt := RowIterator(s, stmt.Table, schema, schemaLookup)
-	for row := range Project(rowIt, columnsToQuery) {
+	if stmt.Where != nil {
+		rowIt = Select(rowIt, buildPredicate(stmt.Where.Predicate))
+	}
+	projection := Project(rowIt, columnsToQuery) 
+
+	for row := range projection {
 		vals := make([]string, 0, len(columnsToQuery))
 		for _, col := range columnsToQuery{
 			vals = append(vals, fmt.Sprint(row[FieldName(col)].Data))
@@ -283,6 +288,37 @@ func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 	}
 
 	return out, nil
+}
+
+// todo: add error handling
+func buildPredicate(pred sql.BoolExpression) func(Row)bool {
+	out := func(r Row) bool {return true}
+
+	// todo: use internal function row -> columnData to effectively compose predicate func
+	switch v := pred.(type) {
+	case sql.BinaryBoolExpression:
+		left := buildPredicate(v.Left)
+		right := buildPredicate(v.Right)
+		op := v.Operator
+		if op.Lexeme == "and" {
+			return func(r Row) bool {
+				return left(r) && right(r)
+			}
+		} else if op.Lexeme == "or" {
+			return func(r Row) bool {
+				return left(r) || right(r)
+			}
+		} else if op.Lexeme == "=" {
+			return func(r Row) bool {
+				return left(r) == right(r)
+			}
+		}
+		debugAssert(false, "invalid operator for where predicate %v", op)
+	case sql.ValueLiteral: return out
+	case sql.ColumnLiteral: return out
+	default: debugAssert(false, "unknown predicate type received %T", v)
+	}
+	return out
 }
 
 func (s *Storage) AllSchema() Schema {
