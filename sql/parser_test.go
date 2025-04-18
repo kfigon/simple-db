@@ -64,7 +64,7 @@ func TestParser(t *testing.T) {
 		},
 		{
 			desc: "select with more predicates",
-			input: `select * from foobar where a = 4 and b = "foobar"`,
+			input: `select * from foobar where a = 4 and b = "asdf"`,
 			expected: &SelectStatement{
 				HasWildcard: true,
 				Table: "foobar",
@@ -78,7 +78,7 @@ func TestParser(t *testing.T) {
 					Right: BinaryBoolExpression{
 						Operator: Token{Operator, "=", 1},
 						Left: ColumnLiteral{Token{Identifier, "b", 1}},
-						Right: ValueLiteral{Token{Identifier, "foobar", 1}},
+						Right: ValueLiteral{Token{String, "asdf", 1}},
 					},
 				}}},
 		},

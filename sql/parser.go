@@ -55,51 +55,65 @@ func (p *parser) parseSelectStatement() (Statement, error) {
 	var where *WhereStatement
 	if p.peek().Typ == Where {
 		p.next()
-		whereRes, err := p.parseWhere()
+		whreSt, err := p.parseWhere()
 		if err != nil {
 			return nil, fmt.Errorf("error parsing where statement: %w", err)
 		}
-		where = whereRes
+		where = whreSt
 	}
 
 	return &SelectStatement{columns, hasWildcard, tableName, where}, nil
 }
 
 func (p *parser) parseWhere() (*WhereStatement, error) {
+	pred, err := p.parsePredicate()
+	if err != nil {
+		return nil, fmt.Errorf("error parsing predicate: %w", err)
+	}
+
+	next := p.peek()
+	if next.Typ == Operator {
+		p.next()
+		op := next
+		right,err := p.parsePredicate()
+		if err != nil {
+			return nil, fmt.Errorf("error parsing rhs of predicate: %w", err)
+		}
+		return &WhereStatement{BinaryBoolExpression{
+			Operator: op,
+			Left: pred,
+			Right: right,
+		}},nil
+	}
+
+	return &WhereStatement{pred},nil
+}
+
+func (p *parser) parsePredicate() (BoolExpression, error) {
 	t := p.peek()
 	if t.Typ == Boolean {
-		return &WhereStatement{ValueLiteral{t}}, nil
+		return ValueLiteral{t}, nil
 	} else if t.Typ == Identifier {
 		left := p.next()
 		op := p.next()
 
 		if op.Typ != Operator {
 			return nil, fmt.Errorf("error parsing binary expression on predicate, expected operator, got %v", t)
-		} else if op.Lexeme == "and" || op.Lexeme == "or" {
-			right, err := p.parseWhere()
-			if err != nil {
-				return nil, err
-			}
-			return &WhereStatement{BinaryBoolExpression{
-				Operator: op,
-				Left: ColumnLiteral{left},
-				Right: right.Predicate,
-			}},nil
 		}
 
 		right := p.next()
 		if right.Typ == Identifier {
-			return &WhereStatement{BinaryBoolExpression{
+			return BinaryBoolExpression{
 				Operator: op,
 				Left: ColumnLiteral{left},
 				Right: ColumnLiteral{right},
-			}}, nil
+			}, nil
 		} else if right.Typ == Number || right.Typ == Boolean || right.Typ == String {
-			return &WhereStatement{BinaryBoolExpression{
+			return BinaryBoolExpression{
 				Operator: op,
 				Left: ColumnLiteral{left},
 				Right: ValueLiteral{right},
-			}}, nil
+			}, nil
 		}
 		
 		return nil, fmt.Errorf("invalid right side of the binary expression, got %v", right)
