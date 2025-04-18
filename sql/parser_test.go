@@ -30,6 +30,47 @@ func TestParser(t *testing.T) {
 			},
 		},
 		{
+			desc: "select with where",
+			input: "select * from foobar where a = 4",
+			expected: &SelectStatement{
+				HasWildcard: true,
+				Table: "foobar",
+				Where: &WhereStatement{BinaryBoolExpression{
+					Operator: Token{Operator, "=", 1},
+					Left: ColumnLiteral{Token{Identifier, "a", 1}},
+					Right: ValueLiteral{Token{Number, "4", 1}},
+				}},
+			},
+		},
+		{
+			desc: "select with where literal",
+			input: "select * from foobar where true",
+			expected: &SelectStatement{
+				HasWildcard: true,
+				Table: "foobar",
+				Where: &WhereStatement{ValueLiteral{Token{Boolean, "true", 1}}}},
+		},
+		{
+			desc: "select with more predicates",
+			input: `select * from foobar where a = 4 and b = "foobar"`,
+			expected: &SelectStatement{
+				HasWildcard: true,
+				Table: "foobar",
+				Where: &WhereStatement{BinaryBoolExpression{
+					Operator: Token{Operator, "and",1},
+					Left: BinaryBoolExpression{
+						Operator: Token{Operator, "=", 1},
+						Left: ColumnLiteral{Token{Identifier, "a", 1}},
+						Right: ValueLiteral{Token{Number, "4", 1}},
+					},
+					Right: BinaryBoolExpression{
+						Operator: Token{Operator, "=", 1},
+						Left: ColumnLiteral{Token{Identifier, "b", 1}},
+						Right: ValueLiteral{Token{Identifier, "foobar", 1}},
+					},
+				}}},
+		},
+		{
 			desc: "create 1",
 			input: `create table foobar(
 				abc int,

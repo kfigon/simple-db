@@ -107,6 +107,8 @@ func Lex(in string) []Token {
 			return t
 		} else if lower == "true" || lower == "false" {
 			return Boolean
+		} else if lower == "and" || lower == "or" {
+			return Operator
 		}
 		return Identifier
 	}

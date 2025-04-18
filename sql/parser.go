@@ -45,7 +45,7 @@ func (p *parser) parseSelectStatement() (Statement, error) {
 	}
 	t := p.next()
 	if t.Typ == Identifier {
-		return &SelectStatement{columns, hasWildcard, t.Lexeme}, nil
+		return &SelectStatement{columns, hasWildcard, t.Lexeme, nil}, nil
 	}
 	return nil, fmt.Errorf("error parsing Select statement, unknown token: %v", t)
 }

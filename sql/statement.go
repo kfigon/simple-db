@@ -4,10 +4,15 @@ type Statement interface{
 	statementTag()
 }
 
+type WhereStatement struct {
+	Predicate BoolExpression	
+}
+
 type SelectStatement struct {
 	Columns []string
 	HasWildcard bool
 	Table string
+	Where *WhereStatement
 }
 func (*SelectStatement) statementTag(){}
 
@@ -28,3 +33,25 @@ type ColumnDefinition struct {
 }
 
 func (*CreateStatement) statementTag(){}
+
+
+type BoolExpression interface {
+	expressionTag()
+}
+
+type BinaryBoolExpression struct {
+	Operator Token
+	Left BoolExpression
+	Right BoolExpression
+}
+func (BinaryBoolExpression) expressionTag(){}
+
+type ValueLiteral struct {
+	Tok Token
+}
+func (ValueLiteral) expressionTag(){}
+
+type ColumnLiteral struct {
+	Name Token
+}
+func (ColumnLiteral) expressionTag(){}
