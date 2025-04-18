@@ -44,10 +44,68 @@ func (p *parser) parseSelectStatement() (Statement, error) {
 		}
 	}
 	t := p.next()
+	tableName := ""
 	if t.Typ == Identifier {
-		return &SelectStatement{columns, hasWildcard, t.Lexeme, nil}, nil
+		tableName = t.Lexeme
+	} else {
+		return nil, fmt.Errorf("expected table name, got %v", t)
+	} 
+
+
+	var where *WhereStatement
+	if p.peek().Typ == Where {
+		p.next()
+		whereRes, err := p.parseWhere()
+		if err != nil {
+			return nil, fmt.Errorf("error parsing where statement: %w", err)
+		}
+		where = whereRes
 	}
-	return nil, fmt.Errorf("error parsing Select statement, unknown token: %v", t)
+
+	return &SelectStatement{columns, hasWildcard, tableName, where}, nil
+}
+
+func (p *parser) parseWhere() (*WhereStatement, error) {
+	t := p.peek()
+	if t.Typ == Boolean {
+		return &WhereStatement{ValueLiteral{t}}, nil
+	} else if t.Typ == Identifier {
+		left := p.next()
+		op := p.next()
+
+		if op.Typ != Operator {
+			return nil, fmt.Errorf("error parsing binary expression on predicate, expected operator, got %v", t)
+		} else if op.Lexeme == "and" || op.Lexeme == "or" {
+			right, err := p.parseWhere()
+			if err != nil {
+				return nil, err
+			}
+			return &WhereStatement{BinaryBoolExpression{
+				Operator: op,
+				Left: ColumnLiteral{left},
+				Right: right.Predicate,
+			}},nil
+		}
+
+		right := p.next()
+		if right.Typ == Identifier {
+			return &WhereStatement{BinaryBoolExpression{
+				Operator: op,
+				Left: ColumnLiteral{left},
+				Right: ColumnLiteral{right},
+			}}, nil
+		} else if right.Typ == Number || right.Typ == Boolean || right.Typ == String {
+			return &WhereStatement{BinaryBoolExpression{
+				Operator: op,
+				Left: ColumnLiteral{left},
+				Right: ValueLiteral{right},
+			}}, nil
+		}
+		
+		return nil, fmt.Errorf("invalid right side of the binary expression, got %v", right)
+	}
+
+	return nil, fmt.Errorf("unknown token when parsing where statement: %v", t)
 }
 
 func (p *parser) parseCreateStatement() (*CreateStatement, error) {

@@ -30,7 +30,7 @@ func TestParser(t *testing.T) {
 			},
 		},
 		{
-			desc: "select with where",
+			desc: "select with column where",
 			input: "select * from foobar where a = 4",
 			expected: &SelectStatement{
 				HasWildcard: true,
@@ -49,6 +49,18 @@ func TestParser(t *testing.T) {
 				HasWildcard: true,
 				Table: "foobar",
 				Where: &WhereStatement{ValueLiteral{Token{Boolean, "true", 1}}}},
+		},
+		{
+			desc: "select with where boolean",
+			input: "select * from foobar where a = true",
+			expected: &SelectStatement{
+				HasWildcard: true,
+				Table: "foobar",
+				Where: &WhereStatement{BinaryBoolExpression{
+					Operator:  Token{Operator, "=", 1},
+					Left: ColumnLiteral{Token{Identifier, "a", 1}},
+					Right: ValueLiteral{Token{Boolean, "true", 1}},
+				}}},
 		},
 		{
 			desc: "select with more predicates",
