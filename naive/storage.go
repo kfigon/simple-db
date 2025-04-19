@@ -292,33 +292,77 @@ func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 
 // todo: add error handling
 func buildPredicate(pred sql.BoolExpression) func(Row)bool {
-	out := func(r Row) bool {return true}
+	return func(r Row) bool {
+		col := predBuilder(pred, r)
+		debugAssert(col.Typ == Boolean, "boolean predicate required, got %v", col.Typ)
+		return col.Data.(bool)
+	}
+}
 
-	// todo: use internal function row -> columnData to effectively compose predicate func
+// todo: refactor, this is ugly
+func predBuilder(pred sql.BoolExpression, r Row) ColumnData {
 	switch v := pred.(type) {
 	case sql.BinaryBoolExpression:
-		left := buildPredicate(v.Left)
-		right := buildPredicate(v.Right)
-		op := v.Operator
-		if op.Lexeme == "and" {
-			return func(r Row) bool {
-				return left(r) && right(r)
+		left := predBuilder(v.Left, r)
+		right := predBuilder(v.Right, r)
+		if v.Operator.Lexeme == "and" {
+			lV := left.Data.(bool)
+			rV := right.Data.(bool)
+			return ColumnData{Boolean, lV && rV}
+		} else if v.Operator.Lexeme == "or" {
+			lV := left.Data.(bool)
+			rV := right.Data.(bool)
+			return ColumnData{Boolean, lV || rV}
+		} else if v.Operator.Lexeme == "=" {
+			debugAssert(left.Typ == right.Typ, "incompatible types %v %v", left.Typ, right.Typ)
+			if left.Typ == String {
+				lV := left.Data.(string)
+				rV := right.Data.(string)
+				return ColumnData{Boolean, lV == rV}
+			} else if left.Typ == Int32 {
+				lV := left.Data.(int32)
+				rV := right.Data.(int32)
+				return ColumnData{Boolean, lV == rV}
+			} else if left.Typ == Boolean {
+				lV := left.Data.(bool)
+				rV := right.Data.(bool)
+				return ColumnData{Boolean, lV == rV}
 			}
-		} else if op.Lexeme == "or" {
-			return func(r Row) bool {
-				return left(r) || right(r)
+			debugAssert(false, "unknown type %v", left.Typ)
+		} else if v.Operator.Lexeme == "!=" {
+			debugAssert(left.Typ == right.Typ, "incompatible types %v %v", left.Typ, right.Typ)
+			if left.Typ == String {
+				lV := left.Data.(string)
+				rV := right.Data.(string)
+				return ColumnData{Boolean, lV != rV}
+			} else if left.Typ == Int32 {
+				lV := left.Data.(int32)
+				rV := right.Data.(int32)
+				return ColumnData{Boolean, lV != rV}
+			} else if left.Typ == Boolean {
+				lV := left.Data.(bool)
+				rV := right.Data.(bool)
+				return ColumnData{Boolean, lV != rV}
 			}
-		} else if op.Lexeme == "=" {
-			return func(r Row) bool {
-				return left(r) == right(r)
-			}
+			debugAssert(false, "unknown type %v", left.Typ)
+		} 
+	case sql.ValueLiteral:
+		if v.Tok.Typ == sql.Number {
+			out, _ := strconv.Atoi(v.Tok.Lexeme)
+			return ColumnData{Int32, int32(out)} 
+		} else if v.Tok.Typ == sql.String {
+			return ColumnData{String, v.Tok.Lexeme}
+		} else if v.Tok.Typ == sql.Boolean {
+			out, _ := strconv.ParseBool(v.Tok.Lexeme)
+			return ColumnData{Boolean, out} 
 		}
-		debugAssert(false, "invalid operator for where predicate %v", op)
-	case sql.ValueLiteral: return out
-	case sql.ColumnLiteral: return out
-	default: debugAssert(false, "unknown predicate type received %T", v)
+		debugAssert(false, "unsupported type %v", v)
+	case sql.ColumnLiteral: 
+		return r[FieldName(v.Name.Lexeme)]
 	}
-	return out
+
+	debugAssert(false, "unknown predicate type received %T", pred)
+	return ColumnData{}
 }
 
 func (s *Storage) AllSchema() Schema {

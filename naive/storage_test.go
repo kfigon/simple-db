@@ -101,6 +101,21 @@ func TestNaiveStorage(t *testing.T) {
 		assert.ElementsMatch(t, []string{"2", "baz"}, res.Values[0])
 		assert.ElementsMatch(t, []string{"3", "baz"}, res.Values[1])
 	})
+
+	t.Run("select with complex filter", func(t *testing.T) {
+		s := NewStorage()
+		assert.NoError(t, execute(t, s, `create table foobar(id int, name string, age int)`))
+		assert.NoError(t, execute(t, s, `insert into foobar(id, name, age) VALUES (1, "asdf", 20)`))
+		assert.NoError(t, execute(t, s, `insert into foobar(id, name, age) VALUES (2, "baz", 30)`))
+		assert.NoError(t, execute(t, s, `insert into foobar(id, name, age) VALUES (3, "baz", 20)`))
+
+		res, err := query(t, s, `select name, id from foobar where name = "baz" and age = 20`)
+		assert.NoError(t, err)
+
+		assert.ElementsMatch(t, []FieldName{"name", "id"}, res.Header)
+		assert.Len(t, res.Values, 1)
+		assert.ElementsMatch(t, []string{"3", "baz"}, res.Values[0])
+	})
 }
 
 func TestSerializeStorage(t *testing.T) {
