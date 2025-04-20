@@ -2,6 +2,7 @@ package naive
 
 import (
 	"bytes"
+	"cmp"
 	"errors"
 	"fmt"
 	"io"
@@ -321,7 +322,22 @@ func and(a,b bool) bool {
 	return a && b
 }
 
-// todo: refactor, this is ugly
+func gt[T cmp.Ordered](a,b T) bool {
+	return a > b
+}
+
+func geq[T cmp.Ordered](a,b T) bool {
+	return a >= b
+}
+
+func lt[T cmp.Ordered](a,b T) bool {
+	return a < b
+}
+
+func leq[T cmp.Ordered](a,b T) bool {
+	return a <= b
+}
+
 func predBuilder(pred sql.BoolExpression, r Row) ColumnData {
 	switch v := pred.(type) {
 	case sql.BinaryBoolExpression:
@@ -332,37 +348,39 @@ func predBuilder(pred sql.BoolExpression, r Row) ColumnData {
 			return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, and)}
 		} else if v.Operator.Lexeme == "or" {
 			return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, or)}
-		} else if v.Operator.Lexeme == "=" {
+		}
 
-			debugAssert(left.Typ == right.Typ, "incompatible types %v %v", left.Typ, right.Typ)
-			if left.Typ == String {
-				return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, eq[string])}
-			} else if left.Typ == Int32 {
-				return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, eq[int32])}
-			} else if left.Typ == Boolean {
-				return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, eq[bool])}
-			}
-			debugAssert(false, "unknown type %v", left.Typ)
-		} else if v.Operator.Lexeme == "!=" {
-			debugAssert(left.Typ == right.Typ, "incompatible types %v %v", left.Typ, right.Typ)
-			if left.Typ == String {
-				return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, neq[string])}
-			} else if left.Typ == Int32 {
-				return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, neq[int32])}
-			} else if left.Typ == Boolean {
-				return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, neq[bool])}
-			}
-			debugAssert(false, "unknown type %v", left.Typ)
-		} 
+		op := map[string]map[FieldType]func()bool {
+			"=": {
+				String: func() bool { return castAndBinaryOp(left.Data, right.Data, eq[string]) },
+				Int32: func() bool { return castAndBinaryOp(left.Data, right.Data, eq[int32]) },
+				Boolean: func() bool { return castAndBinaryOp(left.Data, right.Data, eq[bool]) },
+			},
+			"!=": {
+				String: func() bool { return castAndBinaryOp(left.Data, right.Data, neq[string]) },
+				Int32: func() bool { return castAndBinaryOp(left.Data, right.Data, neq[int32]) },
+				Boolean: func() bool { return castAndBinaryOp(left.Data, right.Data, neq[bool]) },
+			},
+			">": { Int32: func() bool { return castAndBinaryOp(left.Data, right.Data, gt[int32]) }, },
+			">=": { Int32: func() bool { return castAndBinaryOp(left.Data, right.Data, geq[int32]) }, },
+			"<": { Int32: func() bool { return castAndBinaryOp(left.Data, right.Data, lt[int32]) }, },
+			"<=": { Int32: func() bool { return castAndBinaryOp(left.Data, right.Data, leq[int32]) }, },
+		}
+
+		ops, ok := op[v.Operator.Lexeme]
+		debugAssert(ok, "unsupported op: %v", v.Operator)
+		debugAssert(left.Typ == right.Typ, "incompatible types %v %v", left.Typ, right.Typ)
+
+		fn, ok := ops[left.Typ]
+		debugAssert(ok, "unknown type %v", left.Typ)
+		return ColumnData{Boolean, fn()}
 	case sql.ValueLiteral:
 		if v.Tok.Typ == sql.Number {
-			out, _ := strconv.Atoi(v.Tok.Lexeme)
-			return ColumnData{Int32, int32(out)} 
+			return ColumnData{Int32, int32(must(strconv.Atoi(v.Tok.Lexeme)))} 
 		} else if v.Tok.Typ == sql.String {
 			return ColumnData{String, v.Tok.Lexeme}
 		} else if v.Tok.Typ == sql.Boolean {
-			out, _ := strconv.ParseBool(v.Tok.Lexeme)
-			return ColumnData{Boolean, out} 
+			return ColumnData{Boolean, must(strconv.ParseBool(v.Tok.Lexeme)) } 
 		}
 		debugAssert(false, "unsupported type %v", v)
 	case sql.ColumnLiteral: 
