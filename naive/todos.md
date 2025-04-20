@@ -29,5 +29,4 @@
 * [ ] concurrency
 * [ ] recovery
 * [x] operators - Row abstraction might be replaced by just array of columns, to reduce memory
-* [ ] refactor where and predicate logic
 * [ ] join

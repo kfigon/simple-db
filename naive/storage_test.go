@@ -103,18 +103,17 @@ func TestNaiveStorage(t *testing.T) {
 	})
 
 	t.Run("select with complex filter", func(t *testing.T) {
-		s := NewStorage()
-		assert.NoError(t, execute(t, s, `create table foobar(id int, name string, age int)`))
-		assert.NoError(t, execute(t, s, `insert into foobar(id, name, age) VALUES (1, "asdf", 20)`))
-		assert.NoError(t, execute(t, s, `insert into foobar(id, name, age) VALUES (2, "baz", 30)`))
-		assert.NoError(t, execute(t, s, `insert into foobar(id, name, age) VALUES (3, "baz", 20)`))
+	vs := []string{
+		`create table foobar(id int, name string, age int)`,
+		`insert into foobar(id, name, age) VALUES (1, "asdf", 20)`,
+		`insert into foobar(id, name, age) VALUES (2, "baz", 30)`,
+		`insert into foobar(id, name, age) VALUES (3, "baz", 20)`,
+		`insert into foobar(id, name, age) VALUES (4, "four", 40)`}
 
-		res, err := query(t, s, `select name, id from foobar where name = "baz" and age = 20`)
-		assert.NoError(t, err)
-
-		assert.ElementsMatch(t, []FieldName{"name", "id"}, res.Header)
-		assert.Len(t, res.Values, 1)
-		assert.ElementsMatch(t, []string{"3", "baz"}, res.Values[0])
+		testSelect(t, vs, `select name, id from foobar where name = "baz" and age = 20`, QueryResult{
+			[]FieldName{"name", "id"},
+			[][]string{{"baz", "3"}},
+		})
 	})
 }
 
@@ -195,4 +194,20 @@ func query(t *testing.T, s *Storage, statement string) (QueryResult, error) {
 	assert.IsType(t, &sql.SelectStatement{}, stmt)
 	
 	return s.Select(*stmt.(*sql.SelectStatement))
+}
+
+func testSelect(t *testing.T, prep []string, queryStr string, exp QueryResult) {
+	t.Helper()
+
+	s := NewStorage()
+	for _, v := range prep {
+		assert.NoError(t, execute(t, s, v))
+	}
+
+	res, err := query(t, s, queryStr)
+	assert.NoError(t, err)
+
+	assert.ElementsMatch(t, exp.Header, res.Header)
+	assert.Len(t, res.Values, len(res.Values))
+	assert.ElementsMatch(t, exp.Values, res.Values)
 }
