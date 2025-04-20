@@ -299,50 +299,58 @@ func buildPredicate(pred sql.BoolExpression) func(Row)bool {
 	}
 }
 
+func castAndBinaryOp[T any](left,right any, op func(T,T)bool) bool {
+	lV := left.(T)
+	rV := right.(T)
+	return op(lV, rV)
+}
+
+func eq[T comparable](a,b T) bool {
+	return a == b
+}
+
+func neq[T comparable](a,b T) bool {
+	return a != b
+}
+
+func or(a,b bool) bool {
+	return a || b
+}
+
+func and(a,b bool) bool {
+	return a && b
+}
+
 // todo: refactor, this is ugly
 func predBuilder(pred sql.BoolExpression, r Row) ColumnData {
 	switch v := pred.(type) {
 	case sql.BinaryBoolExpression:
 		left := predBuilder(v.Left, r)
 		right := predBuilder(v.Right, r)
+
 		if v.Operator.Lexeme == "and" {
-			lV := left.Data.(bool)
-			rV := right.Data.(bool)
-			return ColumnData{Boolean, lV && rV}
+			return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, and)}
 		} else if v.Operator.Lexeme == "or" {
-			lV := left.Data.(bool)
-			rV := right.Data.(bool)
-			return ColumnData{Boolean, lV || rV}
+			return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, or)}
 		} else if v.Operator.Lexeme == "=" {
+
 			debugAssert(left.Typ == right.Typ, "incompatible types %v %v", left.Typ, right.Typ)
 			if left.Typ == String {
-				lV := left.Data.(string)
-				rV := right.Data.(string)
-				return ColumnData{Boolean, lV == rV}
+				return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, eq[string])}
 			} else if left.Typ == Int32 {
-				lV := left.Data.(int32)
-				rV := right.Data.(int32)
-				return ColumnData{Boolean, lV == rV}
+				return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, eq[int32])}
 			} else if left.Typ == Boolean {
-				lV := left.Data.(bool)
-				rV := right.Data.(bool)
-				return ColumnData{Boolean, lV == rV}
+				return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, eq[bool])}
 			}
 			debugAssert(false, "unknown type %v", left.Typ)
 		} else if v.Operator.Lexeme == "!=" {
 			debugAssert(left.Typ == right.Typ, "incompatible types %v %v", left.Typ, right.Typ)
 			if left.Typ == String {
-				lV := left.Data.(string)
-				rV := right.Data.(string)
-				return ColumnData{Boolean, lV != rV}
+				return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, neq[string])}
 			} else if left.Typ == Int32 {
-				lV := left.Data.(int32)
-				rV := right.Data.(int32)
-				return ColumnData{Boolean, lV != rV}
+				return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, neq[int32])}
 			} else if left.Typ == Boolean {
-				lV := left.Data.(bool)
-				rV := right.Data.(bool)
-				return ColumnData{Boolean, lV != rV}
+				return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, neq[bool])}
 			}
 			debugAssert(false, "unknown type %v", left.Typ)
 		} 
@@ -362,7 +370,7 @@ func predBuilder(pred sql.BoolExpression, r Row) ColumnData {
 	}
 
 	debugAssert(false, "unknown predicate type received %T", pred)
-	return ColumnData{}
+	panic("")
 }
 
 func (s *Storage) AllSchema() Schema {
