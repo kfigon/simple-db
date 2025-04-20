@@ -75,6 +75,7 @@ func (p *parser) parseWhere() (*WhereStatement, error) {
 	if next.Typ == Operator {
 		p.next()
 		op := next
+		// todo: handle more predicates (only 2 ands are supported)
 		right,err := p.parsePredicate()
 		if err != nil {
 			return nil, fmt.Errorf("error parsing rhs of predicate: %w", err)
