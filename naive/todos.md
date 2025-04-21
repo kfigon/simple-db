@@ -30,3 +30,10 @@
 * [ ] recovery
 * [x] operators - Row abstraction might be replaced by just array of columns, to reduce memory
 * [ ] join
+
+fix a bug with > 2 logical operators in where
+updates
+LOG
+transaction, recovery
+indexes
+mvcc
