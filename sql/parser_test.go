@@ -83,6 +83,35 @@ func TestParser(t *testing.T) {
 				}}},
 		},
 		{
+			desc: "select with 3 predicates",
+			input: `select * from foobar where a = 4 and b = "asdf" and c = true`,
+			expected: &SelectStatement{
+				HasWildcard: true,
+				Table: "foobar",
+				Where: &WhereStatement{BinaryBoolExpression{
+					Operator: Token{Operator, "and",1},
+					Left: BinaryBoolExpression{
+						Operator: Token{Operator, "=", 1},
+						Left: ColumnLiteral{Token{Identifier, "a", 1}},
+						Right: ValueLiteral{Token{Number, "4", 1}},
+					},
+					Right: BinaryBoolExpression{
+						Operator: Token{Operator, "and", 1},
+						Left: BinaryBoolExpression{
+							Operator: Token{Operator, "=", 1},
+							Left: ColumnLiteral{Token{Identifier, "b", 1}},
+							Right: ValueLiteral{Token{String, "asdf", 1}},
+						},
+						Right: BinaryBoolExpression{
+							Operator: Token{Operator, "=", 1},
+							Left: ColumnLiteral{Token{Identifier, "c", 1}},
+							Right: ValueLiteral{Token{Boolean, "true", 1}},
+						},
+					},
+				}},
+			},
+		},
+		{
 			desc: "create 1",
 			input: `create table foobar(
 				abc int,

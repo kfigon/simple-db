@@ -115,6 +115,25 @@ func TestNaiveStorage(t *testing.T) {
 			[][]string{{"baz", "3"}},
 		})
 	})
+
+	t.Run("select with 3 conditions", func(t *testing.T) {
+		vs := []string{
+			`create table foobar(id int, name string, age int)`,
+			`insert into foobar(id, name, age) VALUES (1, "asdf", 20)`,
+			`insert into foobar(id, name, age) VALUES (2, "baz", 30)`,
+			`insert into foobar(id, name, age) VALUES (3, "baz", 20)`,
+			`insert into foobar(id, name, age) VALUES (4, "four", 40)`}
+
+		testSelect(t, vs, `select name, id from foobar where name = "baz" and age = 20 and id = 3`, QueryResult{
+			[]FieldName{"name", "id"},
+			[][]string{{"baz", "3"}},
+		})
+		
+		testSelect(t, vs, `select name, id from foobar where name = "baz" and age = 20 and id = 4`, QueryResult{
+			[]FieldName{"name", "id"},
+			[][]string{{}},
+		})
+	})
 }
 
 func TestSerializeStorage(t *testing.T) {
