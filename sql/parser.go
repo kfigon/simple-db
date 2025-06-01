@@ -106,7 +106,7 @@ func (p *parser) parseInfixExpression(left BoolExpression) (*InfixExpression, er
 	t := p.next()
 	// todo: restrict only to infix token types
 	op := t
-	right, err := p.parsePredicate(Lowest)
+	right, err := p.parsePredicate(precedenceForToken(op))
 	if err != nil {
 		return nil, err
 	}
@@ -240,9 +240,11 @@ func eof(t Token) bool {
 	return t.Typ == EOF
 }
 
+// binding power - how an operator pulls left and right operands to itself or not
 type Precedence int
 const (
 	Lowest Precedence = iota+1
+	Logical
 	Equals
 	LessGreater
 	Sum
@@ -258,7 +260,7 @@ func precedenceForToken(tok Token) Precedence {
 	switch tok.Lexeme {
 	case "!=", "=": return Equals
 	case ">", "<", ">=", "<=": return LessGreater
-	case "and", "or": return Lowest
+	case "and", "or": return Logical
 	// case "+", "-": return Sum
 	// case Asterisk, Slash: return Product
 	// case LParen: return Call

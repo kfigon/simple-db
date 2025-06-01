@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParser(t *testing.T) {
@@ -63,7 +64,7 @@ func TestParser(t *testing.T) {
 				}}},
 		},
 		{
-			desc:  "select with more predicates",
+			desc:  "select with 2 predicates",
 			input: `select * from foobar where a = 4 and b = "asdf"`,
 			expected: &SelectStatement{
 				HasWildcard: true,
@@ -91,23 +92,22 @@ func TestParser(t *testing.T) {
 				Where: &WhereStatement{&InfixExpression{
 					Operator: Token{Operator, "and", 1},
 					Left: &InfixExpression{
-						Operator: Token{Operator, "=", 1},
-						Left:     ColumnLiteral{Token{Identifier, "a", 1}},
-						Right:    ValueLiteral{Token{Number, "4", 1}},
-					},
-					Right: &InfixExpression{
 						Operator: Token{Operator, "and", 1},
 						Left: &InfixExpression{
 							Operator: Token{Operator, "=", 1},
-							Left:     ColumnLiteral{Token{Identifier, "b", 1}},
-							Right:    ValueLiteral{Token{String, "asdf", 1}},
+							Left:     ColumnLiteral{Token{Identifier, "a", 1}},
+							Right:    ValueLiteral{Token{Number, "4", 1}},
 						},
 						Right: &InfixExpression{
+							Operator: Token{Operator, "=", 1},
+							Left:     ColumnLiteral{Token{Identifier, "b", 1}},
+							Right:    ValueLiteral{Token{String, "asdf", 1}},
+						}},
+					Right: &InfixExpression{
 							Operator: Token{Operator, "=", 1},
 							Left:     ColumnLiteral{Token{Identifier, "c", 1}},
 							Right:    ValueLiteral{Token{Boolean, "true", 1}},
 						},
-					},
 				}},
 			},
 		},
@@ -152,7 +152,7 @@ func TestParser(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			got, err := Parse(Lex(tC.input))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tC.expected, got)
 		})
 	}
