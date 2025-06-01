@@ -8,104 +8,104 @@ import (
 
 func TestParser(t *testing.T) {
 	testCases := []struct {
-		desc	string
-		input	string
+		desc     string
+		input    string
 		expected Statement
 	}{
 		{
-			desc: "simple select wildcard",
+			desc:  "simple select wildcard",
 			input: "select * from foobar",
 			expected: &SelectStatement{
 				HasWildcard: true,
-				Table: "foobar",
+				Table:       "foobar",
 			},
 		},
 		{
-			desc: "select with columns",
+			desc:  "select with columns",
 			input: "select a,asdf , bar from foobar",
 			expected: &SelectStatement{
-				Columns: []string{"a","asdf", "bar"},
+				Columns:     []string{"a", "asdf", "bar"},
 				HasWildcard: false,
-				Table: "foobar",
+				Table:       "foobar",
 			},
 		},
 		{
-			desc: "select with column where",
+			desc:  "select with column where",
 			input: "select * from foobar where a = 4",
 			expected: &SelectStatement{
 				HasWildcard: true,
-				Table: "foobar",
-				Where: &WhereStatement{BinaryBoolExpression{
+				Table:       "foobar",
+				Where: &WhereStatement{&InfixExpression{
 					Operator: Token{Operator, "=", 1},
-					Left: ColumnLiteral{Token{Identifier, "a", 1}},
-					Right: ValueLiteral{Token{Number, "4", 1}},
+					Left:     ColumnLiteral{Token{Identifier, "a", 1}},
+					Right:    ValueLiteral{Token{Number, "4", 1}},
 				}},
 			},
 		},
 		{
-			desc: "select with where literal",
+			desc:  "select with where literal",
 			input: "select * from foobar where true",
 			expected: &SelectStatement{
 				HasWildcard: true,
-				Table: "foobar",
-				Where: &WhereStatement{ValueLiteral{Token{Boolean, "true", 1}}}},
+				Table:       "foobar",
+				Where:       &WhereStatement{ValueLiteral{Token{Boolean, "true", 1}}}},
 		},
 		{
-			desc: "select with where boolean",
+			desc:  "select with where boolean",
 			input: "select * from foobar where a = true",
 			expected: &SelectStatement{
 				HasWildcard: true,
-				Table: "foobar",
-				Where: &WhereStatement{BinaryBoolExpression{
-					Operator:  Token{Operator, "=", 1},
-					Left: ColumnLiteral{Token{Identifier, "a", 1}},
-					Right: ValueLiteral{Token{Boolean, "true", 1}},
+				Table:       "foobar",
+				Where: &WhereStatement{&InfixExpression{
+					Operator: Token{Operator, "=", 1},
+					Left:     ColumnLiteral{Token{Identifier, "a", 1}},
+					Right:    ValueLiteral{Token{Boolean, "true", 1}},
 				}}},
 		},
 		{
-			desc: "select with more predicates",
+			desc:  "select with more predicates",
 			input: `select * from foobar where a = 4 and b = "asdf"`,
 			expected: &SelectStatement{
 				HasWildcard: true,
-				Table: "foobar",
-				Where: &WhereStatement{BinaryBoolExpression{
-					Operator: Token{Operator, "and",1},
-					Left: BinaryBoolExpression{
+				Table:       "foobar",
+				Where: &WhereStatement{&InfixExpression{
+					Operator: Token{Operator, "and", 1},
+					Left: &InfixExpression{
 						Operator: Token{Operator, "=", 1},
-						Left: ColumnLiteral{Token{Identifier, "a", 1}},
-						Right: ValueLiteral{Token{Number, "4", 1}},
+						Left:     ColumnLiteral{Token{Identifier, "a", 1}},
+						Right:    ValueLiteral{Token{Number, "4", 1}},
 					},
-					Right: BinaryBoolExpression{
+					Right: &InfixExpression{
 						Operator: Token{Operator, "=", 1},
-						Left: ColumnLiteral{Token{Identifier, "b", 1}},
-						Right: ValueLiteral{Token{String, "asdf", 1}},
+						Left:     ColumnLiteral{Token{Identifier, "b", 1}},
+						Right:    ValueLiteral{Token{String, "asdf", 1}},
 					},
 				}}},
 		},
 		{
-			desc: "select with 3 predicates",
+			desc:  "select with 3 predicates",
 			input: `select * from foobar where a = 4 and b = "asdf" and c = true`,
 			expected: &SelectStatement{
 				HasWildcard: true,
-				Table: "foobar",
-				Where: &WhereStatement{BinaryBoolExpression{
-					Operator: Token{Operator, "and",1},
-					Left: BinaryBoolExpression{
+				Table:       "foobar",
+				Where: &WhereStatement{&InfixExpression{
+					Operator: Token{Operator, "and", 1},
+					Left: &InfixExpression{
 						Operator: Token{Operator, "=", 1},
-						Left: ColumnLiteral{Token{Identifier, "a", 1}},
-						Right: ValueLiteral{Token{Number, "4", 1}},
+						Left:     ColumnLiteral{Token{Identifier, "a", 1}},
+						Right:    ValueLiteral{Token{Number, "4", 1}},
 					},
-					Right: BinaryBoolExpression{
+					Right: &InfixExpression{
 						Operator: Token{Operator, "and", 1},
-						Left: BinaryBoolExpression{
+						Left: &InfixExpression{
 							Operator: Token{Operator, "=", 1},
-							Left: ColumnLiteral{Token{Identifier, "b", 1}},
-							Right: ValueLiteral{Token{String, "asdf", 1}},
+							Left:     ColumnLiteral{Token{Identifier, "b", 1}},
+							Right:    ValueLiteral{Token{String, "asdf", 1}},
 						},
-						Right: BinaryBoolExpression{
+						Right: &InfixExpression{
 							Operator: Token{Operator, "=", 1},
-							Left: ColumnLiteral{Token{Identifier, "c", 1}},
-							Right: ValueLiteral{Token{Boolean, "true", 1}},
+							Left:     ColumnLiteral{Token{Identifier, "c", 1}},
+							Right:    ValueLiteral{Token{Boolean, "true", 1}},
 						},
 					},
 				}},
@@ -128,7 +128,7 @@ func TestParser(t *testing.T) {
 			},
 		},
 		{
-			desc: "create 2",
+			desc:  "create 2",
 			input: `create table foobar(abc int, asdf boolean)`,
 			expected: &CreateStatement{
 				Columns: []ColumnDefinition{
@@ -143,9 +143,9 @@ func TestParser(t *testing.T) {
 			input: `INSERT INTO foobar (colA, colB, colC)
 					VALUES (true, 1234, "asfg")`,
 			expected: &InsertStatement{
-				Table: "foobar",
+				Table:   "foobar",
 				Columns: []string{"colA", "colB", "colC"},
-				Values: []string{"true", "1234", "asfg"},
+				Values:  []string{"true", "1234", "asfg"},
 			},
 		},
 	}

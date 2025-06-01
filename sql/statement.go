@@ -1,57 +1,61 @@
 package sql
 
-type Statement interface{
+type Statement interface {
 	statementTag()
 }
 
 type WhereStatement struct {
-	Predicate BoolExpression	
+	Predicate BoolExpression
 }
 
 type SelectStatement struct {
-	Columns []string
+	Columns     []string
 	HasWildcard bool
-	Table string
-	Where *WhereStatement
+	Table       string
+	Where       *WhereStatement
 }
-func (*SelectStatement) statementTag(){}
+
+func (*SelectStatement) statementTag() {}
 
 type InsertStatement struct {
 	Columns []string
-	Values []string
-	Table string
+	Values  []string
+	Table   string
 }
-func (*InsertStatement) statementTag(){}
+
+func (*InsertStatement) statementTag() {}
 
 type CreateStatement struct {
 	Columns []ColumnDefinition
-	Table string
+	Table   string
 }
 type ColumnDefinition struct {
 	Name string
 	Typ  string
 }
 
-func (*CreateStatement) statementTag(){}
-
+func (*CreateStatement) statementTag() {}
 
 type BoolExpression interface {
 	expressionTag()
 }
 
-type BinaryBoolExpression struct {
+type InfixExpression struct {
 	Operator Token
-	Left BoolExpression
-	Right BoolExpression
+	Left     BoolExpression
+	Right    BoolExpression
 }
-func (BinaryBoolExpression) expressionTag(){}
+
+func (*InfixExpression) expressionTag() {}
 
 type ValueLiteral struct {
 	Tok Token
 }
-func (ValueLiteral) expressionTag(){}
+
+func (ValueLiteral) expressionTag() {}
 
 type ColumnLiteral struct {
 	Name Token
 }
-func (ColumnLiteral) expressionTag(){}
+
+func (ColumnLiteral) expressionTag() {}

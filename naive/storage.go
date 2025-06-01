@@ -10,11 +10,12 @@ import (
 	"strconv"
 )
 
-const PageSize = 4*1024
-const directoryName =  "catalog_directory"
+const PageSize = 4 * 1024
+const directoryName = "catalog_directory"
 const assertionsEnabled = true
 
 type FieldType int32
+
 const (
 	Int32 FieldType = iota
 	String
@@ -23,7 +24,7 @@ const (
 )
 
 func (f FieldType) String() string {
-	return [...]string {
+	return [...]string{
 		"Int32",
 		"String",
 		"Boolean",
@@ -33,11 +34,16 @@ func (f FieldType) String() string {
 
 func FieldTypeFromString(s string) (FieldType, error) {
 	switch s {
-	case "int": return Int32, nil
-	case "string": return String, nil
-	case "boolean": return Boolean, nil
-	case "float": return Float, nil
-	default:  return 0, fmt.Errorf("invalid type %v", s)
+	case "int":
+		return Int32, nil
+	case "string":
+		return String, nil
+	case "boolean":
+		return Boolean, nil
+	case "float":
+		return Float, nil
+	default:
+		return 0, fmt.Errorf("invalid type %v", s)
 	}
 }
 
@@ -45,7 +51,7 @@ type TableName string
 type FieldName string
 
 type ColumnData struct {
-	Typ FieldType
+	Typ  FieldType
 	Data any
 }
 
@@ -54,7 +60,7 @@ type Schema map[TableName]TableSchema
 type Row map[FieldName]ColumnData
 
 type Storage struct {
-	root RootPage
+	root     RootPage
 	allPages []*GenericPage // pageId - just an index here. Page 0 is root, so noop
 }
 
@@ -77,7 +83,7 @@ func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericP
 	// link last page to the new one
 	if startId, ok := FindStartingPageForEntity(s, pageTyp, name); ok {
 		var lastId PageID
-		for id := range NewPageIterator(s, startId){
+		for id := range NewPageIterator(s, startId) {
 			lastId = id
 		}
 		s.allPages[lastId].Header.NextPage = newPageID
@@ -85,7 +91,6 @@ func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericP
 
 	return newPageID, p
 }
-
 
 func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
 	if _, ok := FindStartingPageForEntity(s, SchemaPageType, stmt.Table); ok {
@@ -112,9 +117,9 @@ func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
 	firstPageIDForSchema := s.AddTuple(SchemaPageType, stmt.Table, schemaEntries[0].Serialize())
 
 	s.AddDirectoryTuple(DirectoryTuple{
-		PageTyp: SchemaPageType,
+		PageTyp:      SchemaPageType,
 		StartingPage: firstPageIDForSchema,
-		Name: stmt.Table,
+		Name:         stmt.Table,
 	})
 
 	for _, v := range schemaEntries[1:] {
@@ -125,9 +130,9 @@ func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
 	dataPageID, _ := s.allocatePage(DataPageType, stmt.Table)
 
 	s.AddDirectoryTuple(DirectoryTuple{
-		PageTyp: DataPageType,
+		PageTyp:      DataPageType,
 		StartingPage: dataPageID,
-		Name: stmt.Table,
+		Name:         stmt.Table,
 	})
 	return nil
 }
@@ -138,11 +143,11 @@ func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
 
 	if startPage, ok := FindStartingPageForEntity(s, pageType, name); !ok {
 		// allocatePage also links it
-		pageID, newPage := s.allocatePage(pageType, name) 
+		pageID, newPage := s.allocatePage(pageType, name)
 		lastPage = newPage
 		lastPageID = pageID
 	} else {
-		for pageID, p := range NewPageIterator(s, startPage){
+		for pageID, p := range NewPageIterator(s, startPage) {
 			lastPage = p
 			lastPageID = pageID
 		}
@@ -163,7 +168,7 @@ func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
 
 func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
 	var lastPage *GenericPage
-	for _, p := range directoryPages(s){ 
+	for _, p := range directoryPages(s) {
 		lastPage = p
 	}
 
@@ -186,8 +191,8 @@ func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
 
 func (s *Storage) Insert(stmt sql.InsertStatement) error {
 	schema := []FieldName{}
-	schemaLookup := map[FieldName]FieldType{} 
-	for data := range SchemaEntriesIterator(s, stmt.Table){
+	schemaLookup := map[FieldName]FieldType{}
+	for data := range SchemaEntriesIterator(s, stmt.Table) {
 		schemaLookup[data.FieldNameV] = data.FieldTypeV
 		schema = append(schema, data.FieldNameV)
 	}
@@ -195,12 +200,12 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 	if len(schema) == 0 {
 		return fmt.Errorf("table %v does not exist", stmt.Table)
 	}
-	
+
 	inputLookup := Row{}
 	for i := 0; i < len(stmt.Columns); i++ {
 		col := stmt.Columns[i]
 		val := stmt.Values[i]
-		
+
 		fieldType, ok := schemaLookup[FieldName(col)]
 		if !ok {
 			return fmt.Errorf("invalid column %v, not defined in schema for table %v", col, stmt.Table)
@@ -211,17 +216,17 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 			return err
 		}
 		inputLookup[FieldName(col)] = ColumnData{
-			Typ: fieldType,
+			Typ:  fieldType,
 			Data: parsed,
 		}
 	}
 
 	inputData := []byte{}
 	for _, col := range schema {
-		d := inputLookup[col]	
+		d := inputLookup[col]
 
 		switch d.Typ {
-		case Int32: 
+		case Int32:
 			inputData = append(inputData, SerializeInt(d.Data.(int32))...)
 		case String:
 			inputData = append(inputData, SerializeString(d.Data.(string))...)
@@ -236,13 +241,17 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 
 func parseType(v string, typ FieldType) (any, error) {
 	switch typ {
-	case Int32: 
+	case Int32:
 		v, err := strconv.ParseInt(v, 10, 32)
 		return int32(v), err
-	case String: return v, nil
-	case Boolean: return strconv.ParseBool(v)
-	case Float: return strconv.ParseFloat(v, 64)
-	default: return nil, fmt.Errorf("invalid data type %v", typ)
+	case String:
+		return v, nil
+	case Boolean:
+		return strconv.ParseBool(v)
+	case Float:
+		return strconv.ParseFloat(v, 64)
+	default:
+		return nil, fmt.Errorf("invalid data type %v", typ)
 	}
 }
 
@@ -253,10 +262,10 @@ type QueryResult struct {
 
 func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 	schema := []FieldName{}
-	schemaLookup := map[FieldName]FieldType{} 
+	schemaLookup := map[FieldName]FieldType{}
 	var zero QueryResult
 
-	for data := range SchemaEntriesIterator(s, stmt.Table){
+	for data := range SchemaEntriesIterator(s, stmt.Table) {
 		schemaLookup[data.FieldNameV] = data.FieldTypeV
 		schema = append(schema, data.FieldNameV)
 	}
@@ -278,11 +287,11 @@ func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 	if stmt.Where != nil {
 		rowIt = Select(rowIt, buildPredicate(stmt.Where.Predicate))
 	}
-	projection := Project(rowIt, columnsToQuery) 
+	projection := Project(rowIt, columnsToQuery)
 
 	for row := range projection {
 		vals := make([]string, 0, len(columnsToQuery))
-		for _, col := range columnsToQuery{
+		for _, col := range columnsToQuery {
 			vals = append(vals, fmt.Sprint(row[FieldName(col)].Data))
 		}
 		out.Values = append(out.Values, vals)
@@ -292,7 +301,7 @@ func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 }
 
 // todo: add error handling
-func buildPredicate(pred sql.BoolExpression) func(Row)bool {
+func buildPredicate(pred sql.BoolExpression) func(Row) bool {
 	return func(r Row) bool {
 		col := predBuilder(pred, r)
 		debugAssert(col.Typ == Boolean, "boolean predicate required, got %v", col.Typ)
@@ -300,22 +309,22 @@ func buildPredicate(pred sql.BoolExpression) func(Row)bool {
 	}
 }
 
-func castAndBinaryOp[T any](left,right any, op func(T,T)bool) bool {
+func castAndBinaryOp[T any](left, right any, op func(T, T) bool) bool {
 	lV := left.(T)
 	rV := right.(T)
 	return op(lV, rV)
 }
 
-func eq[T comparable](a,b T) bool { return a == b }
-func neq[T comparable](a,b T) bool { return a != b }
-func or(a,b bool) bool { return a || b }
-func and(a,b bool) bool { return a && b }
-func gt[T cmp.Ordered](a,b T) bool { return a > b }
-func geq[T cmp.Ordered](a,b T) bool { return a >= b }
-func lt[T cmp.Ordered](a,b T) bool { return a < b }
-func leq[T cmp.Ordered](a,b T) bool { return a <= b }
+func eq[T comparable](a, b T) bool   { return a == b }
+func neq[T comparable](a, b T) bool  { return a != b }
+func or(a, b bool) bool              { return a || b }
+func and(a, b bool) bool             { return a && b }
+func gt[T cmp.Ordered](a, b T) bool  { return a > b }
+func geq[T cmp.Ordered](a, b T) bool { return a >= b }
+func lt[T cmp.Ordered](a, b T) bool  { return a < b }
+func leq[T cmp.Ordered](a, b T) bool { return a <= b }
 
-func buildCastAndOperand[T any](left, right ColumnData, fn func(a,b T)bool) func()bool {
+func buildCastAndOperand[T any](left, right ColumnData, fn func(a, b T) bool) func() bool {
 	return func() bool {
 		return castAndBinaryOp(left.Data, right.Data, fn)
 	}
@@ -323,7 +332,7 @@ func buildCastAndOperand[T any](left, right ColumnData, fn func(a,b T)bool) func
 
 func predBuilder(pred sql.BoolExpression, r Row) ColumnData {
 	switch v := pred.(type) {
-	case sql.BinaryBoolExpression:
+	case *sql.InfixExpression:
 		left := predBuilder(v.Left, r)
 		right := predBuilder(v.Right, r)
 
@@ -333,21 +342,21 @@ func predBuilder(pred sql.BoolExpression, r Row) ColumnData {
 			return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, or)}
 		}
 
-		op := map[string]map[FieldType]func()bool {
+		op := map[string]map[FieldType]func() bool{
 			"=": {
-				String: buildCastAndOperand(left, right, eq[string]),
-				Int32: buildCastAndOperand(left, right, eq[int32]),
+				String:  buildCastAndOperand(left, right, eq[string]),
+				Int32:   buildCastAndOperand(left, right, eq[int32]),
 				Boolean: buildCastAndOperand(left, right, eq[bool]),
 			},
 			"!=": {
-				String: buildCastAndOperand(left, right, neq[string]),
-				Int32: buildCastAndOperand(left, right, neq[int32]),
+				String:  buildCastAndOperand(left, right, neq[string]),
+				Int32:   buildCastAndOperand(left, right, neq[int32]),
 				Boolean: buildCastAndOperand(left, right, neq[bool]),
 			},
-			">": { Int32: buildCastAndOperand(left,right, gt[int32])},
-			">=": { Int32: buildCastAndOperand(left,right, geq[int32])},
-			"<": { Int32: buildCastAndOperand(left,right, lt[int32])},
-			"<=": { Int32: buildCastAndOperand(left,right, leq[int32])},
+			">":  {Int32: buildCastAndOperand(left, right, gt[int32])},
+			">=": {Int32: buildCastAndOperand(left, right, geq[int32])},
+			"<":  {Int32: buildCastAndOperand(left, right, lt[int32])},
+			"<=": {Int32: buildCastAndOperand(left, right, leq[int32])},
 		}
 
 		ops, ok := op[v.Operator.Lexeme]
@@ -359,14 +368,14 @@ func predBuilder(pred sql.BoolExpression, r Row) ColumnData {
 		return ColumnData{Boolean, fn()}
 	case sql.ValueLiteral:
 		if v.Tok.Typ == sql.Number {
-			return ColumnData{Int32, int32(must(strconv.Atoi(v.Tok.Lexeme)))} 
+			return ColumnData{Int32, int32(must(strconv.Atoi(v.Tok.Lexeme)))}
 		} else if v.Tok.Typ == sql.String {
 			return ColumnData{String, v.Tok.Lexeme}
 		} else if v.Tok.Typ == sql.Boolean {
-			return ColumnData{Boolean, must(strconv.ParseBool(v.Tok.Lexeme)) } 
+			return ColumnData{Boolean, must(strconv.ParseBool(v.Tok.Lexeme))}
 		}
 		debugAssert(false, "unsupported type %v", v)
-	case sql.ColumnLiteral: 
+	case sql.ColumnLiteral:
 		return r[FieldName(v.Name.Lexeme)]
 	}
 
@@ -381,8 +390,8 @@ func (s *Storage) AllSchema() Schema {
 			continue
 		}
 		t := TableSchema{}
-		for entry := range SchemaEntriesIterator(s, dir.Name){
-			t[entry.FieldNameV] = entry.FieldTypeV	
+		for entry := range SchemaEntriesIterator(s, dir.Name) {
+			t[entry.FieldNameV] = entry.FieldTypeV
 		}
 		if len(t) != 0 {
 			schema[TableName(dir.Name)] = t
@@ -398,14 +407,14 @@ func parseToRow(bytes []byte, schema []FieldName, lookup map[FieldName]FieldType
 		typ := lookup[f]
 		cd := ColumnData{Typ: typ}
 		switch typ {
-			case Int32:
-				cd.Data = must(DeserializeIntAndEat(&bytes))
-			case String:
-				cd.Data = must(DeserializeStringAndEat(&bytes))
-			case Boolean:
-				cd.Data = must(DeserializeBoolAndEat(&bytes))
-			default:
-				debugAssert(false, "data corruption on parsing, unknown type %v", typ)
+		case Int32:
+			cd.Data = must(DeserializeIntAndEat(&bytes))
+		case String:
+			cd.Data = must(DeserializeStringAndEat(&bytes))
+		case Boolean:
+			cd.Data = must(DeserializeBoolAndEat(&bytes))
+		default:
+			debugAssert(false, "data corruption on parsing, unknown type %v", typ)
 		}
 		out[f] = cd
 	}
@@ -421,7 +430,7 @@ func colsToQuery(stmt sql.SelectStatement, schema TableSchema) ([]FieldName, err
 		}
 		return out, nil
 	}
-	
+
 	for _, v := range stmt.Columns {
 		if _, ok := schema[FieldName(v)]; !ok {
 			return nil, fmt.Errorf("unknown column %v in table %v", v, stmt.Table)
@@ -438,7 +447,7 @@ func SerializeDb(s *Storage) []byte {
 		out.Write(v.Serialize())
 	}
 	res := out.Bytes()
-	debugAssert(len(res) % PageSize == 0, "serialized database should be multiplication of page size")
+	debugAssert(len(res)%PageSize == 0, "serialized database should be multiplication of page size")
 	return res
 }
 
@@ -448,10 +457,10 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 		return nil, err
 	}
 
-	if len(data) % PageSize != 0 {
+	if len(data)%PageSize != 0 {
 		return nil, fmt.Errorf("read data should be multiplication of page size, got %d", len(data))
 	}
-	
+
 	pages := []*GenericPage{{}}
 	root, err := DeserializeRootPage(bytes.NewBuffer(data))
 	if err != nil {

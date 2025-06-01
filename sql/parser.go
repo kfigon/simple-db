@@ -66,61 +66,56 @@ func (p *parser) parseSelectStatement() (Statement, error) {
 }
 
 func (p *parser) parseWhere() (*WhereStatement, error) {
-	pred, err := p.parsePredicate()
+	pred, err := p.parsePredicate(Lowest)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing predicate: %w", err)
-	}
-
-	next := p.peek()
-	if next.Typ == Operator {
-		p.next()
-		op := next
-		// todo: handle more predicates (only 2 ands are supported)
-		right,err := p.parsePredicate()
-		if err != nil {
-			return nil, fmt.Errorf("error parsing rhs of predicate: %w", err)
-		}
-		return &WhereStatement{BinaryBoolExpression{
-			Operator: op,
-			Left: pred,
-			Right: right,
-		}},nil
 	}
 
 	return &WhereStatement{pred},nil
 }
 
-func (p *parser) parsePredicate() (BoolExpression, error) {
-	t := p.peek()
-	if t.Typ == Boolean {
-		return ValueLiteral{t}, nil
-	} else if t.Typ == Identifier {
-		left := p.next()
-		op := p.next()
-
-		if op.Typ != Operator {
-			return nil, fmt.Errorf("error parsing binary expression on predicate, expected operator, got %v", t)
-		}
-
-		right := p.next()
-		if right.Typ == Identifier {
-			return BinaryBoolExpression{
-				Operator: op,
-				Left: ColumnLiteral{left},
-				Right: ColumnLiteral{right},
-			}, nil
-		} else if right.Typ == Number || right.Typ == Boolean || right.Typ == String {
-			return BinaryBoolExpression{
-				Operator: op,
-				Left: ColumnLiteral{left},
-				Right: ValueLiteral{right},
-			}, nil
-		}
-		
-		return nil, fmt.Errorf("invalid right side of the binary expression, got %v", right)
+func (p *parser) parsePredicate(precedence Precedence) (BoolExpression, error) {
+	left, err := p.parseSingleExpr()
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, fmt.Errorf("unknown token when parsing where statement: %v", t)
+	for eof(p.peek()) && precedence < precedenceForToken(p.peek().Typ) {
+		newExpr, err := p.parseInfixExpression(left)
+		if err != nil {
+			return nil, err
+		} else if newExpr == nil {
+			break
+		}
+		left = newExpr
+	}
+	return left, nil
+}
+
+func (p *parser) parseSingleExpr() (BoolExpression, error) {
+	t := p.next()
+	if (t.Typ == Number || t.Typ == Boolean || t.Typ == String) {
+		return ValueLiteral{t}, nil
+	} else if t.Typ == Identifier {
+		return ColumnLiteral{t}, nil
+	}
+	return nil, fmt.Errorf("invalid expression token: %v", t)
+}
+
+func (p *parser) parseInfixExpression(left BoolExpression) (*InfixExpression, error) {
+	t := p.next()
+	// todo: restrict only to infix token types
+	op := t
+	right, err := p.parsePredicate(Lowest)
+	if err != nil {
+		return nil, err
+	}
+
+	return &InfixExpression{
+		Operator: op,
+		Left: left,
+		Right: right,
+	}, nil
 }
 
 func (p *parser) parseCreateStatement() (*CreateStatement, error) {
@@ -243,4 +238,26 @@ func (p *parser) peek() Token {
 
 func eof(t Token) bool {
 	return t.Typ == EOF
+}
+
+type Precedence int
+const (
+	Lowest Precedence = iota+1
+	Equals
+	LessGreater
+	Sum
+	Product
+	Prefix
+)
+
+func precedenceForToken(tok TokenType) Precedence {
+	// switch tok {
+	// case EQ, NEQ: return Equals
+	// case LT, GT: return LessGreater
+	// case Plus, Minus: return Sum
+	// case Asterisk, Slash: return Product
+	// case LParen: return Call
+	// default: return Lowest
+	// }
+	return Lowest
 }
