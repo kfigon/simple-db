@@ -80,7 +80,7 @@ func (p *parser) parsePredicate(precedence Precedence) (BoolExpression, error) {
 		return nil, err
 	}
 
-	for eof(p.peek()) && precedence < precedenceForToken(p.peek().Typ) {
+	for eof(p.peek()) && precedence < precedenceForToken(p.peek()) {
 		newExpr, err := p.parseInfixExpression(left)
 		if err != nil {
 			return nil, err
@@ -250,14 +250,17 @@ const (
 	Prefix
 )
 
-func precedenceForToken(tok TokenType) Precedence {
-	// switch tok {
-	// case EQ, NEQ: return Equals
-	// case LT, GT: return LessGreater
-	// case Plus, Minus: return Sum
+func precedenceForToken(tok Token) Precedence {
+	if tok.Typ != Operator {
+		return Lowest
+	}
+
+	switch tok.Lexeme {
+	case "!=", "=": return Equals
+	case ">", "<", ">=", "<=": return LessGreater
+	// case "+", "-": return Sum
 	// case Asterisk, Slash: return Product
 	// case LParen: return Call
-	// default: return Lowest
-	// }
-	return Lowest
+	default: return Lowest
+	}
 }
