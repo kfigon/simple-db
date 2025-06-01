@@ -131,7 +131,7 @@ func TestNaiveStorage(t *testing.T) {
 		
 		testSelect(t, vs, `select name, id from foobar where name = "baz" and age = 20 and id = 4`, QueryResult{
 			[]FieldName{"name", "id"},
-			[][]string{{}},
+			[][]string{},
 		})
 	})
 }
