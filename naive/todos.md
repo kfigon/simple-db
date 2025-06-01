@@ -24,16 +24,14 @@
     * [x] generic serialization/deserialization
     * [ ] overflow pages
 * [ ] tool for debugging data on disk
+* [ ] log
+* [ ] updates
 * [ ] indexes with btree on disk
 * [ ] transactions, acid
-* [ ] concurrency
 * [ ] recovery
-* [x] operators - Row abstraction might be replaced by just array of columns, to reduce memory
+* [ ] concurrency, mvcc
 * [ ] join
+* [ ] order
+* [x] operators - Row abstraction might be replaced by just array of columns, to reduce memory
 
 * best video on pratt parser [link](https://www.youtube.com/watch?v=0c8b7YfsBKs), explains binding power instead of predecence
-updates
-LOG
-transaction, recovery
-indexes
-mvcc
