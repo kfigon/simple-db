@@ -31,7 +31,6 @@
 * [x] operators - Row abstraction might be replaced by just array of columns, to reduce memory
 * [ ] join
 
-fix a bug with > 2 logical operators in where
 * best video on pratt parser [link](https://www.youtube.com/watch?v=0c8b7YfsBKs), explains binding power instead of predecence
 updates
 LOG
