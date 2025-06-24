@@ -16,6 +16,7 @@ Overflow page - linked list of pages to store bigger data
 table is set of pages
 Row format - each Cell is just a row, sequence of bytes.
 
+mostly inserts and reads are allowed. Updates are allowed, but not optimized and can be inefficient.
 
 ## btree
 

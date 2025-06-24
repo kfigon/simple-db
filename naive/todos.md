@@ -25,13 +25,19 @@
     * [ ] overflow pages
 * [ ] tool for debugging data on disk
 * [ ] log
+    * [ ] log structure investigation
+    * [ ] implement log
+    * [ ] integrate log in all writes
 * [ ] updates
 * [ ] indexes with btree on disk
+* [ ] try to understand different storage layouts - index organized storage instead of heap file
 * [ ] transactions, acid
 * [ ] recovery
 * [ ] concurrency, mvcc
 * [ ] join
 * [ ] order
+* [ ] better update support - overflow pages, page garbage collection, dead tuples and dead cell cleanups 
 * [x] operators - Row abstraction might be replaced by just array of columns, to reduce memory
+* [ ] work through a book from E. Sciore
 
 * best video on pratt parser [link](https://www.youtube.com/watch?v=0c8b7YfsBKs), explains binding power instead of predecence
