@@ -62,6 +62,7 @@ const (
 	DataPageType
 	SchemaPageType
 	DirectoryPageType
+	LogPageType
 )
 
 type PageID int32

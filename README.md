@@ -28,42 +28,11 @@ b - balanced
 
 real project start 17.09.24
 
-# backlog
-* [x] page design
-* [x] phil eaton blog
-* [ ] storage manager
-    * [x] pages - separete data format from objects
-    * [ ] linked list pages
-    * [ ] page iterator
-    * [x] slotted pages
-    * [x] primitive de/serialization
-    * [ ] page serialization
-    * [ ] page deserialization
-    * [x] catalog
-    * [x] schema
-    * [ ] overflow pages
-    * [x] storage manager to handle OS interaction
-* [ ] btree
-* [ ] sql
-    * [x] lexer
-    * [ ] parser
-* [ ] query planner (ast evaluator)
-    * [ ] vm or tree walking
-* [ ] concurrency
-* [ ] client-server
-    * [ ] protocol
-* [ ] go stdlib db interface
-
-next step:
-* end to end sql select, insert, create. In memory persistance
-
-
 # materials
 * [guy writing a db from scratch](https://www.youtube.com/watch?v=5Pc18ge9ohI)
 * [Let's Build a Simple Database](https://cstack.github.io/db_tutorial/)
 * [CMU lectures](https://www.youtube.com/playlist?list=PLA5Lqm4uh9Bbq-E0ZnqTIa8LRaL77ica6)
 * [impl from scratch](https://www.youtube.com/watch?v=HHO2K23XxbM&list=PLWRwj01AnyEtjaw-ZnnAQWnVYPZF5WayV)
-* 
 
 btree:
 * [wiki](https://en.wikipedia.org/wiki/B-tree)

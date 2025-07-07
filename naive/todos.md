@@ -27,6 +27,7 @@
 * [ ] log
     * [ ] log structure investigation
     * [ ] implement log
+    * [ ] use log for changes
     * [ ] integrate log in all writes
         * forward iteration - for crash recovery
         * backward iteration - for rollback
