@@ -40,6 +40,7 @@
 * [ ] order
 * [ ] better update support - overflow pages, page garbage collection, dead tuples and dead cell cleanups 
 * [x] operators - Row abstraction might be replaced by just array of columns, to reduce memory
-* [ ] work through a book from E. Sciore
+* [ ] work through a book from E. Sciore. Edit: I have an issue with that book, I don't get all the explanations and code
+* [ ] revisit again lectures from CMU. Think about order of implementation and metadata structure. Maybe focus on reading sqlite code or tony's sary mkdb?
 
 * best video on pratt parser [link](https://www.youtube.com/watch?v=0c8b7YfsBKs), explains binding power instead of predecence
