@@ -28,6 +28,8 @@
     * [ ] log structure investigation
     * [ ] implement log
     * [ ] integrate log in all writes
+        * forward iteration - for crash recovery
+        * backward iteration - for rollback
 * [ ] updates
 * [ ] indexes with btree on disk
 * [ ] try to understand different storage layouts - index organized storage instead of heap file
