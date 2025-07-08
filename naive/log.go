@@ -14,8 +14,13 @@ type Log struct {
 
 type LogEntry struct{}
 func (le LogEntry) Serialize() []byte {
-	debugAssert(false, "implement log entry and serialization")
+	// todo: implement log entry and serialization
 	return nil
+}
+
+func DeserializeLogEntry(d []byte) (LogEntry, error) {
+	// todo
+	return LogEntry{},nil
 }
 
 func NewLog(p *GenericPage) *Log {
@@ -27,7 +32,6 @@ func NewLog(p *GenericPage) *Log {
 func (l *Log) Append(s *Storage, entry LogEntry) LSN {
 	_, err := l.p.Add(entry.Serialize())
 	if errors.Is(err, errNoSpace) {
-		debugAssert(false, "todo: implement overflow log pages")
 		_, newPage := s.allocatePage(LogPageType, "wal_log")
 		l.p = newPage
 		return -1
@@ -37,10 +41,9 @@ func (l *Log) Append(s *Storage, entry LogEntry) LSN {
 	return l.lastLsn
 }
 
-func (l *Log) Iterator() iter.Seq[LogEntry] {
+func (l *Log) Iterator(s *Storage) iter.Seq[LogEntry] {
 	return func(yield func(LogEntry) bool) {
-		debugAssert(false, "todo: implement log entry iterator")
-
+		NewEntityIterator(s, LogPageType, "wal_log")
 		if !yield(LogEntry{}) {
 			return 
 		}

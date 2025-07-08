@@ -11,6 +11,7 @@ type RootPage struct {
 	MagicNumber     int32
 	PageSize        int32
 	DirectoryPageStart   PageID
+	LogPageStart   PageID
 }
 
 func NewRootPage(directoryStart PageID) RootPage {
@@ -216,6 +217,16 @@ func DirectoryEntriesIterator(storage *Storage) iter.Seq[DirectoryTuple] {
 	}
 }
 
+func LogEntriesIterator(storage *Storage) iter.Seq[LogEntry] {
+	return func(yield func(LogEntry) bool) {
+		for d := range tuplesIterator(NewPageIterator(storage, storage.root.LogPageStart)) {
+			le := must(DeserializeLogEntry(d))
+			if !yield(le) {
+				break
+			}
+		}
+	}
+}
 func SchemaEntriesIterator(storage *Storage, name string) iter.Seq[SchemaTuple] {
 	return func(yield func(SchemaTuple) bool) {
 		for d := range NewEntityIterator(storage, SchemaPageType, name){
