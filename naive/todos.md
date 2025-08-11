@@ -39,7 +39,9 @@
 * [ ] transactions, acid
 * [ ] recovery
 
-* [ ] cleanup code - separate iterators and access methods. move some stuff to exection engine
+* [ ] cleanup code 
+    * [x] separate iterators and access methods.
+    * [ ] move some stuff to exection engine
     * [x] schema outside of directory
     * [x] schema pages that can store different tables
 * [ ] tool for debugging data on disk
