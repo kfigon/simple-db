@@ -47,7 +47,10 @@
 * [ ] tool for debugging data on disk
 * [ ] better update support - overflow pages, page garbage collection, dead tuples and dead cell cleanups 
 * [x] try to understand different storage layouts - page storage (heap file, tree), page layout (log structured, tuple oriented - slotted pages, index organized storage). Storage models - row, column, mix
-* [ ] nullable collumns - store tuple header with types like sqlite does
+* [ ] tuple header with types, like sqlite does
+    * [ ] overflow pages for data bigger than > 2kb
+    * [ ] null columns
+    * [ ] semi-self contained
 * [ ] join
 * [ ] order
 * [ ] group by
