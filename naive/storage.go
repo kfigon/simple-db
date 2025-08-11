@@ -189,14 +189,17 @@ func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
 	}
 }
 
-func (s *Storage) Insert(stmt sql.InsertStatement) error {
-	schema := []FieldName{}
-	schemaLookup := map[FieldName]FieldType{}
-	for data := range SchemaEntriesIterator(s, stmt.Table) {
+func (s *Storage) schemaForTable(tableName string) (schema []FieldName, schemaLookup map[FieldName]FieldType) {
+	schemaLookup = map[FieldName]FieldType{}
+	for data := range SchemaEntriesIterator(s, tableName) {
 		schemaLookup[data.FieldNameV] = data.FieldTypeV
 		schema = append(schema, data.FieldNameV)
 	}
+	return
+}
 
+func (s *Storage) Insert(stmt sql.InsertStatement) error {
+	schema, schemaLookup := s.schemaForTable(stmt.Table)
 	if len(schema) == 0 {
 		return fmt.Errorf("table %v does not exist", stmt.Table)
 	}
@@ -261,14 +264,8 @@ type QueryResult struct {
 }
 
 func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
-	schema := []FieldName{}
-	schemaLookup := map[FieldName]FieldType{}
 	var zero QueryResult
-
-	for data := range SchemaEntriesIterator(s, stmt.Table) {
-		schemaLookup[data.FieldNameV] = data.FieldTypeV
-		schema = append(schema, data.FieldNameV)
-	}
+	schema, schemaLookup := s.schemaForTable(stmt.Table)
 
 	if len(schema) == 0 {
 		return zero, fmt.Errorf("table %v does not exist", stmt.Table)
