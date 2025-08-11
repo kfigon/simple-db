@@ -25,7 +25,7 @@
     * [ ] overflow pages
 
 * [ ] indexes with btree on disk
-* [ ] read sqlite code and docs, how it works and get inspired
+* [x] read sqlite code and docs, how it works and get inspired
     * [arch](https://www.sqlite.org/arch.html)
     * [format](https://www.sqlite.org/fileformat2.html)
 * [ ] log
