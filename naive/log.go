@@ -43,9 +43,10 @@ func (l *Log) Append(s *Storage, entry LogEntry) LSN {
 
 func (l *Log) Iterator(s *Storage) iter.Seq[LogEntry] {
 	return func(yield func(LogEntry) bool) {
-		for i := range s.iter().NewEntityIterator(LogPageType, "wal_log") {
+		for range s.iter().NewEntityIterator(LogPageType, "wal_log") {
 			if !yield(LogEntry{}) {
 				return 
 			}
+		}
 	}
 }
