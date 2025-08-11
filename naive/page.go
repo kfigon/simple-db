@@ -3,7 +3,6 @@ package naive
 import (
 	"fmt"
 	"io"
-	"iter"
 )
 
 type RootPage struct {
@@ -145,97 +144,6 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 		Header: *header,
 		SlotArray: slotted,
 	}, nil
-}
-
-type PageIterator iter.Seq2[PageID, *GenericPage]
-
-func NewPageIterator(storage *Storage, startingPage PageID) PageIterator {
-	currentPageId := startingPage
-	return func(yield func(PageID, *GenericPage) bool) {
-		for currentPageId != 0 && int(currentPageId) < len(storage.allPages){
-			currentPage := storage.allPages[currentPageId]
-			if !yield(currentPageId, currentPage) {
-				break
-			}
-			currentPageId = currentPage.Header.NextPage
-		}
-	}
-}
-
-func directoryPages(s *Storage) PageIterator {
-	return NewPageIterator(s, s.root.DirectoryPageStart)
-}
-
-type TupleIterator iter.Seq[[]byte]
-
-func tuplesIterator(pages PageIterator) TupleIterator {
-	return func(yield func([]byte) bool) {
-		for _, thisPage := range pages {
-			for tuple := range thisPage.SlotArray.Iterator() {
-				if !yield(tuple) {
-					return
-				}
-			}
-		}
-	}
-}
-
-func FindStartingPageForEntity(storage *Storage, pageType PageType, name string) (PageID, bool) {
-	for dir := range DirectoryEntriesIterator(storage) {
-		if dir.Name == name && dir.PageTyp == pageType {
-			return dir.StartingPage, true
-		}
-	}
-	return 0, false
-}
-
-func NewEntityIterator(storage *Storage, pageType PageType, name string) TupleIterator {
-	startId, _ := FindStartingPageForEntity(storage, pageType, name)
-	return tuplesIterator(NewPageIterator(storage, startId))
-}
-
-func RowIterator(storage *Storage, name string, schema []FieldName, schemaLookup map[FieldName]FieldType) RowIter {
-	startId, _ := FindStartingPageForEntity(storage, DataPageType, name)
-	return func(yield func(Row) bool) {
-		for tup := range tuplesIterator(NewPageIterator(storage, startId)) {
-			row := parseToRow(tup, schema, schemaLookup)
-			if !yield(row) {
-				return
-			}
-		}
-	}
-}
-
-func DirectoryEntriesIterator(storage *Storage) iter.Seq[DirectoryTuple] {
-	return func(yield func(DirectoryTuple) bool) {
-		for d := range tuplesIterator(directoryPages(storage)) {
-			dir := must(DeserializeDirectoryTuple(d))
-			if !yield(*dir) {
-				break
-			}
-		}
-	}
-}
-
-func LogEntriesIterator(storage *Storage) iter.Seq[LogEntry] {
-	return func(yield func(LogEntry) bool) {
-		for d := range tuplesIterator(NewPageIterator(storage, storage.root.LogPageStart)) {
-			le := must(DeserializeLogEntry(d))
-			if !yield(le) {
-				break
-			}
-		}
-	}
-}
-func SchemaEntriesIterator(storage *Storage, name string) iter.Seq[SchemaTuple] {
-	return func(yield func(SchemaTuple) bool) {
-		for d := range NewEntityIterator(storage, SchemaPageType, name){
-			sch := must(DeserializeSchemaTuple(d))
-			if !yield(*sch) {
-				break
-			}
-		}
-	}
 }
 
 // for lookup where given data/index page starts 

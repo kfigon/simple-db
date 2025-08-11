@@ -81,9 +81,9 @@ func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericP
 	s.allPages = append(s.allPages, p)
 
 	// link last page to the new one
-	if startId, ok := FindStartingPageForEntity(s, pageTyp, name); ok {
+	if startId, ok := s.iter().FindStartingPageForEntity(pageTyp, name); ok {
 		var lastId PageID
-		for id := range NewPageIterator(s, startId) {
+		for id := range s.iter().NewPageIterator(startId) {
 			lastId = id
 		}
 		s.allPages[lastId].Header.NextPage = newPageID
@@ -93,7 +93,7 @@ func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericP
 }
 
 func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
-	if _, ok := FindStartingPageForEntity(s, SchemaPageType, stmt.Table); ok {
+	if _, ok := s.iter().FindStartingPageForEntity(SchemaPageType, stmt.Table); ok {
 		return fmt.Errorf("table %v already present", stmt.Table)
 	}
 
@@ -141,13 +141,13 @@ func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
 	var lastPage *GenericPage
 	var lastPageID PageID
 
-	if startPage, ok := FindStartingPageForEntity(s, pageType, name); !ok {
+	if startPage, ok := s.iter().FindStartingPageForEntity(pageType, name); !ok {
 		// allocatePage also links it
 		pageID, newPage := s.allocatePage(pageType, name)
 		lastPage = newPage
 		lastPageID = pageID
 	} else {
-		for pageID, p := range NewPageIterator(s, startPage) {
+		for pageID, p := range s.iter().NewPageIterator(startPage) {
 			lastPage = p
 			lastPageID = pageID
 		}
@@ -168,7 +168,7 @@ func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
 
 func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
 	var lastPage *GenericPage
-	for _, p := range directoryPages(s) {
+	for _, p := range s.iter().directoryPages(){
 		lastPage = p
 	}
 
@@ -189,9 +189,13 @@ func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
 	}
 }
 
+func (s *Storage) iter() pageIterators {
+	return pageIterators{s}
+}
+
 func (s *Storage) schemaForTable(tableName string) (schema []FieldName, schemaLookup map[FieldName]FieldType) {
 	schemaLookup = map[FieldName]FieldType{}
-	for data := range SchemaEntriesIterator(s, tableName) {
+	for data := range s.iter().SchemaEntriesIterator(tableName) {
 		schemaLookup[data.FieldNameV] = data.FieldTypeV
 		schema = append(schema, data.FieldNameV)
 	}
@@ -280,7 +284,7 @@ func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 		Header: columnsToQuery,
 	}
 
-	rowIt := RowIterator(s, stmt.Table, schema, schemaLookup)
+	rowIt := s.iter().RowIterator(stmt.Table, schema, schemaLookup)
 	if stmt.Where != nil {
 		rowIt = Select(rowIt, buildPredicate(stmt.Where.Predicate))
 	}
@@ -382,12 +386,12 @@ func predBuilder(pred sql.BoolExpression, r Row) ColumnData {
 
 func (s *Storage) AllSchema() Schema {
 	schema := Schema{}
-	for dir := range DirectoryEntriesIterator(s) {
+	for dir := range s.iter().DirectoryEntriesIterator() {
 		if dir.PageTyp != SchemaPageType {
 			continue
 		}
 		t := TableSchema{}
-		for entry := range SchemaEntriesIterator(s, dir.Name) {
+		for entry := range s.iter().SchemaEntriesIterator(dir.Name) {
 			t[entry.FieldNameV] = entry.FieldTypeV
 		}
 		if len(t) != 0 {
