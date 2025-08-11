@@ -145,7 +145,7 @@ func TestSerializeStorage(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, s.AllSchema(), recoveredDb.AllSchema())
 		assert.Equal(t, len(s.allPages), len(recoveredDb.allPages))
-		assert.Equal(t, len(s.allPages), 2) // root and directory
+		assert.Equal(t, len(s.allPages), 3) // root schema directory
 	})
 
 	t.Run("single table", func(t *testing.T) {
@@ -177,7 +177,7 @@ func TestSerializeStorage(t *testing.T) {
 		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
 		assert.NoError(t, err)
 		assert.Equal(t, len(s.allPages), len(recoveredDb.allPages))
-		assert.Equal(t, len(s.allPages), 1+1+2 +2) // root + directory + 2x schema + 2x data
+		assert.Equal(t, len(s.allPages), 1+1+1 +2) // root + directory + schema + 2x data
 		
 		for i := 0; i < len(s.allPages); i++ {
 			assert.Equal(t, s.allPages[i].Header, recoveredDb.allPages[i].Header, "header on page %d", i)		

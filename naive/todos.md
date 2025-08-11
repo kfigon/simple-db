@@ -40,10 +40,12 @@
 * [ ] recovery
 
 * [ ] cleanup code - separate iterators and access methods. move some stuff to exection engine
+    * [x] schema outside of directory
+    * [x] schema pages that can store different tables
 * [ ] tool for debugging data on disk
 * [ ] better update support - overflow pages, page garbage collection, dead tuples and dead cell cleanups 
-* [ ] try to understand different storage layouts - page storage (heap file, tree), page layout (log structured, tuple oriented - slotted pages, index organized storage). Storage models - row, column, mix
-* [ ] nullable collumns
+* [x] try to understand different storage layouts - page storage (heap file, tree), page layout (log structured, tuple oriented - slotted pages, index organized storage). Storage models - row, column, mix
+* [ ] nullable collumns - store tuple header with types like sqlite does
 * [ ] join
 * [ ] order
 * [ ] group by

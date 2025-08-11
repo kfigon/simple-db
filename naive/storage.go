@@ -12,6 +12,7 @@ import (
 
 const PageSize = 4 * 1024
 const directoryName = "catalog_directory"
+const schemaName = "catalog_schema"
 const assertionsEnabled = true
 
 type FieldType int32
@@ -70,7 +71,8 @@ func NewStorage() *Storage {
 	}
 
 	dirID, _ := s.allocatePage(DirectoryPageType, directoryName)
-	s.root = NewRootPage(dirID)
+	schemaID, _ := s.allocatePage(SchemaPageType, schemaName)
+	s.root = NewRootPage(dirID, schemaID)
 
 	return s
 }
@@ -92,8 +94,15 @@ func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericP
 	return newPageID, p
 }
 
+func (s *Storage) doesTableExists(table TableName) bool {
+	for range s.iter().SchemaForTable(table){
+		return true
+	}
+	return false
+}
+
 func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
-	if _, ok := s.iter().FindStartingPageForEntity(SchemaPageType, stmt.Table); ok {
+	if s.doesTableExists(TableName(stmt.Table)){
 		return fmt.Errorf("table %v already present", stmt.Table)
 	}
 
@@ -104,6 +113,7 @@ func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
 			return err
 		}
 		schemaEntries = append(schemaEntries, SchemaTuple{
+			TableNameV: TableName(stmt.Table),
 			FieldNameV: FieldName(v.Name),
 			FieldTypeV: f,
 		})
@@ -112,18 +122,8 @@ func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
 		return fmt.Errorf("empty schema provided")
 	}
 
-	// need to add schema first, as inside we're looking into directory - but there's no directory entry yet
-	// but to create directory entry, we need first page id
-	firstPageIDForSchema := s.AddTuple(SchemaPageType, stmt.Table, schemaEntries[0].Serialize())
-
-	s.AddDirectoryTuple(DirectoryTuple{
-		PageTyp:      SchemaPageType,
-		StartingPage: firstPageIDForSchema,
-		Name:         stmt.Table,
-	})
-
-	for _, v := range schemaEntries[1:] {
-		s.AddTuple(SchemaPageType, stmt.Table, v.Serialize())
+	for _, v := range schemaEntries {
+		s.AddSchemaTuple(v)
 	}
 
 	// add empty data page
@@ -189,13 +189,36 @@ func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
 	}
 }
 
+func (s *Storage) AddSchemaTuple(sch SchemaTuple) {
+	var lastPage *GenericPage
+	for _, p := range s.iter().schemaPages(){
+		lastPage = p
+	}
+
+	if lastPage == nil {
+		_, newPage := s.allocatePage(SchemaPageType, schemaName)
+		lastPage = newPage
+	}
+
+	d := sch.Serialize()
+	_, err := lastPage.Add(d)
+	// retry if end of space
+	if errors.Is(err, errNoSpace) {
+		newPageID, p := s.allocatePage(SchemaPageType, schemaName)
+		must(p.Add(d))
+		lastPage.Header.NextPage = newPageID
+	} else {
+		debugAsserErr(err, "unknown error when adding schema tuple")
+	}
+}
+
 func (s *Storage) iter() pageIterators {
 	return pageIterators{s}
 }
 
-func (s *Storage) schemaForTable(tableName string) (schema []FieldName, schemaLookup map[FieldName]FieldType) {
+func (s *Storage) schemaForTable(tableName TableName) (schema []FieldName, schemaLookup map[FieldName]FieldType) {
 	schemaLookup = map[FieldName]FieldType{}
-	for data := range s.iter().SchemaEntriesIterator(tableName) {
+	for data := range s.iter().SchemaForTable(tableName) {
 		schemaLookup[data.FieldNameV] = data.FieldTypeV
 		schema = append(schema, data.FieldNameV)
 	}
@@ -203,7 +226,7 @@ func (s *Storage) schemaForTable(tableName string) (schema []FieldName, schemaLo
 }
 
 func (s *Storage) Insert(stmt sql.InsertStatement) error {
-	schema, schemaLookup := s.schemaForTable(stmt.Table)
+	schema, schemaLookup := s.schemaForTable(TableName(stmt.Table))
 	if len(schema) == 0 {
 		return fmt.Errorf("table %v does not exist", stmt.Table)
 	}
@@ -269,7 +292,7 @@ type QueryResult struct {
 
 func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 	var zero QueryResult
-	schema, schemaLookup := s.schemaForTable(stmt.Table)
+	schema, schemaLookup := s.schemaForTable(TableName(stmt.Table))
 
 	if len(schema) == 0 {
 		return zero, fmt.Errorf("table %v does not exist", stmt.Table)
@@ -386,17 +409,14 @@ func predBuilder(pred sql.BoolExpression, r Row) ColumnData {
 
 func (s *Storage) AllSchema() Schema {
 	schema := Schema{}
-	for dir := range s.iter().DirectoryEntriesIterator() {
-		if dir.PageTyp != SchemaPageType {
-			continue
-		}
-		t := TableSchema{}
-		for entry := range s.iter().SchemaEntriesIterator(dir.Name) {
-			t[entry.FieldNameV] = entry.FieldTypeV
-		}
-		if len(t) != 0 {
-			schema[TableName(dir.Name)] = t
-		}
+	for sch := range s.iter().SchemaEntriesIterator(){
+		v, ok := schema[sch.TableNameV]
+		if !ok {
+			v = TableSchema{}
+		} 
+
+		v[sch.FieldNameV] = sch.FieldTypeV
+		schema[sch.TableNameV] = v
 	}
 
 	return schema

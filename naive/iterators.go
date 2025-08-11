@@ -38,6 +38,10 @@ func (p pageIterators) directoryPages() PageIterator {
 	return p.NewPageIterator(p.root.DirectoryPageStart)
 }
 
+func (p pageIterators) schemaPages() PageIterator {
+	return p.NewPageIterator(p.root.SchemaPageStart)
+}
+
 type TupleIterator iter.Seq[[]byte]
 
 func (p pageIterators) FindStartingPageForEntity(pageType PageType, name string) (PageID, bool) {
@@ -77,12 +81,22 @@ func (p pageIterators) DirectoryEntriesIterator() iter.Seq[DirectoryTuple] {
 	}
 }
 
-func (p pageIterators) SchemaEntriesIterator(name string) iter.Seq[SchemaTuple] {
+func (p pageIterators) SchemaEntriesIterator() iter.Seq[SchemaTuple] {
 	return func(yield func(SchemaTuple) bool) {
-		for d := range p.NewEntityIterator(SchemaPageType, name){
+		for d := range p.schemaPages().tuples(){
 			sch := must(DeserializeSchemaTuple(d))
 			if !yield(*sch) {
 				break
+			}
+		}
+	}
+}
+
+func (p pageIterators) SchemaForTable(t TableName) iter.Seq[SchemaTuple] {
+	return func(yield func(SchemaTuple) bool) {
+		for d := range p.SchemaEntriesIterator() {
+			if d.TableNameV == t && !yield(d) {
+				return 
 			}
 		}
 	}

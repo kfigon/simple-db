@@ -10,15 +10,17 @@ type RootPage struct {
 	MagicNumber     int32
 	PageSize        int32
 	DirectoryPageStart   PageID
+	SchemaPageStart   PageID
 	LogPageStart   PageID
 }
 
-func NewRootPage(directoryStart PageID) RootPage {
+func NewRootPage(directoryStart PageID, schemaStart PageID) RootPage {
 	return RootPage{
 		PageTyp: RootPageType,
 		MagicNumber: 	 MagicNumber,
 		PageSize:        PageSize,
 		DirectoryPageStart: 	 directoryStart,
+		SchemaPageStart: schemaStart,
 	}
 }
 
@@ -26,10 +28,12 @@ const MagicNumber int32 = 0xc0de
 
 func (r *RootPage) Serialize() []byte {
 	got := SerializeAll(
+		SerializeInt(int32(r.PageTyp)),
 		SerializeInt(r.MagicNumber),
 		SerializeInt(r.PageSize),
 		SerializeInt(int32(r.DirectoryPageStart)),
-		make([]byte, PageSize-4*3),
+		SerializeInt(int32(r.SchemaPageStart)),
+		make([]byte, PageSize- 4 * 5), // 5 fields, each has 4 bytes
 	)
 	debugAssert(len(got) == PageSize, "root page should also be size of a page")
 	return got
@@ -41,9 +45,11 @@ func DeserializeRootPage(r io.Reader) (*RootPage, error) {
 		return nil, fmt.Errorf("error reading root page: %w", err)
 	}
 	root, err := DeserializeAll(bytes,
+		compose("page type", func(rp *RootPage, i int32) { rp.PageTyp = PageType(i)}, DeserializeIntAndEat), 
 		compose("magic num", func(rp *RootPage, i int32) { rp.MagicNumber = i}, DeserializeIntAndEat), 
 		compose("page size", func(rp *RootPage, i int32) { rp.PageSize = i}, DeserializeIntAndEat), 
 		compose("directory page start", func(rp *RootPage, i int32) { rp.DirectoryPageStart = PageID(i)}, DeserializeIntAndEat), 
+		compose("schema page start", func(rp *RootPage, i int32) { rp.SchemaPageStart = PageID(i)}, DeserializeIntAndEat), 
 	)
 	if err != nil {
 		return nil, err
@@ -169,18 +175,21 @@ func DeserializeDirectoryTuple(b []byte) (*DirectoryTuple, error) {
 }
 
 type SchemaTuple struct {
+	TableNameV TableName
 	FieldNameV FieldName
 	FieldTypeV FieldType
 }
 
 func (s SchemaTuple) Serialize() []byte {
 	return SerializeAll(
+		SerializeString(string(s.TableNameV)),
 		SerializeString(string(s.FieldNameV)),
 		SerializeInt(int32(s.FieldTypeV)))
 }
 
 func DeserializeSchemaTuple(b []byte) (*SchemaTuple, error) {
 	return DeserializeAll[SchemaTuple](b,
+		compose("table name", func(st *SchemaTuple, s string) { st.TableNameV = TableName(s)}, DeserializeStringAndEat),
 		compose("field name", func(st *SchemaTuple, s string) { st.FieldNameV = FieldName(s)}, DeserializeStringAndEat),
 		compose("field type", func(st *SchemaTuple, s int32) { st.FieldTypeV = FieldType(s)}, DeserializeIntAndEat))
 }
