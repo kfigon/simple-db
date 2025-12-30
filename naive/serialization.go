@@ -13,11 +13,12 @@ func SerializeAll(chunks ...[]byte) []byte {
 	}
 	return buf.Bytes()
 }
-type setter[T any, V any]func(*T, V) 
-type deserializeFn[T any, V any]func(*T, *V) error
-type mapper[T any, V any]func(*T) (V, error)
 
-func compose[T any,V any](fieldName string, setFn setter[T,V], m mapper[[]byte, V]) deserializeFn[T,[]byte] {
+type setter[T any, V any] func(*T, V)
+type deserializeFn[T any, V any] func(*T, *V) error
+type mapper[T any, V any] func(*T) (V, error)
+
+func compose[T any, V any](fieldName string, setFn setter[T, V], m mapper[[]byte, V]) deserializeFn[T, []byte] {
 	return func(t *T, b *[]byte) error {
 		v, err := m(b)
 		if err != nil {
@@ -28,12 +29,136 @@ func compose[T any,V any](fieldName string, setFn setter[T,V], m mapper[[]byte, 
 	}
 }
 
+type serializationFn[T any] func(*T, *bytes.Buffer)
+
+func Serialize2[T any](v *T, funs ...serializationFn[T]) []byte {
+	buf := bytes.NewBuffer(nil)
+	for _, fn := range funs {
+		fn(v, buf)
+	}
+	return buf.Bytes()
+}
+
+type getterFn[T any, K any] func(*T) K
+
+func WithInt[T any](get getterFn[T, int]) serializationFn[T] {
+	return func(t *T, b *bytes.Buffer) {
+		i := get(t)
+		serInt(i, b)
+	}
+}
+
+func WithBool[T any](get getterFn[T, bool]) serializationFn[T] {
+	return func(t *T, b *bytes.Buffer) {
+		boolV := get(t)
+		if boolV {
+			b.WriteByte(1)
+		} else {
+			b.WriteByte(0)
+		}
+	}
+}
+
+func WithString[T any](get getterFn[T, string]) serializationFn[T] {
+	return func(t *T, b *bytes.Buffer) {
+		str := get(t)
+		serInt(len(str), b)
+		b.WriteString(str)
+	}
+}
+
+func WithBytes[T any](get getterFn[T, []byte]) serializationFn[T] {
+	return func(t *T, b *bytes.Buffer) {
+		bytez := get(t)
+		serInt(len(bytez), b)
+		b.Write(bytez)
+	}
+}
+
+func serInt(i int, b *bytes.Buffer) {
+	b.Write(endinanness.AppendUint32([]byte{}, uint32(i)))
+}
+
+type deserializeFn2[T any] func(*T, *bytes.Reader) error
+
+func Deserialize2[T any](buf *bytes.Reader, funs ...deserializeFn2[T]) (*T, error) {
+	var out T
+	for _, fn := range funs {
+		if err := fn(&out, buf); err != nil {
+			return nil, fmt.Errorf("deserialization error on %T: %w", out, err)
+		}
+	}
+	return &out, nil
+}
+
+type setterFn[T any, K any] func(*T, *K)
+
+func DeserWithInt[T any](set setterFn[T, int]) deserializeFn2[T] {
+	return func(t *T, r *bytes.Reader) error {
+		i, err := readInt(r)
+		if err != nil {
+			return fmt.Errorf("error deserializing int: %w", err)
+		}
+		set(t, &i)
+		return nil
+	}
+}
+
+func DeserWithStr[T any](set setterFn[T, string]) deserializeFn2[T] {
+	return func(t *T, r *bytes.Reader) error {
+		i, err := readInt(r)
+		if err != nil {
+			return fmt.Errorf("error deserializing lenght of the string: %w", err)
+		}
+		buf := make([]byte, i)
+		got, err := r.Read(buf)
+		if err != nil {
+			return fmt.Errorf("error deserializing string: %w", err)
+		} else if got != i {
+			return fmt.Errorf("error deserializing string, expected %d bytes, got %d", i, got)
+		}
+		data := string(buf)
+		set(t, &data)
+		return nil
+	}
+}
+
+func DeserWithBool[T any](set setterFn[T, bool]) deserializeFn2[T] {
+	return func(t *T, r *bytes.Reader) error {
+		got, err := r.ReadByte()
+		if err != nil {
+			return fmt.Errorf("error deserializing bool: %w", err)
+		} else if got == 0 {
+			v := false
+			set(t, &v)
+		} else if got == 1 {
+			v := true
+			set(t, &v)
+		} else {
+			return fmt.Errorf("error deserializing bool, unexpected bool value: %b", got)
+		}
+		return nil
+	}
+}
+
+func readInt(r *bytes.Reader) (int, error) {
+	buf := make([]byte, 4)
+	got, err := r.Read(buf)
+	if err != nil {
+		return 0, err
+	} else if got != 4 {
+		return 0, fmt.Errorf("failed to read int, expected 4 bytes, got %d", got)
+	}
+
+	return int(endinanness.Uint32(buf)), nil
+}
+
 func DeserializeAll[T any](b []byte, funs ...deserializeFn[T, []byte]) (*T, error) {
 	var out T
-	for _, v := range funs{
-		if err := v(&out, &b); err != nil{
+	for _, v := range funs {
+		if err := v(&out, &b); err != nil {
 			return nil, err
-		}	
+		}
 	}
 	return &out, nil
 }
