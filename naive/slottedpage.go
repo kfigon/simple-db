@@ -92,26 +92,23 @@ func (s *Slotted) Serialize() []byte {
 }
 
 func DeserializeSlotted(r io.Reader, slotArrayLen int) (*Slotted, error) {
-	originalSlice := b
-
-	p := NewSlotted(len(b))
-	lastOffset := PageOffset(len(b))
-	debugAssert(lastOffset <= PageSize, "last offset can't be bigger than page size")
+	genericHeaderSize := 4 * 3
+	p := NewSlotted(PageSize - genericHeaderSize) // 3 fields in the header, rest is slotted
+	lastOffset := PageSize
 
 	for range slotArrayLen {
-		i, err := ReadInt(b)
+		i, err := ReadInt(r)
 		if err != nil {
 			return nil, fmt.Errorf("error deserializing slot array: %w", err)
 		}
 		ithPageOffset := PageOffset(i)
 		p.Indexes = append(p.Indexes, ithPageOffset)
 
-		if lastOffset > ithPageOffset { // just min
-			lastOffset = ithPageOffset
-		}
+		lastOffset = min(lastOffset, int(ithPageOffset))
 	}
-	p.lastOffset = lastOffset
-	copy(p.CellData[lastOffset:], originalSlice[lastOffset:])
+	p.lastOffset = PageOffset(lastOffset)
+	// copy(p.CellData[lastOffset:], originalSlice[lastOffset:])
+	r.Read(p.CellData[lastOffset:])
 
 	return p, nil
 }

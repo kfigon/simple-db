@@ -7,23 +7,6 @@ import (
 	"io"
 )
 
-type setter[T any, V any] func(*T, V)
-type deserializeFn[T any, V any] func(*T, *V) error
-type mapper[T any, V any] func(*T) (V, error)
-
-func compose[T any, V any](fieldName string, setFn setter[T, V], m mapper[[]byte, V]) deserializeFn[T, []byte] {
-	return func(t *T, b *[]byte) error {
-		v, err := m(b)
-		if err != nil {
-			return fmt.Errorf("error deserializing %s: %w", fieldName, err)
-		}
-		setFn(t, v)
-		return nil
-	}
-}
-
-// -----------------
-
 type serializationFn[T any] func(*T, *bytes.Buffer)
 
 func SerializeStruct[T any](v *T, funs ...serializationFn[T]) []byte {
@@ -151,16 +134,6 @@ func ReadInt(r io.Reader) (int32, error) {
 	return int32(endinanness.Uint32(buf)), nil
 }
 
-func DeserializeAll[T any](b []byte, funs ...deserializeFn[T, []byte]) (*T, error) {
-	var out T
-	for _, v := range funs {
-		if err := v(&out, &b); err != nil {
-			return nil, err
-		}
-	}
-	return &out, nil
-}
-
 var endinanness = binary.BigEndian
 
 type BytesWithHeader []byte
@@ -232,33 +205,36 @@ func deserializationErr(got, exp int, typ string) error {
 	return fmt.Errorf("cant deserialize into %v, expected lenght %v, got %v", typ, exp, got)
 }
 
-func DeserializeStringAndEat(b *[]byte) (string, error) {
-	v, err := DeserializeString(*b)
+func DeserializeStringAndEat(r io.Reader) (string, error) {
+	i, err := ReadInt(r)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error deserializing lenght of the string: %w", err)
 	}
-	advanceBuf(b, 4+len(v))
-	return v, nil
+	buf := make([]byte, i)
+	got, err := r.Read(buf)
+	if err != nil {
+		return "", fmt.Errorf("error deserializing string: %w", err)
+	} else if got != int(i) {
+		return "", fmt.Errorf("error deserializing string, expected %d bytes, got %d", i, got)
+	}
+	return string(buf), nil
 }
 
-func DeserializeBoolAndEat(b *[]byte) (bool, error) {
-	v, err := DeserializeBool(*b)
+func DeserializeBoolAndEat(r io.Reader) (bool, error) {
+	d := make([]byte, 1)
+	got, err := r.Read(d)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("error deserializing bool: %w", err)
+	} else if got != 1 {
+		return false, fmt.Errorf("error deserializing bool, expected 1 byte, got %d", got)
+	} else if d[0] == 0 {
+		return false, nil
+	} else if d[0] == 1 {
+		return true, nil
 	}
-	advanceBuf(b, 1)
-	return v, nil
+	return false, fmt.Errorf("error deserializing bool, unexpected bool value: %b", d[0])
 }
 
-func DeserializeIntAndEat(b *[]byte) (int32, error) {
-	v, err := DeserializeInt(*b)
-	if err != nil {
-		return 0, err
-	}
-	advanceBuf(b, 4)
-	return v, nil
-}
-
-func advanceBuf(b *[]byte, howMany int) {
-	*b = (*b)[howMany:]
+func DeserializeIntAndEat(r io.Reader) (int32, error) {
+	return ReadInt(r)
 }

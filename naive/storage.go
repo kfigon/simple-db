@@ -95,14 +95,14 @@ func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericP
 }
 
 func (s *Storage) doesTableExists(table TableName) bool {
-	for range s.iter().SchemaForTable(table){
+	for range s.iter().SchemaForTable(table) {
 		return true
 	}
 	return false
 }
 
 func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
-	if s.doesTableExists(TableName(stmt.Table)){
+	if s.doesTableExists(TableName(stmt.Table)) {
 		return fmt.Errorf("table %v already present", stmt.Table)
 	}
 
@@ -168,7 +168,7 @@ func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
 
 func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
 	var lastPage *GenericPage
-	for _, p := range s.iter().directoryPages(){
+	for _, p := range s.iter().directoryPages() {
 		lastPage = p
 	}
 
@@ -191,7 +191,7 @@ func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
 
 func (s *Storage) AddSchemaTuple(sch SchemaTuple) {
 	var lastPage *GenericPage
-	for _, p := range s.iter().schemaPages(){
+	for _, p := range s.iter().schemaPages() {
 		lastPage = p
 	}
 
@@ -409,11 +409,11 @@ func predBuilder(pred sql.BoolExpression, r Row) ColumnData {
 
 func (s *Storage) AllSchema() Schema {
 	schema := Schema{}
-	for sch := range s.iter().SchemaEntriesIterator(){
+	for sch := range s.iter().SchemaEntriesIterator() {
 		v, ok := schema[sch.TableNameV]
 		if !ok {
 			v = TableSchema{}
-		} 
+		}
 
 		v[sch.FieldNameV] = sch.FieldTypeV
 		schema[sch.TableNameV] = v
@@ -422,18 +422,19 @@ func (s *Storage) AllSchema() Schema {
 	return schema
 }
 
-func parseToRow(bytes []byte, schema []FieldName, lookup map[FieldName]FieldType) Row {
+func parseToRow(bytez []byte, schema []FieldName, lookup map[FieldName]FieldType) Row {
 	out := Row{}
+	buf := bytes.NewReader(bytez)
 	for _, f := range schema {
 		typ := lookup[f]
 		cd := ColumnData{Typ: typ}
 		switch typ {
 		case Int32:
-			cd.Data = must(DeserializeIntAndEat(&bytes))
+			cd.Data = must(DeserializeIntAndEat(buf))
 		case String:
-			cd.Data = must(DeserializeStringAndEat(&bytes))
+			cd.Data = must(DeserializeStringAndEat(buf))
 		case Boolean:
-			cd.Data = must(DeserializeBoolAndEat(&bytes))
+			cd.Data = must(DeserializeBoolAndEat(buf))
 		default:
 			debugAssert(false, "data corruption on parsing, unknown type %v", typ)
 		}

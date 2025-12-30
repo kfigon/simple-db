@@ -11,7 +11,7 @@ type pageIterators struct {
 func (p pageIterators) NewPageIterator(startingPage PageID) PageIterator {
 	currentPageId := startingPage
 	return func(yield func(PageID, *GenericPage) bool) {
-		for currentPageId != 0 && int(currentPageId) < len(p.Storage.allPages){
+		for currentPageId != 0 && int(currentPageId) < len(p.Storage.allPages) {
 			currentPage := p.Storage.allPages[currentPageId]
 			if !yield(currentPageId, currentPage) {
 				break
@@ -22,6 +22,7 @@ func (p pageIterators) NewPageIterator(startingPage PageID) PageIterator {
 }
 
 type PageIterator iter.Seq2[PageID, *GenericPage]
+
 func (p PageIterator) tuples() TupleIterator {
 	return func(yield func([]byte) bool) {
 		for _, thisPage := range p {
@@ -83,7 +84,7 @@ func (p pageIterators) DirectoryEntriesIterator() iter.Seq[DirectoryTuple] {
 
 func (p pageIterators) SchemaEntriesIterator() iter.Seq[SchemaTuple] {
 	return func(yield func(SchemaTuple) bool) {
-		for d := range p.schemaPages().tuples(){
+		for d := range p.schemaPages().tuples() {
 			sch := must(DeserializeSchemaTuple(d))
 			if !yield(*sch) {
 				break
@@ -96,7 +97,7 @@ func (p pageIterators) SchemaForTable(t TableName) iter.Seq[SchemaTuple] {
 	return func(yield func(SchemaTuple) bool) {
 		for d := range p.SchemaEntriesIterator() {
 			if d.TableNameV == t && !yield(d) {
-				return 
+				return
 			}
 		}
 	}

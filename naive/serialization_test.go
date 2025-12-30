@@ -1,6 +1,8 @@
 package naive
 
 import (
+	"bytes"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -62,17 +64,17 @@ func TestSerializeGeneric(t *testing.T) {
 		Vals []int32
 	}
 
-	bytes := []byte{
+	bytez := []byte{
 		0, 0, 0, 11, 'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd',
 		0, 0, 0, 3,
 		0, 0, 0, 10, 0, 0, 0, 0xff, 0, 0, 0, 5}
 
-	funs := []deserializeFn[data, []byte]{
-		compose("Str", func(t *data, s string) { t.Str = s}, DeserializeStringAndEat),
-		compose("Int", func(t *data, v int32) { t.Int = v}, DeserializeIntAndEat),
-		func(d *data, b *[]byte) error {
+	funs := []deserializeFn2[data]{
+		DeserWithStr("Str", func(t *data, s *string) { t.Str = *s }),
+		DeserWithInt("Int", func(t *data, v *int32) { t.Int = *v }),
+		func(d *data, r io.Reader) error {
 			for range d.Int {
-				got, err := DeserializeIntAndEat(b)
+				got, err := ReadInt(r)
 				if err != nil {
 					return err
 				}
@@ -82,7 +84,7 @@ func TestSerializeGeneric(t *testing.T) {
 		},
 	}
 
-	got, err := DeserializeAll(bytes, funs...)
+	got, err := Deserialize2(bytes.NewReader(bytez), funs...)
 	assert.NoError(t, err)
 	assert.Equal(t, got, &data{
 		Str:  "hello world",
@@ -90,4 +92,3 @@ func TestSerializeGeneric(t *testing.T) {
 		Vals: []int32{10, 0xff, 5},
 	})
 }
-

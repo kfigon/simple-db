@@ -166,10 +166,10 @@ func (d DirectoryTuple) Serialize() []byte {
 }
 
 func DeserializeDirectoryTuple(b []byte) (*DirectoryTuple, error) {
-	return DeserializeAll[DirectoryTuple](b,
-		compose("page type", func(t *DirectoryTuple, i int32) { t.PageTyp = PageType(i) }, DeserializeIntAndEat),
-		compose("starting page", func(t *DirectoryTuple, i int32) { t.StartingPage = PageID(i) }, DeserializeIntAndEat),
-		compose("name", func(t *DirectoryTuple, s string) { t.Name = s }, DeserializeStringAndEat),
+	return Deserialize2[DirectoryTuple](bytes.NewReader(b),
+		DeserWithInt("page type", func(t *DirectoryTuple, i *int32) { t.PageTyp = PageType(*i) }),
+		DeserWithInt("starting page", func(t *DirectoryTuple, i *int32) { t.StartingPage = PageID(*i) }),
+		DeserWithStr("name", func(t *DirectoryTuple, s *string) { t.Name = *s }),
 	)
 }
 
