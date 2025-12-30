@@ -3,6 +3,7 @@ package naive
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"iter"
 )
 
@@ -90,7 +91,7 @@ func (s *Slotted) Serialize() []byte {
 	return buf.Bytes()
 }
 
-func DeserializeSlotted(b *bytes.Reader, slotArrayLen int) (*Slotted, error) {
+func DeserializeSlotted(r io.Reader, slotArrayLen int) (*Slotted, error) {
 	originalSlice := b
 
 	p := NewSlotted(len(b))

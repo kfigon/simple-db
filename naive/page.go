@@ -41,11 +41,7 @@ func (r *RootPage) Serialize() []byte {
 }
 
 func DeserializeRootPage(r io.Reader) (*RootPage, error) {
-	buf, err := ReaderToBytesReader(r)
-	if err != nil {
-		return nil, fmt.Errorf("error reading root page: %w", err)
-	}
-	root, err := Deserialize2(buf,
+	root, err := Deserialize2(r,
 		DeserWithInt("page type", func(rp *RootPage, i *int32) { rp.PageTyp = PageType(*i) }),
 		DeserWithInt("magic num", func(rp *RootPage, i *int32) { rp.MagicNumber = *i }),
 		DeserWithInt("page size", func(rp *RootPage, i *int32) { rp.PageSize = *i }),
@@ -133,12 +129,7 @@ func (g *GenericPage) Serialize() []byte {
 }
 
 func Deserialize(r io.Reader) (*GenericPage, error) {
-	bytes, err := ReaderToBytesReader(r)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read schema: %w", err)
-	}
-
-	header, err := Deserialize2[GenericPageHeader](bytes,
+	header, err := Deserialize2[GenericPageHeader](r,
 		DeserWithInt("page type", func(t *GenericPageHeader, i *int32) { t.PageTyp = PageType(*i) }),
 		DeserWithInt("next page", func(t *GenericPageHeader, i *int32) { t.NextPage = PageID(*i) }),
 		DeserWithInt("slot array size", func(t *GenericPageHeader, i *int32) { t.SlotArraySize = *i }),
@@ -147,7 +138,7 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 		return nil, fmt.Errorf("error deserializing page header: %w", err)
 	}
 
-	slotted, err := DeserializeSlotted(bytes, int(header.SlotArraySize))
+	slotted, err := DeserializeSlotted(r, int(header.SlotArraySize))
 	if err != nil {
 		return nil, err
 	}
