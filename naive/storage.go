@@ -251,21 +251,21 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 		}
 	}
 
-	inputData := []byte{}
+	inputData := bytes.NewBuffer(nil)
 	for _, col := range schema {
 		d := inputLookup[col]
 
 		switch d.Typ {
 		case Int32:
-			inputData = append(inputData, SerializeInt(d.Data.(int32))...)
+			inputData.Write(SerializeInt(d.Data.(int32)))
 		case String:
-			inputData = append(inputData, SerializeString(d.Data.(string))...)
+			inputData.Write(SerializeString(d.Data.(string)))
 		case Boolean:
-			inputData = append(inputData, SerializeBool(d.Data.(bool))...)
+			inputData.Write(SerializeBool(d.Data.(bool)))
 		}
 	}
 
-	s.AddTuple(DataPageType, stmt.Table, inputData)
+	s.AddTuple(DataPageType, stmt.Table, inputData.Bytes())
 	return nil
 }
 
@@ -430,11 +430,11 @@ func parseToRow(bytez []byte, schema []FieldName, lookup map[FieldName]FieldType
 		cd := ColumnData{Typ: typ}
 		switch typ {
 		case Int32:
-			cd.Data = must(DeserializeIntAndEat(buf))
+			cd.Data = must(ReadInt(buf))
 		case String:
-			cd.Data = must(DeserializeStringAndEat(buf))
+			cd.Data = must(ReadString(buf))
 		case Boolean:
-			cd.Data = must(DeserializeBoolAndEat(buf))
+			cd.Data = must(ReadBool(buf))
 		default:
 			debugAssert(false, "data corruption on parsing, unknown type %v", typ)
 		}

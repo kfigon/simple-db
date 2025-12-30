@@ -7,6 +7,28 @@ import (
 	"io"
 )
 
+var endinanness = binary.BigEndian
+
+func SerializeBool(b bool) []byte {
+	if b {
+		return []byte{1}
+	}
+	return []byte{0}
+}
+
+func SerializeInt(i int32) []byte {
+	return endinanness.AppendUint32([]byte{}, uint32(i))
+}
+
+func SerializeString(s string) []byte {
+	return SerializeBytes([]byte(s))
+}
+
+func SerializeBytes(b []byte) BytesWithHeader {
+	header := SerializeInt(int32(len(b)))
+	return append(header, b...)
+}
+
 type serializationFn[T any] func(*T, *bytes.Buffer)
 
 func SerializeStruct[T any](v *T, funs ...serializationFn[T]) []byte {
@@ -22,25 +44,21 @@ type getterFn[T any, K any] func(*T) K
 func WithInt[T any](get getterFn[T, int32]) serializationFn[T] {
 	return func(t *T, b *bytes.Buffer) {
 		i := get(t)
-		serInt(i, b)
+		b.Write(SerializeInt(int32(i)))
 	}
 }
 
 func WithBool[T any](get getterFn[T, bool]) serializationFn[T] {
 	return func(t *T, b *bytes.Buffer) {
 		boolV := get(t)
-		if boolV {
-			b.WriteByte(1)
-		} else {
-			b.WriteByte(0)
-		}
+		b.Write(SerializeBool(boolV))
 	}
 }
 
 func WithString[T any](get getterFn[T, string]) serializationFn[T] {
 	return func(t *T, b *bytes.Buffer) {
 		str := get(t)
-		serInt(int32(len(str)), b)
+		b.Write(SerializeInt(int32(len(str))))
 		b.WriteString(str)
 	}
 }
@@ -48,18 +66,14 @@ func WithString[T any](get getterFn[T, string]) serializationFn[T] {
 func WithBytes[T any](get getterFn[T, []byte]) serializationFn[T] {
 	return func(t *T, b *bytes.Buffer) {
 		bytez := get(t)
-		serInt(int32(len(bytez)), b)
+		b.Write(SerializeInt(int32(len(bytez))))
 		b.Write(bytez)
 	}
 }
 
-func serInt(i int32, b *bytes.Buffer) {
-	b.Write(endinanness.AppendUint32([]byte{}, uint32(i)))
-}
-
 type deserializeFn2[T any] func(*T, io.Reader) error
 
-func Deserialize2[T any](buf io.Reader, funs ...deserializeFn2[T]) (*T, error) {
+func DeserializeStruct[T any](buf io.Reader, funs ...deserializeFn2[T]) (*T, error) {
 	var out T
 	for _, fn := range funs {
 		if err := fn(&out, buf); err != nil {
@@ -84,40 +98,33 @@ func DeserWithInt[T any](fieldName string, set setterFn[T, int32]) deserializeFn
 
 func DeserWithStr[T any](fieldname string, set setterFn[T, string]) deserializeFn2[T] {
 	return func(t *T, r io.Reader) error {
-		i, err := ReadInt(r)
-		if err != nil {
-			return fmt.Errorf("error deserializing lenght of the %q string: %w", fieldname, err)
-		}
-		buf := make([]byte, i)
-		got, err := r.Read(buf)
+		got, err := ReadString(r)
 		if err != nil {
 			return fmt.Errorf("error deserializing %q string: %w", fieldname, err)
-		} else if got != int(i) {
-			return fmt.Errorf("error deserializing %q string, expected %d bytes, got %d", fieldname, i, got)
 		}
-		data := string(buf)
-		set(t, &data)
+		set(t, &got)
+		return nil
+	}
+}
+
+func DeserWithBytes[T any](fieldname string, set setterFn[T, []byte]) deserializeFn2[T] {
+	return func(t *T, r io.Reader) error {
+		got, err := ReadBytes(r)
+		if err != nil {
+			return fmt.Errorf("error deserializing %q byte array: %w", fieldname, err)
+		}
+		set(t, &got)
 		return nil
 	}
 }
 
 func DeserWithBool[T any](fieldName string, set setterFn[T, bool]) deserializeFn2[T] {
 	return func(t *T, r io.Reader) error {
-		d := make([]byte, 1)
-		got, err := r.Read(d)
+		got, err := ReadBool(r)
 		if err != nil {
 			return fmt.Errorf("error deserializing %q bool: %w", fieldName, err)
-		} else if got != 1 {
-			return fmt.Errorf("error deserializing %q bool, expected 1 byte, got %d", fieldName, got)
-		} else if d[0] == 0 {
-			v := false
-			set(t, &v)
-		} else if d[0] == 1 {
-			v := true
-			set(t, &v)
-		} else {
-			return fmt.Errorf("error deserializing %q bool, unexpected bool value: %b", fieldName, d[0])
 		}
+		set(t, &got)
 		return nil
 	}
 }
@@ -134,78 +141,7 @@ func ReadInt(r io.Reader) (int32, error) {
 	return int32(endinanness.Uint32(buf)), nil
 }
 
-var endinanness = binary.BigEndian
-
-type BytesWithHeader []byte
-
-func SerializeBool(b bool) []byte {
-	if b {
-		return []byte{1}
-	}
-	return []byte{0}
-}
-
-func SerializeInt(i int32) []byte {
-	return endinanness.AppendUint32([]byte{}, uint32(i))
-}
-
-func SerializeString(s string) []byte {
-	return SerializeBytes([]byte(s))
-}
-
-func SerializeBytes(b []byte) BytesWithHeader {
-	header := SerializeInt(int32(len(b)))
-	return append(header, b...)
-}
-
-func DeserializeBool(b []byte) (bool, error) {
-	switch {
-	case len(b) < 1:
-		return false, deserializationErr(len(b), 1, "bool")
-	case b[0] == 0:
-		return false, nil
-	case b[0] == 1:
-		return true, nil
-	default:
-		return false, fmt.Errorf("invalid boolean, expected 0 or 1, got %v", b[0])
-	}
-}
-
-func DeserializeInt(b []byte) (int32, error) {
-	exp := 4
-	got := len(b)
-	if got < exp {
-		return 0, deserializationErr(got, exp, "i32")
-	}
-	return int32(endinanness.Uint32(b)), nil
-}
-
-func DeserializeString(b []byte) (string, error) {
-	v, err := DeserializeBytes(b)
-	if err != nil {
-		return "", err
-	}
-	return string(v), nil
-}
-
-func DeserializeBytes(b BytesWithHeader) ([]byte, error) {
-	exp := 4
-	got := len(b)
-	if got < exp {
-		return nil, deserializationErr(got, exp, "array header")
-	}
-	howMany, err := DeserializeInt(b[:4])
-	if err != nil {
-		return nil, fmt.Errorf("error deserializing header length: %w", err)
-	}
-	return b[4 : 4+howMany], nil
-}
-
-func deserializationErr(got, exp int, typ string) error {
-	return fmt.Errorf("cant deserialize into %v, expected lenght %v, got %v", typ, exp, got)
-}
-
-func DeserializeStringAndEat(r io.Reader) (string, error) {
+func ReadString(r io.Reader) (string, error) {
 	i, err := ReadInt(r)
 	if err != nil {
 		return "", fmt.Errorf("error deserializing lenght of the string: %w", err)
@@ -220,7 +156,22 @@ func DeserializeStringAndEat(r io.Reader) (string, error) {
 	return string(buf), nil
 }
 
-func DeserializeBoolAndEat(r io.Reader) (bool, error) {
+func ReadBytes(r io.Reader) ([]byte, error) {
+	i, err := ReadInt(r)
+	if err != nil {
+		return nil, fmt.Errorf("error deserializing lenght of byte array: %w", err)
+	}
+	buf := make([]byte, i)
+	got, err := r.Read(buf)
+	if err != nil {
+		return nil, fmt.Errorf("error deserializing byte array: %w", err)
+	} else if got != int(i) {
+		return nil, fmt.Errorf("error deserializing byte array, expected %d bytes, got %d", i, got)
+	}
+	return buf, nil
+}
+
+func ReadBool(r io.Reader) (bool, error) {
 	d := make([]byte, 1)
 	got, err := r.Read(d)
 	if err != nil {
@@ -235,6 +186,14 @@ func DeserializeBoolAndEat(r io.Reader) (bool, error) {
 	return false, fmt.Errorf("error deserializing bool, unexpected bool value: %b", d[0])
 }
 
-func DeserializeIntAndEat(r io.Reader) (int32, error) {
-	return ReadInt(r)
+type BytesWithHeader []byte
+
+func DeserializeBytes(b BytesWithHeader) ([]byte, error) {
+	exp := 4
+	got := len(b)
+	if got < exp {
+		return nil, fmt.Errorf("cant deserialize into %v, expected lenght %v, got %v", "array header", exp, got)
+	}
+	howMany := endinanness.Uint32(b[:4])
+	return b[4 : 4+howMany], nil
 }

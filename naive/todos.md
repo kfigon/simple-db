@@ -23,7 +23,7 @@
     * [x] add tuple to last page, do not create pages excessively
     * [x] generic serialization/deserialization
     * [ ] overflow pages
-    * [ ] serialization simplification, cleanup ser de lib
+    * [x] serialization simplification, cleanup ser de lib
     * [ ] rework storage to hold raw bytes, not generic page structs
     * [ ] introduce ExecutionEngine class to provide high level api
 

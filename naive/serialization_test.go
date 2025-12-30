@@ -10,37 +10,37 @@ import (
 
 func TestSerialize(t *testing.T) {
 	t.Run("bool true", func(t *testing.T) {
-		bytes := []byte{1}
-		assert.Equal(t, bytes, SerializeBool(true))
+		bytez := []byte{1}
+		assert.Equal(t, bytez, SerializeBool(true))
 
-		got, err := DeserializeBool(bytes)
+		got, err := ReadBool(bytes.NewReader(bytez))
 		assert.NoError(t, err)
 		assert.Equal(t, true, got)
 	})
 
 	t.Run("bool false", func(t *testing.T) {
-		bytes := []byte{0}
-		assert.Equal(t, bytes, SerializeBool(false))
+		bytez := []byte{0}
+		assert.Equal(t, bytez, SerializeBool(false))
 
-		got, err := DeserializeBool(bytes)
+		got, err := ReadBool(bytes.NewReader(bytez))
 		assert.NoError(t, err)
 		assert.Equal(t, false, got)
 	})
 
 	t.Run("int", func(t *testing.T) {
-		bytes := []byte{0, 255, 18, 52}
-		assert.Equal(t, bytes, SerializeInt(0xff1234))
+		bytez := []byte{0, 255, 18, 52}
+		assert.Equal(t, bytez, SerializeInt(0xff1234))
 
-		got, err := DeserializeInt(bytes)
+		got, err := ReadInt(bytes.NewReader(bytez))
 		assert.NoError(t, err)
 		assert.Equal(t, int32(0xff1234), got)
 	})
 
 	t.Run("string", func(t *testing.T) {
-		bytes := []byte{0, 0, 0, 11, 'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'}
-		assert.Equal(t, bytes, SerializeString("hello world"))
+		bytez := []byte{0, 0, 0, 11, 'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'}
+		assert.Equal(t, bytez, SerializeString("hello world"))
 
-		got, err := DeserializeString(bytes)
+		got, err := ReadString(bytes.NewReader(bytez))
 		assert.NoError(t, err)
 		assert.Equal(t, "hello world", got)
 	})
@@ -84,7 +84,7 @@ func TestSerializeGeneric(t *testing.T) {
 		},
 	}
 
-	got, err := Deserialize2(bytes.NewReader(bytez), funs...)
+	got, err := DeserializeStruct(bytes.NewReader(bytez), funs...)
 	assert.NoError(t, err)
 	assert.Equal(t, got, &data{
 		Str:  "hello world",
