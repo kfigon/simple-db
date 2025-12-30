@@ -24,6 +24,7 @@
     * [x] generic serialization/deserialization
     * [ ] overflow pages
     * [x] serialization simplification, cleanup ser de lib
+    * [ ] fix all byte reads to use reader interface, not read all
     * [ ] rework storage to hold raw bytes, not generic page structs
     * [ ] introduce ExecutionEngine class to provide high level api
 

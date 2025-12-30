@@ -474,6 +474,7 @@ func SerializeDb(s *Storage) []byte {
 }
 
 func DeserializeDb(r io.Reader) (*Storage, error) {
+	// todo: rework this readall
 	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err

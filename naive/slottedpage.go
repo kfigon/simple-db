@@ -92,20 +92,11 @@ func (s *Slotted) Serialize() []byte {
 }
 
 func DeserializeSlotted(r io.Reader, slotArrayLen int) (*Slotted, error) {
-	// todo: cleanup this
-	all, err := io.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-	debugAssert(len(all) <= PageSize, "invalid size of slotted page")
-	p := NewSlotted(len(all))
-	lastOffset := len(all)
+	p := NewSlotted(PageSize - 4*3)
+	lastOffset := PageSize
 
-	// I like buffer API here to read and consume buffer pointer
-	// todo: rework to remove this hack
-	buffz := bytes.NewReader(all)
 	for range slotArrayLen {
-		i, err := ReadInt(buffz)
+		i, err := ReadInt(r)
 		if err != nil {
 			return nil, fmt.Errorf("error deserializing slot array: %w", err)
 		}
@@ -115,7 +106,8 @@ func DeserializeSlotted(r io.Reader, slotArrayLen int) (*Slotted, error) {
 		lastOffset = min(lastOffset, int(ithPageOffset))
 	}
 	p.lastOffset = PageOffset(lastOffset)
-	copy(p.CellData[lastOffset:], all[lastOffset:])
+	// copy(p.CellData[lastOffset:], all[lastOffset:])
+	r.Read(p.CellData)
 
 	return p, nil
 }
