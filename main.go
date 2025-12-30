@@ -16,31 +16,28 @@ func main() {
 	fmt.Println("'load_db <filename>' to load <filename> to db")
 	fmt.Println("'schema' - to print tables and schema")
 	fmt.Println("'load_sql <filename>' - execute sql file, statements separated by newlines")
-	fmt.Println("or type <sql statement> to execute")
+	fmt.Println("or type some sql statement to execute")
 
 	storage := naive.NewStorage()
-	reader := bufio.NewReader(os.Stdin)
+	scanner := bufio.NewScanner(os.Stdin)
 
-	for {
+	for scanner.Scan() {
 		fmt.Print("> ")
-		
-		s, err := reader.ReadString('\n')
+
+		s := scanner.Text()
 		s = strings.TrimSpace(s)
 
-		if err != nil {
-			fmt.Println(err)
-			return
-		} else if s == "quit" || s == "exit" {
+		if s == "quit" || s == "exit" {
 			fmt.Println("auf wiedersehen!")
 			return
 		} else if ok, fileName := hasPrefixAndTrim(s, "dump_db "); ok {
-			if err = dumpDbToFile(storage, fileName); err != nil {
+			if err := dumpDbToFile(storage, fileName); err != nil {
 				fmt.Println(err)
 			} else {
 				fmt.Printf("db wrote to %q\n", fileName)
 			}
 		} else if ok, fileName := hasPrefixAndTrim(s, "load_db "); ok {
-			if err = loadFile(storage, fileName); err != nil {
+			if err := loadFile(storage, fileName); err != nil {
 				fmt.Printf("failed to load file: %q. Current db is not changed\n", fileName)
 			} else {
 				fmt.Printf("db refreshed from %q\n", fileName)
@@ -52,14 +49,14 @@ func main() {
 				fmt.Println("empty schema")
 				continue
 			}
-			for tableName, tableSchema := range schema{
-				fmt.Println(tableName+":")
+			for tableName, tableSchema := range schema {
+				fmt.Println(tableName + ":")
 				q := schemaToQuery(tableSchema)
 				fmt.Println(fmtQueryRes(q))
 				fmt.Println()
 			}
 		} else if ok, fileName := hasPrefixAndTrim(s, "load_sql "); ok {
-			if err = executeCommandsFromFile(storage, fileName); err != nil {
+			if err := executeCommandsFromFile(storage, fileName); err != nil {
 				fmt.Println("error while processing file: ", err)
 			} else {
 				fmt.Println("file processed")
@@ -69,6 +66,10 @@ func main() {
 				fmt.Println("error:", err)
 			}
 		}
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Println("got an error:", err.Error())
+		return
 	}
 }
 
@@ -106,7 +107,7 @@ func fmtQueryRes(r naive.QueryResult) string {
 	for _, v := range r.Header {
 		header = append(header, string(v))
 	}
-	
+
 	var out strings.Builder
 	out.WriteString(strings.Join(header, "\t"))
 	out.WriteString("\n")
@@ -136,7 +137,7 @@ func dumpDbToFile(s *naive.Storage, fileName string) error {
 		return fmt.Errorf("error writing a file: %w", err)
 	}
 	defer f.Close()
-	
+
 	_, err = f.Write(naive.SerializeDb(s))
 	if err != nil {
 		return fmt.Errorf("error writing to file %v: %w", fileName, err)
@@ -177,7 +178,7 @@ func loadFile(s *naive.Storage, fileName string) error {
 func schemaToQuery(sch naive.TableSchema) naive.QueryResult {
 	columns := [][]string{}
 	for fieldName, fieldType := range sch {
-		columns = append(columns, []string{ string(fieldName), fieldType.String() })
+		columns = append(columns, []string{string(fieldName), fieldType.String()})
 	}
 	return naive.QueryResult{
 		Header: []naive.FieldName{"column name", "column type"},
