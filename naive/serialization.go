@@ -6,14 +6,6 @@ import (
 	"fmt"
 )
 
-func SerializeAll(chunks ...[]byte) []byte {
-	var buf bytes.Buffer
-	for _, c := range chunks {
-		buf.Write(c)
-	}
-	return buf.Bytes()
-}
-
 type setter[T any, V any] func(*T, V)
 type deserializeFn[T any, V any] func(*T, *V) error
 type mapper[T any, V any] func(*T) (V, error)
@@ -29,9 +21,11 @@ func compose[T any, V any](fieldName string, setFn setter[T, V], m mapper[[]byte
 	}
 }
 
+// -----------------
+
 type serializationFn[T any] func(*T, *bytes.Buffer)
 
-func Serialize2[T any](v *T, funs ...serializationFn[T]) []byte {
+func SerializeStruct[T any](v *T, funs ...serializationFn[T]) []byte {
 	buf := bytes.NewBuffer(nil)
 	for _, fn := range funs {
 		fn(v, buf)
@@ -41,7 +35,7 @@ func Serialize2[T any](v *T, funs ...serializationFn[T]) []byte {
 
 type getterFn[T any, K any] func(*T) K
 
-func WithInt[T any](get getterFn[T, int]) serializationFn[T] {
+func WithInt[T any](get getterFn[T, int32]) serializationFn[T] {
 	return func(t *T, b *bytes.Buffer) {
 		i := get(t)
 		serInt(i, b)
@@ -62,7 +56,7 @@ func WithBool[T any](get getterFn[T, bool]) serializationFn[T] {
 func WithString[T any](get getterFn[T, string]) serializationFn[T] {
 	return func(t *T, b *bytes.Buffer) {
 		str := get(t)
-		serInt(len(str), b)
+		serInt(int32(len(str)), b)
 		b.WriteString(str)
 	}
 }
@@ -70,12 +64,12 @@ func WithString[T any](get getterFn[T, string]) serializationFn[T] {
 func WithBytes[T any](get getterFn[T, []byte]) serializationFn[T] {
 	return func(t *T, b *bytes.Buffer) {
 		bytez := get(t)
-		serInt(len(bytez), b)
+		serInt(int32(len(bytez)), b)
 		b.Write(bytez)
 	}
 }
 
-func serInt(i int, b *bytes.Buffer) {
+func serInt(i int32, b *bytes.Buffer) {
 	b.Write(endinanness.AppendUint32([]byte{}, uint32(i)))
 }
 

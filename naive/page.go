@@ -1,39 +1,40 @@
 package naive
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 )
 
 type RootPage struct {
-	PageTyp PageType
-	MagicNumber     int32
-	PageSize        int32
-	DirectoryPageStart   PageID
-	SchemaPageStart   PageID
-	LogPageStart   PageID
+	PageTyp            PageType
+	MagicNumber        int32
+	PageSize           int32
+	DirectoryPageStart PageID
+	SchemaPageStart    PageID
+	LogPageStart       PageID
 }
 
 func NewRootPage(directoryStart PageID, schemaStart PageID) RootPage {
 	return RootPage{
-		PageTyp: RootPageType,
-		MagicNumber: 	 MagicNumber,
-		PageSize:        PageSize,
-		DirectoryPageStart: 	 directoryStart,
-		SchemaPageStart: schemaStart,
+		PageTyp:            RootPageType,
+		MagicNumber:        MagicNumber,
+		PageSize:           PageSize,
+		DirectoryPageStart: directoryStart,
+		SchemaPageStart:    schemaStart,
 	}
 }
 
 const MagicNumber int32 = 0xc0de
 
 func (r *RootPage) Serialize() []byte {
-	got := SerializeAll(
-		SerializeInt(int32(r.PageTyp)),
-		SerializeInt(r.MagicNumber),
-		SerializeInt(r.PageSize),
-		SerializeInt(int32(r.DirectoryPageStart)),
-		SerializeInt(int32(r.SchemaPageStart)),
-		make([]byte, PageSize- 4 * 5), // 5 fields, each has 4 bytes
+	got := SerializeStruct(r,
+		WithInt(func(r *RootPage) int32 { return int32(r.PageTyp) }),
+		WithInt(func(r *RootPage) int32 { return r.MagicNumber }),
+		WithInt(func(r *RootPage) int32 { return r.PageSize }),
+		WithInt(func(r *RootPage) int32 { return int32(r.DirectoryPageStart) }),
+		WithInt(func(r *RootPage) int32 { return int32(r.SchemaPageStart) }),
+		func(_ *RootPage, b *bytes.Buffer) { b.Write(make([]byte, PageSize-4*5)) }, // 5 fields, each has 4 bytes
 	)
 	debugAssert(len(got) == PageSize, "root page should also be size of a page")
 	return got
@@ -45,11 +46,11 @@ func DeserializeRootPage(r io.Reader) (*RootPage, error) {
 		return nil, fmt.Errorf("error reading root page: %w", err)
 	}
 	root, err := DeserializeAll(bytes,
-		compose("page type", func(rp *RootPage, i int32) { rp.PageTyp = PageType(i)}, DeserializeIntAndEat), 
-		compose("magic num", func(rp *RootPage, i int32) { rp.MagicNumber = i}, DeserializeIntAndEat), 
-		compose("page size", func(rp *RootPage, i int32) { rp.PageSize = i}, DeserializeIntAndEat), 
-		compose("directory page start", func(rp *RootPage, i int32) { rp.DirectoryPageStart = PageID(i)}, DeserializeIntAndEat), 
-		compose("schema page start", func(rp *RootPage, i int32) { rp.SchemaPageStart = PageID(i)}, DeserializeIntAndEat), 
+		compose("page type", func(rp *RootPage, i int32) { rp.PageTyp = PageType(i) }, DeserializeIntAndEat),
+		compose("magic num", func(rp *RootPage, i int32) { rp.MagicNumber = i }, DeserializeIntAndEat),
+		compose("page size", func(rp *RootPage, i int32) { rp.PageSize = i }, DeserializeIntAndEat),
+		compose("directory page start", func(rp *RootPage, i int32) { rp.DirectoryPageStart = PageID(i) }, DeserializeIntAndEat),
+		compose("schema page start", func(rp *RootPage, i int32) { rp.SchemaPageStart = PageID(i) }, DeserializeIntAndEat),
 	)
 	if err != nil {
 		return nil, err
@@ -116,11 +117,16 @@ func (g *GenericPage) Put(r SlotIdx, b []byte) error {
 }
 
 func (g *GenericPage) Serialize() []byte {
-	got := SerializeAll(
-		SerializeInt(int32(g.Header.PageTyp)),
-		SerializeInt(int32(g.Header.NextPage)),
-		SerializeInt(int32(g.Header.SlotArraySize)),
-		g.SlotArray.Serialize())
+	got := SerializeStruct(g,
+		WithInt(func(g *GenericPage) int32 { return int32(g.Header.PageTyp) }),
+		WithInt(func(g *GenericPage) int32 { return int32(g.Header.NextPage) }),
+		WithInt(func(g *GenericPage) int32 { return int32(g.Header.SlotArraySize) }),
+		func(g *GenericPage, b *bytes.Buffer) {
+			// todo: compose better
+			got := g.SlotArray.Serialize()
+			b.Write(got)
+		},
+	)
 
 	debugAssert(len(got) == PageSize, "generic page size should be consistent")
 	return got
@@ -133,9 +139,9 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 	}
 
 	header, err := DeserializeAll[GenericPageHeader](bytes,
-		compose("page type", func(t *GenericPageHeader,i int32) {t.PageTyp = PageType(i)}, DeserializeIntAndEat),
-		compose("next page", func(t *GenericPageHeader,i int32) {t.NextPage = PageID(i)}, DeserializeIntAndEat),
-		compose("slot array size", func(t *GenericPageHeader,i int32) {t.SlotArraySize = i}, DeserializeIntAndEat),
+		compose("page type", func(t *GenericPageHeader, i int32) { t.PageTyp = PageType(i) }, DeserializeIntAndEat),
+		compose("next page", func(t *GenericPageHeader, i int32) { t.NextPage = PageID(i) }, DeserializeIntAndEat),
+		compose("slot array size", func(t *GenericPageHeader, i int32) { t.SlotArraySize = i }, DeserializeIntAndEat),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error deserializing page header: %w", err)
@@ -147,30 +153,32 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 	}
 
 	return &GenericPage{
-		Header: *header,
+		Header:    *header,
 		SlotArray: slotted,
 	}, nil
 }
 
-// for lookup where given data/index page starts 
+// for lookup where given data/index page starts
 type DirectoryTuple struct {
-	PageTyp PageType
+	PageTyp      PageType
 	StartingPage PageID
-	Name string
+	Name         string
 }
 
 func (d DirectoryTuple) Serialize() []byte {
-	return SerializeAll(
-		SerializeInt(int32(d.PageTyp)),
-		SerializeInt(int32(d.StartingPage)),
-		SerializeString(d.Name))
+	return SerializeStruct(
+		&d,
+		WithInt(func(d *DirectoryTuple) int32 { return int32(d.PageTyp) }),
+		WithInt(func(d *DirectoryTuple) int32 { return int32(d.StartingPage) }),
+		WithString(func(d *DirectoryTuple) string { return d.Name }),
+	)
 }
 
 func DeserializeDirectoryTuple(b []byte) (*DirectoryTuple, error) {
 	return DeserializeAll[DirectoryTuple](b,
-		compose("page type", func(t *DirectoryTuple, i int32) { t.PageTyp = PageType(i)}, DeserializeIntAndEat),
-		compose("starting page", func(t *DirectoryTuple, i int32) { t.StartingPage = PageID(i)}, DeserializeIntAndEat),
-		compose("name", func(t *DirectoryTuple, s string) { t.Name = s}, DeserializeStringAndEat),
+		compose("page type", func(t *DirectoryTuple, i int32) { t.PageTyp = PageType(i) }, DeserializeIntAndEat),
+		compose("starting page", func(t *DirectoryTuple, i int32) { t.StartingPage = PageID(i) }, DeserializeIntAndEat),
+		compose("name", func(t *DirectoryTuple, s string) { t.Name = s }, DeserializeStringAndEat),
 	)
 }
 
@@ -181,15 +189,15 @@ type SchemaTuple struct {
 }
 
 func (s SchemaTuple) Serialize() []byte {
-	return SerializeAll(
-		SerializeString(string(s.TableNameV)),
-		SerializeString(string(s.FieldNameV)),
-		SerializeInt(int32(s.FieldTypeV)))
+	return SerializeStruct(&s,
+		WithString(func(s *SchemaTuple) string { return string(s.TableNameV) }),
+		WithString(func(s *SchemaTuple) string { return string(s.FieldNameV) }),
+		WithInt(func(s *SchemaTuple) int32 { return int32(s.FieldTypeV) }))
 }
 
 func DeserializeSchemaTuple(b []byte) (*SchemaTuple, error) {
 	return DeserializeAll[SchemaTuple](b,
-		compose("table name", func(st *SchemaTuple, s string) { st.TableNameV = TableName(s)}, DeserializeStringAndEat),
-		compose("field name", func(st *SchemaTuple, s string) { st.FieldNameV = FieldName(s)}, DeserializeStringAndEat),
-		compose("field type", func(st *SchemaTuple, s int32) { st.FieldTypeV = FieldType(s)}, DeserializeIntAndEat))
+		compose("table name", func(st *SchemaTuple, s string) { st.TableNameV = TableName(s) }, DeserializeStringAndEat),
+		compose("field name", func(st *SchemaTuple, s string) { st.FieldNameV = FieldName(s) }, DeserializeStringAndEat),
+		compose("field type", func(st *SchemaTuple, s int32) { st.FieldTypeV = FieldType(s) }, DeserializeIntAndEat))
 }
