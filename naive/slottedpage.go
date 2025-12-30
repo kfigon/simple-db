@@ -90,7 +90,7 @@ func (s *Slotted) Serialize() []byte {
 	return buf.Bytes()
 }
 
-func DeserializeSlotted(b []byte, slotArrayLen int) (*Slotted, error) {
+func DeserializeSlotted(b *bytes.Reader, slotArrayLen int) (*Slotted, error) {
 	originalSlice := b
 
 	p := NewSlotted(len(b))
@@ -98,7 +98,7 @@ func DeserializeSlotted(b []byte, slotArrayLen int) (*Slotted, error) {
 	debugAssert(lastOffset <= PageSize, "last offset can't be bigger than page size")
 
 	for range slotArrayLen {
-		i, err := DeserializeIntAndEat(&b)
+		i, err := ReadInt(b)
 		if err != nil {
 			return nil, fmt.Errorf("error deserializing slot array: %w", err)
 		}
@@ -126,9 +126,10 @@ func (s *Slotted) SlotIdxIterator() iter.Seq[SlotIdx] {
 }
 
 type CellIterator iter.Seq[[]byte]
+
 func (s *Slotted) Iterator() CellIterator {
 	return func(yield func([]byte) bool) {
-		for slotId := range s.SlotIdxIterator(){
+		for slotId := range s.SlotIdxIterator() {
 			d := must(s.Read(slotId))
 			if !yield(d) {
 				return

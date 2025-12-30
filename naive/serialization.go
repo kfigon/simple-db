@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 )
 
 type setter[T any, V any] func(*T, V)
@@ -87,29 +88,29 @@ func Deserialize2[T any](buf *bytes.Reader, funs ...deserializeFn2[T]) (*T, erro
 
 type setterFn[T any, K any] func(*T, *K)
 
-func DeserWithInt[T any](set setterFn[T, int]) deserializeFn2[T] {
+func DeserWithInt[T any](fieldName string, set setterFn[T, int32]) deserializeFn2[T] {
 	return func(t *T, r *bytes.Reader) error {
-		i, err := readInt(r)
+		i, err := ReadInt(r)
 		if err != nil {
-			return fmt.Errorf("error deserializing int: %w", err)
+			return fmt.Errorf("error deserializing %q int: %w", fieldName, err)
 		}
 		set(t, &i)
 		return nil
 	}
 }
 
-func DeserWithStr[T any](set setterFn[T, string]) deserializeFn2[T] {
+func DeserWithStr[T any](fieldname string, set setterFn[T, string]) deserializeFn2[T] {
 	return func(t *T, r *bytes.Reader) error {
-		i, err := readInt(r)
+		i, err := ReadInt(r)
 		if err != nil {
-			return fmt.Errorf("error deserializing lenght of the string: %w", err)
+			return fmt.Errorf("error deserializing lenght of the %q string: %w", fieldname, err)
 		}
 		buf := make([]byte, i)
 		got, err := r.Read(buf)
 		if err != nil {
-			return fmt.Errorf("error deserializing string: %w", err)
-		} else if got != i {
-			return fmt.Errorf("error deserializing string, expected %d bytes, got %d", i, got)
+			return fmt.Errorf("error deserializing %q string: %w", fieldname, err)
+		} else if got != int(i) {
+			return fmt.Errorf("error deserializing %q string, expected %d bytes, got %d", fieldname, i, got)
 		}
 		data := string(buf)
 		set(t, &data)
@@ -117,11 +118,11 @@ func DeserWithStr[T any](set setterFn[T, string]) deserializeFn2[T] {
 	}
 }
 
-func DeserWithBool[T any](set setterFn[T, bool]) deserializeFn2[T] {
+func DeserWithBool[T any](fieldName string, set setterFn[T, bool]) deserializeFn2[T] {
 	return func(t *T, r *bytes.Reader) error {
 		got, err := r.ReadByte()
 		if err != nil {
-			return fmt.Errorf("error deserializing bool: %w", err)
+			return fmt.Errorf("error deserializing %q bool: %w", fieldName, err)
 		} else if got == 0 {
 			v := false
 			set(t, &v)
@@ -129,13 +130,13 @@ func DeserWithBool[T any](set setterFn[T, bool]) deserializeFn2[T] {
 			v := true
 			set(t, &v)
 		} else {
-			return fmt.Errorf("error deserializing bool, unexpected bool value: %b", got)
+			return fmt.Errorf("error deserializing %q bool, unexpected bool value: %b", fieldName, got)
 		}
 		return nil
 	}
 }
 
-func readInt(r *bytes.Reader) (int, error) {
+func ReadInt(r *bytes.Reader) (int32, error) {
 	buf := make([]byte, 4)
 	got, err := r.Read(buf)
 	if err != nil {
@@ -144,7 +145,15 @@ func readInt(r *bytes.Reader) (int, error) {
 		return 0, fmt.Errorf("failed to read int, expected 4 bytes, got %d", got)
 	}
 
-	return int(endinanness.Uint32(buf)), nil
+	return int32(endinanness.Uint32(buf)), nil
+}
+
+func ReaderToBytesReader(r io.Reader) (*bytes.Reader, error) {
+	got, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.NewReader(got), nil
 }
 
 func DeserializeAll[T any](b []byte, funs ...deserializeFn[T, []byte]) (*T, error) {
