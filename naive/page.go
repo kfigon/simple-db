@@ -13,15 +13,14 @@ type RootPage struct {
 	DirectoryPageStart PageID
 	SchemaPageStart    PageID
 	LogPageStart       PageID
+	NumberOfPages      int32
 }
 
-func NewRootPage(directoryStart PageID, schemaStart PageID) RootPage {
+func NewRootPage() RootPage {
 	return RootPage{
-		PageTyp:            RootPageType,
-		MagicNumber:        MagicNumber,
-		PageSize:           PageSize,
-		DirectoryPageStart: directoryStart,
-		SchemaPageStart:    schemaStart,
+		PageTyp:     RootPageType,
+		MagicNumber: MagicNumber,
+		PageSize:    PageSize,
 	}
 }
 
@@ -34,7 +33,8 @@ func (r *RootPage) Serialize() []byte {
 		WithInt(func(r *RootPage) int32 { return r.PageSize }),
 		WithInt(func(r *RootPage) int32 { return int32(r.DirectoryPageStart) }),
 		WithInt(func(r *RootPage) int32 { return int32(r.SchemaPageStart) }),
-		func(_ *RootPage, b *bytes.Buffer) { b.Write(make([]byte, PageSize-4*5)) }, // 5 fields, each has 4 bytes
+		WithInt(func(r *RootPage) int32 { return int32(r.NumberOfPages) }),
+		func(_ *RootPage, b *bytes.Buffer) { b.Write(make([]byte, PageSize-4*6)) }, // 6 fields, each has 4 bytes
 	)
 	debugAssert(len(got) == PageSize, "root page should also be size of a page")
 	return got
@@ -47,8 +47,9 @@ func DeserializeRootPage(r io.Reader) (*RootPage, error) {
 		DeserWithInt("page size", func(rp *RootPage, i *int32) { rp.PageSize = *i }),
 		DeserWithInt("directory page start", func(rp *RootPage, i *int32) { rp.DirectoryPageStart = PageID(*i) }),
 		DeserWithInt("schema page start", func(rp *RootPage, i *int32) { rp.SchemaPageStart = PageID(*i) }),
+		DeserWithInt("number of pages", func(rp *RootPage, i *int32) { rp.NumberOfPages = *i }),
 		func(_ *RootPage, r io.Reader) error {
-			_, err := r.Read(make([]byte, PageSize-4*5)) // discard rest of the page
+			_, err := r.Read(make([]byte, PageSize-4*6)) // discard rest of the page
 			return err
 		},
 	)

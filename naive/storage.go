@@ -70,16 +70,19 @@ func NewStorage() *Storage {
 		allPages: []*GenericPage{&GenericPage{}}, // empty 'root' page in the beginning
 	}
 
+	s.root = NewRootPage()
 	dirID, _ := s.allocatePage(DirectoryPageType, directoryName)
 	schemaID, _ := s.allocatePage(SchemaPageType, schemaName)
-	s.root = NewRootPage(dirID, schemaID)
+	s.root.DirectoryPageStart = dirID
+	s.root.SchemaPageStart = schemaID
 
 	return s
 }
 
 func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericPage) {
+	s.root.NumberOfPages++
 	p := NewPage(pageTyp, PageSize)
-	newPageID := PageID(len(s.allPages))
+	newPageID := PageID(s.root.NumberOfPages)
 	s.allPages = append(s.allPages, p)
 
 	// link last page to the new one
