@@ -26,6 +26,8 @@ func NewSlotted(slottedPageSize int) *Slotted {
 
 var errNoSpace = fmt.Errorf("no space in slot array")
 
+const rowIdSize = 4
+
 func (s *Slotted) Add(buf []byte) (SlotIdx, error) {
 	bytesWithHeader := SerializeBytes(buf)
 	ln := len(bytesWithHeader)
@@ -73,7 +75,6 @@ func (s *Slotted) Read(idx SlotIdx) ([]byte, error) {
 }
 
 func (s *Slotted) hasSpace(newData int) bool {
-	const rowIdSize = 4
 	return int(s.lastOffset)-newData-(len(s.Indexes)*rowIdSize) > 0
 }
 
@@ -83,7 +84,7 @@ func (s *Slotted) Serialize() []byte {
 		buf.Write(SerializeInt(int32(id)))
 	}
 
-	paddingLen := int(s.lastOffset) - len(s.Indexes)*4
+	paddingLen := int(s.lastOffset) - len(s.Indexes)*rowIdSize
 
 	buf.Write(make([]byte, paddingLen))
 	buf.Write(s.CellData[s.lastOffset:])
