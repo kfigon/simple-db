@@ -107,8 +107,11 @@ func DeserializeSlotted(r io.Reader, slottedPageSize int, slotArrayLen int) (*Sl
 		lastOffset = min(lastOffset, int(ithPageOffset))
 	}
 	p.lastOffset = PageOffset(lastOffset)
-	// copy(p.CellData[lastOffset:], all[lastOffset:])
-	r.Read(p.CellData)
+	slotArrayAreaSize := len(p.Indexes) * rowIdSize
+	// cellAreaSize := slottedPageSize - lastOffset
+	freeSpaceAreaSize := lastOffset - slotArrayAreaSize
+	r.Read(make([]byte, freeSpaceAreaSize)) // discard
+	r.Read(p.CellData[lastOffset:])
 
 	return p, nil
 }
