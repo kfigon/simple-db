@@ -474,28 +474,18 @@ func SerializeDb(s *Storage) []byte {
 }
 
 func DeserializeDb(r io.Reader) (*Storage, error) {
-	// todo: rework this readall
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(data)%PageSize != 0 {
-		return nil, fmt.Errorf("read data should be multiplication of page size, got %d", len(data))
-	}
-
 	pages := []*GenericPage{{}}
-	root, err := DeserializeRootPage(bytes.NewBuffer(data))
+	root, err := DeserializeRootPage(r)
 	if err != nil {
 		return nil, err
 	}
-	data = data[PageSize:]
-	for len(data) != 0 {
-		p, err := Deserialize(bytes.NewReader(data))
-		if err != nil {
+	for {
+		p, err := Deserialize(r)
+		if errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
 			return nil, err
 		}
-		data = data[PageSize:]
 		pages = append(pages, p)
 	}
 	return &Storage{root: *root, allPages: pages}, nil

@@ -47,6 +47,10 @@ func DeserializeRootPage(r io.Reader) (*RootPage, error) {
 		DeserWithInt("page size", func(rp *RootPage, i *int32) { rp.PageSize = *i }),
 		DeserWithInt("directory page start", func(rp *RootPage, i *int32) { rp.DirectoryPageStart = PageID(*i) }),
 		DeserWithInt("schema page start", func(rp *RootPage, i *int32) { rp.SchemaPageStart = PageID(*i) }),
+		func(_ *RootPage, r io.Reader) error {
+			_, err := r.Read(make([]byte, PageSize-4*5)) // discard rest of the page
+			return err
+		},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error deserializing root page: %w", err)
