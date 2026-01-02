@@ -11,12 +11,23 @@ type pageIterators struct {
 func (p pageIterators) NewPageIterator(startingPage PageID) PageIterator {
 	currentPageId := startingPage
 	return func(yield func(PageID, *GenericPage) bool) {
-		for currentPageId != 0 && int(currentPageId) < len(p.Storage.allPages) {
-			currentPage := p.Storage.allPages[currentPageId]
+		for currentPageId != 0 && int(currentPageId) < int(p.root.NumberOfPages) {
+			currentPage := p.Storage.getPage(currentPageId)
 			if !yield(currentPageId, currentPage) {
 				break
 			}
 			currentPageId = currentPage.Header.NextPage
+		}
+	}
+}
+
+func (p pageIterators) AllPages(startingPage PageID) PageIterator {
+	return func(yield func(PageID, *GenericPage) bool) {
+		for currentPageId := startingPage; int32(currentPageId) < p.root.NumberOfPages; currentPageId++ {
+			currentPage := p.Storage.getPage(currentPageId)
+			if !yield(currentPageId, currentPage) {
+				break
+			}
 		}
 	}
 }

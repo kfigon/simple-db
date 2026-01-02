@@ -18,9 +18,10 @@ type RootPage struct {
 
 func NewRootPage() RootPage {
 	return RootPage{
-		PageTyp:     RootPageType,
-		MagicNumber: MagicNumber,
-		PageSize:    PageSize,
+		PageTyp:       RootPageType,
+		MagicNumber:   MagicNumber,
+		PageSize:      PageSize,
+		NumberOfPages: 1, //root itself
 	}
 }
 

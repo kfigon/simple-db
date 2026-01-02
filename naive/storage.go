@@ -80,7 +80,6 @@ func NewStorage() *Storage {
 }
 
 func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericPage) {
-	s.root.NumberOfPages++
 	p := NewPage(pageTyp, PageSize)
 	newPageID := PageID(s.root.NumberOfPages)
 	s.allPages = append(s.allPages, p)
@@ -91,10 +90,16 @@ func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericP
 		for id := range s.iter().NewPageIterator(startId) {
 			lastId = id
 		}
-		s.allPages[lastId].Header.NextPage = newPageID
+		s.getPage(lastId).Header.NextPage = newPageID
 	}
 
+	s.root.NumberOfPages++
 	return newPageID, p
+}
+
+func (s *Storage) getPage(id PageID) *GenericPage {
+	// todo: guard
+	return s.allPages[id]
 }
 
 func (s *Storage) doesTableExists(table TableName) bool {
@@ -468,7 +473,7 @@ func colsToQuery(stmt sql.SelectStatement, schema TableSchema) ([]FieldName, err
 func SerializeDb(s *Storage) []byte {
 	var out bytes.Buffer
 	out.Write(s.root.Serialize())
-	for _, v := range s.allPages[1:] {
+	for _, v := range s.iter().AllPages(1) {
 		out.Write(v.Serialize())
 	}
 	res := out.Bytes()
