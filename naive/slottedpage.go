@@ -73,7 +73,7 @@ func (s *Slotted) Read(idx SlotIdx) ([]byte, error) {
 }
 
 func (s *Slotted) hasSpace(newData int) bool {
-	const rowIdSize = 2
+	const rowIdSize = 4
 	return int(s.lastOffset)-newData-(len(s.Indexes)*rowIdSize) > 0
 }
 
@@ -91,9 +91,9 @@ func (s *Slotted) Serialize() []byte {
 	return buf.Bytes()
 }
 
-func DeserializeSlotted(r io.Reader, slotArrayLen int) (*Slotted, error) {
-	p := NewSlotted(PageSize - 4*3)
-	lastOffset := PageSize
+func DeserializeSlotted(r io.Reader, slottedPageSize int, slotArrayLen int) (*Slotted, error) {
+	p := NewSlotted(slottedPageSize)
+	lastOffset := slottedPageSize
 
 	for range slotArrayLen {
 		i, err := ReadInt(r)

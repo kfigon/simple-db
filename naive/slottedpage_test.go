@@ -82,7 +82,7 @@ func TestSerialization(t *testing.T) {
 		inserted := initWithData(t, p)
 		data := p.Serialize()
 
-		newP, err := DeserializeSlotted(bytes.NewReader(data), len(inserted))
+		newP, err := DeserializeSlotted(bytes.NewReader(data), 50, len(inserted))
 		assert.NoError(t, err)
 
 		assert.Len(t, newP.Indexes, 3)
