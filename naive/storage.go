@@ -61,20 +61,24 @@ type Schema map[TableName]TableSchema
 type Row map[FieldName]ColumnData
 
 type Storage struct {
-	root     RootPage
-	allPages []*GenericPage // pageId - just an index here. Page 0 is root, so noop
+	root          RootPage
+	allPages      []*GenericPage // pageId - just an index here. Page 0 is root, so noop
+	allPagesBytes []byte
 }
 
 func NewStorage() *Storage {
 	s := &Storage{
-		allPages: []*GenericPage{&GenericPage{}}, // empty 'root' page in the beginning
+		allPages:      []*GenericPage{&GenericPage{}}, // empty 'root' page in the beginning
+		allPagesBytes: make([]byte, 20*PageSize),
 	}
 
 	s.root = NewRootPage()
 	dirID, _ := s.allocatePage(DirectoryPageType, directoryName)
 	schemaID, _ := s.allocatePage(SchemaPageType, schemaName)
+
 	s.root.DirectoryPageStart = dirID
 	s.root.SchemaPageStart = schemaID
+	s.persistPage(0, s.root.Serialize())
 
 	return s
 }
@@ -90,16 +94,45 @@ func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericP
 		for id := range s.iter().NewPageIterator(startId) {
 			lastId = id
 		}
-		s.getPage(lastId).Header.NextPage = newPageID
+		lastPage := s.getPage(lastId)
+
+		lastPage.Header.NextPage = newPageID
+		s.persistPage(lastId, lastPage.Serialize())
 	}
 
 	s.root.NumberOfPages++
+	// todo: optimise this, root persist is done also in constructor and multiple times
+	s.persistPage(0, s.root.Serialize())
+	s.persistPage(newPageID, p.Serialize())
+
 	return newPageID, p
+}
+
+func byteOffsetFromPageID(p PageID) int {
+	return int(p) * PageSize
 }
 
 func (s *Storage) getPage(id PageID) *GenericPage {
 	// todo: guard
-	return s.allPages[id]
+	// return s.allPages[id]
+
+	offset := byteOffsetFromPageID(id)
+	pageBytes := s.allPagesBytes[offset : offset+PageSize]
+	page := must(Deserialize(bytes.NewBuffer(pageBytes)))
+	return page
+}
+
+func (s *Storage) persistPage(id PageID, pageBytes []byte) {
+	debugAssert(len(pageBytes) == PageSize, "enforcing page size")
+	offset := byteOffsetFromPageID(id)
+
+	// realloc if needed
+	if offset+len(pageBytes) >= len(s.allPagesBytes) {
+		newBytes := make([]byte, PageSize*2*s.root.NumberOfPages)
+		copy(newBytes, s.allPagesBytes)
+		s.allPagesBytes = newBytes
+	}
+	copy(s.allPagesBytes[offset:offset+len(pageBytes)], pageBytes)
 }
 
 func (s *Storage) doesTableExists(table TableName) bool {
@@ -135,13 +168,14 @@ func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
 	}
 
 	// add empty data page
-	dataPageID, _ := s.allocatePage(DataPageType, stmt.Table)
+	dataPageID, dataPage := s.allocatePage(DataPageType, stmt.Table)
 
 	s.AddDirectoryTuple(DirectoryTuple{
 		PageTyp:      DataPageType,
 		StartingPage: dataPageID,
 		Name:         stmt.Table,
 	})
+	s.persistPage(dataPageID, dataPage.Serialize())
 	return nil
 }
 
@@ -167,7 +201,11 @@ func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
 		must(p.Add(b))
 		lastPage.Header.NextPage = newPageID
 		lastPageID = newPageID
+
+		s.persistPage(lastPageID, lastPage.Serialize())
+		s.persistPage(newPageID, p.Serialize())
 	} else {
+		s.persistPage(lastPageID, lastPage.Serialize())
 		debugAsserErr(err, "unknown error when adding tuple")
 	}
 
@@ -176,13 +214,16 @@ func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
 
 func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
 	var lastPage *GenericPage
-	for _, p := range s.iter().directoryPages() {
+	var lastPageID PageID
+	for pageID, p := range s.iter().directoryPages() {
 		lastPage = p
+		lastPageID = pageID
 	}
 
 	if lastPage == nil {
-		_, newPage := s.allocatePage(DirectoryPageType, directoryName)
+		pageID, newPage := s.allocatePage(DirectoryPageType, directoryName)
 		lastPage = newPage
+		lastPageID = pageID
 	}
 
 	d := dir.Serialize()
@@ -192,20 +233,27 @@ func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
 		newPageID, p := s.allocatePage(DirectoryPageType, directoryName)
 		must(p.Add(d))
 		lastPage.Header.NextPage = newPageID
+
+		s.persistPage(lastPageID, lastPage.Serialize())
+		s.persistPage(newPageID, p.Serialize())
 	} else {
+		s.persistPage(lastPageID, lastPage.Serialize())
 		debugAsserErr(err, "unknown error when adding dir tuple")
 	}
 }
 
 func (s *Storage) AddSchemaTuple(sch SchemaTuple) {
 	var lastPage *GenericPage
-	for _, p := range s.iter().schemaPages() {
+	var lastPageID PageID
+	for pageID, p := range s.iter().schemaPages() {
 		lastPage = p
+		lastPageID = pageID
 	}
 
 	if lastPage == nil {
-		_, newPage := s.allocatePage(SchemaPageType, schemaName)
+		newPageID, newPage := s.allocatePage(SchemaPageType, schemaName)
 		lastPage = newPage
+		lastPageID = newPageID
 	}
 
 	d := sch.Serialize()
@@ -215,7 +263,11 @@ func (s *Storage) AddSchemaTuple(sch SchemaTuple) {
 		newPageID, p := s.allocatePage(SchemaPageType, schemaName)
 		must(p.Add(d))
 		lastPage.Header.NextPage = newPageID
+
+		s.persistPage(lastPageID, lastPage.Serialize())
+		s.persistPage(newPageID, p.Serialize())
 	} else {
+		s.persistPage(lastPageID, lastPage.Serialize())
 		debugAsserErr(err, "unknown error when adding schema tuple")
 	}
 }
@@ -495,6 +547,9 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 			return nil, err
 		}
 		pages = append(pages, p)
+	}
+	if len(pages) != int(root.NumberOfPages) {
+		return nil, fmt.Errorf("corrupted metadata. Expected %d pages, deserialized %d", root.NumberOfPages, len(pages))
 	}
 	return &Storage{root: *root, allPages: pages}, nil
 }
