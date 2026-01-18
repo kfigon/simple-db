@@ -61,9 +61,11 @@ type Schema map[TableName]TableSchema
 type Row map[FieldName]ColumnData
 
 type Storage struct {
-	root          RootPage
-	allPages      []*GenericPage // pageId - just an index here. Page 0 is root, so noop
+	root          RootPage // cached root for ease of access
 	allPagesBytes []byte
+
+	// todo: remove this
+	allPages []*GenericPage // pageId - just an index here. Page 0 is root, so noop
 }
 
 func NewStorage() *Storage {
@@ -524,9 +526,13 @@ func colsToQuery(stmt sql.SelectStatement, schema TableSchema) ([]FieldName, err
 
 func SerializeDb(s *Storage) []byte {
 	var out bytes.Buffer
-	out.Write(s.root.Serialize())
-	for _, v := range s.iter().AllPages(1) {
-		out.Write(v.Serialize())
+	// out.Write(s.root.Serialize())
+	// for _, v := range s.iter().AllPages(1) {
+	// 	out.Write(v.Serialize())
+	// }
+	for i := range s.root.NumberOfPages {
+		p := s.allPagesBytes[i*PageSize : (i+1)*PageSize]
+		out.Write(p)
 	}
 	res := out.Bytes()
 	debugAssert(len(res)%PageSize == 0, "serialized database should be multiplication of page size")
@@ -535,23 +541,31 @@ func SerializeDb(s *Storage) []byte {
 
 func DeserializeDb(r io.Reader) (*Storage, error) {
 	pages := []*GenericPage{{}}
+	allBytes := bytes.NewBuffer(nil)
 	root, err := DeserializeRootPage(r)
 	if err != nil {
 		return nil, err
 	}
-	for {
+	allBytes.Write(root.Serialize())
+
+	// deserialize and validate
+
+	// -1, because of root page
+	for i := range root.NumberOfPages - 1 {
 		p, err := Deserialize(r)
 		if errors.Is(err, io.EOF) {
-			break
+			return nil, fmt.Errorf("unexpected end of data, expected %d pages, failed at %d", root.NumberOfPages, i)
 		} else if err != nil {
 			return nil, err
 		}
 		pages = append(pages, p)
+		allBytes.Write(p.Serialize())
 	}
+
 	if len(pages) != int(root.NumberOfPages) {
 		return nil, fmt.Errorf("corrupted metadata. Expected %d pages, deserialized %d", root.NumberOfPages, len(pages))
 	}
-	return &Storage{root: *root, allPages: pages}, nil
+	return &Storage{root: *root, allPages: pages, allPagesBytes: allBytes.Bytes()}, nil
 }
 
 func must[T any](v T, err error) T {
