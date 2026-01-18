@@ -41,7 +41,6 @@
             | len() | content|
                     | num of fields, col 0, col 1... col N | data 0, data 1 ... data N|
             * types: 0 - null, 1 bool, 2 int, 3 string, 4 blob (these 2 has len+content), 5 overflow string, 6 overflow blob (data: len+starting PageID of rest)
-    * [ ] document layout in repo, because I constantly forget about it
 
 * [ ] indexes with btree on disk
 * [x] read sqlite code and docs, how it works and get inspired

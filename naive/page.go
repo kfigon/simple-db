@@ -202,7 +202,7 @@ func DeserializeSchemaTuple(b []byte) (*SchemaTuple, error) {
 }
 
 // ---------------------
-// new and improved, based on sqlite. Remove directory
+// new and improved, based on sqlite. Remove directory pages, replace shcema with this
 type SchemaTuple2 struct {
 	PageTyp        PageType // what's the type of data described by schema	- data, index, etc
 	Name           string
@@ -212,19 +212,45 @@ type SchemaTuple2 struct {
 
 // todo: make iterator to extract this from slotted
 type Tuple2 struct {
-	Length         int // length of the tuple, incl header
-	NumberOfFields int
+	Length         int32 // length of the tuple, incl header
+	NumberOfFields int32
 	ColumnTypes    []ColumnType
 	ColumnDatas    [][]byte
 }
 
-type ColumnType int
+func SerializeTuple2(t Tuple2) []byte {
+	return SerializeStruct(&t,
+		WithInt(func(t *Tuple2) int32 {
+			dataLen := 0
+			for _, d := range t.ColumnDatas {
+				dataLen += len(d)
+			}
+
+			return int32(4 + 4 + len(t.ColumnTypes)*4 + dataLen)
+		}),
+		WithInt(func(t *Tuple2) int32 { return t.NumberOfFields }),
+		func(t *Tuple2, b *bytes.Buffer) {
+			for _, v := range t.ColumnTypes {
+				b.Write(SerializeInt(int32(v)))
+			}
+		},
+		func(t *Tuple2, b *bytes.Buffer) {
+			for _, v := range t.ColumnDatas {
+				b.Write(v)
+			}
+		},
+	)
+}
+
+type ColumnType int32
 
 const (
-	NullField ColumnType = iota
-	BooleanField
-	IntField
+	// fixed size
+	NullField    ColumnType = iota // size 0
+	BooleanField                   // size 1
+	IntField                       // size 4
 
-	StringField
-	OverflowField
+	// var size
+	StringField   // size 4 + len
+	OverflowField // size 4 + 4 (PageID)
 )
