@@ -11,7 +11,6 @@ import (
 )
 
 const PageSize = 4 * 1024
-const directoryName = "catalog_directory"
 const schemaName = "catalog_schema"
 const assertionsEnabled = true
 
@@ -71,10 +70,8 @@ func NewStorage() *Storage {
 	}
 
 	s.root = NewRootPage()
-	dirID, _ := s.allocatePage(DirectoryPageType, directoryName)
 	schemaID, _ := s.allocatePage(SchemaPageType, schemaName)
 
-	s.root.DirectoryPageStart = dirID
 	s.root.SchemaPageStart = schemaID
 	// todo: optimise this, root persist is done also in dir and schema allocations, but misses setting dir and schema ids
 	s.persistPage(0, s.root.Serialize())
@@ -131,47 +128,36 @@ func (s *Storage) persistPage(id PageID, pageBytes []byte) {
 	copy(s.allPagesBytes[offset:offset+len(pageBytes)], pageBytes)
 }
 
-func (s *Storage) doesTableExists(table TableName) bool {
-	for range s.iter().SchemaForTable(table) {
-		return true
+func (s *Storage) findSchemaTuple(table TableName) (*SchemaTuple2, bool) {
+	for s := range s.iter().SchemaEntriesIterator() {
+		if s.Name == string(table) {
+			return &s, true
+		}
 	}
-	return false
+	return nil, false
 }
 
 func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
-	if s.doesTableExists(TableName(stmt.Table)) {
+	if _, ok := s.findSchemaTuple(TableName(stmt.Table)); ok {
 		return fmt.Errorf("table %v already present", stmt.Table)
 	}
 
-	schemaEntries := []SchemaTuple{}
-	for _, v := range stmt.Columns {
-		f, err := FieldTypeFromString(v.Typ)
-		if err != nil {
-			return err
-		}
-		schemaEntries = append(schemaEntries, SchemaTuple{
-			TableNameV: TableName(stmt.Table),
-			FieldNameV: FieldName(v.Name),
-			FieldTypeV: f,
-		})
-	}
-	if len(schemaEntries) == 0 {
+	if len(stmt.Columns) == 0 {
 		return fmt.Errorf("empty schema provided")
-	}
-
-	for _, v := range schemaEntries {
-		s.AddSchemaTuple(v)
 	}
 
 	// add empty data page
 	dataPageID, dataPage := s.allocatePage(DataPageType, stmt.Table)
-
-	s.AddDirectoryTuple(DirectoryTuple{
-		PageTyp:      DataPageType,
-		StartingPage: dataPageID,
-		Name:         stmt.Table,
-	})
 	s.persistPage(dataPageID, dataPage.Serialize())
+
+	sch := SchemaTuple2{
+		PageTyp:        DataPageType,
+		Name:           stmt.Table,
+		StartingPageID: dataPageID,
+		SqlStatement:   stmt.String(), // todo: do it better - don't generate statement again
+	}
+
+	s.AddSchemaTuple(sch)
 	return nil
 }
 
@@ -208,37 +194,7 @@ func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
 	return lastPageID
 }
 
-func (s *Storage) AddDirectoryTuple(dir DirectoryTuple) {
-	var lastPage *GenericPage
-	var lastPageID PageID
-	for pageID, p := range s.iter().directoryPages() {
-		lastPage = p
-		lastPageID = pageID
-	}
-
-	if lastPage == nil {
-		pageID, newPage := s.allocatePage(DirectoryPageType, directoryName)
-		lastPage = newPage
-		lastPageID = pageID
-	}
-
-	d := dir.Serialize()
-	_, err := lastPage.Add(d)
-	// retry if end of space
-	if errors.Is(err, errNoSpace) {
-		newPageID, p := s.allocatePage(DirectoryPageType, directoryName)
-		must(p.Add(d))
-		lastPage.Header.NextPage = newPageID
-
-		s.persistPage(lastPageID, lastPage.Serialize())
-		s.persistPage(newPageID, p.Serialize())
-	} else {
-		s.persistPage(lastPageID, lastPage.Serialize())
-		debugAsserErr(err, "unknown error when adding dir tuple")
-	}
-}
-
-func (s *Storage) AddSchemaTuple(sch SchemaTuple) {
+func (s *Storage) AddSchemaTuple(sch SchemaTuple2) {
 	var lastPage *GenericPage
 	var lastPageID PageID
 	for pageID, p := range s.iter().schemaPages() {
@@ -272,18 +228,38 @@ func (s *Storage) iter() pageIterators {
 	return pageIterators{s}
 }
 
-func (s *Storage) schemaForTable(tableName TableName) (schema []FieldName, schemaLookup map[FieldName]FieldType) {
-	schemaLookup = map[FieldName]FieldType{}
-	for data := range s.iter().SchemaForTable(tableName) {
-		schemaLookup[data.FieldNameV] = data.FieldTypeV
-		schema = append(schema, data.FieldNameV)
+func (s *Storage) schemaForTable(tableName TableName) (schema []FieldName, schemaLookup map[FieldName]FieldType, ok bool) {
+	sch, ok := s.findSchemaTuple(tableName)
+	if !ok {
+		return
 	}
+	return extractSchema(*sch)
+}
+
+func extractSchema(sch SchemaTuple2) (schema []FieldName, schemaLookup map[FieldName]FieldType, ok bool) {
+	got, err := sql.Parse(sql.Lex(sch.SqlStatement))
+	debugAsserErr(err, "schema corruption, invalid sql statement for table: %s", sch.Name)
+	createStmt, ok := got.(*sql.CreateStatement)
+	if !ok {
+		return
+	}
+
+	schemaLookup = map[FieldName]FieldType{}
+	for _, data := range createStmt.Columns {
+		f, err := FieldTypeFromString(data.Typ)
+		debugAsserErr(err, "schema corruption, invalid type for table %s: ", sch.Name)
+
+		schemaLookup[FieldName(data.Name)] = f
+		schema = append(schema, FieldName(data.Name))
+	}
+
+	ok = true
 	return
 }
 
 func (s *Storage) Insert(stmt sql.InsertStatement) error {
-	schema, schemaLookup := s.schemaForTable(TableName(stmt.Table))
-	if len(schema) == 0 {
+	schema, schemaLookup, ok := s.schemaForTable(TableName(stmt.Table))
+	if !ok {
 		return fmt.Errorf("table %v does not exist", stmt.Table)
 	}
 
@@ -348,9 +324,9 @@ type QueryResult struct {
 
 func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 	var zero QueryResult
-	schema, schemaLookup := s.schemaForTable(TableName(stmt.Table))
+	schema, schemaLookup, ok := s.schemaForTable(TableName(stmt.Table))
 
-	if len(schema) == 0 {
+	if !ok {
 		return zero, fmt.Errorf("table %v does not exist", stmt.Table)
 	}
 
@@ -466,13 +442,8 @@ func predBuilder(pred sql.BoolExpression, r Row) ColumnData {
 func (s *Storage) AllSchema() Schema {
 	schema := Schema{}
 	for sch := range s.iter().SchemaEntriesIterator() {
-		v, ok := schema[sch.TableNameV]
-		if !ok {
-			v = TableSchema{}
-		}
-
-		v[sch.FieldNameV] = sch.FieldTypeV
-		schema[sch.TableNameV] = v
+		_, lookup, _ := extractSchema(sch)
+		schema[TableName(sch.Name)] = lookup
 	}
 
 	return schema

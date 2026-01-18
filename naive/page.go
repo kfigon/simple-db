@@ -7,13 +7,12 @@ import (
 )
 
 type RootPage struct {
-	PageTyp            PageType
-	MagicNumber        int32
-	PageSize           int32
-	DirectoryPageStart PageID
-	SchemaPageStart    PageID
-	LogPageStart       PageID
-	NumberOfPages      int32
+	PageTyp         PageType
+	MagicNumber     int32
+	PageSize        int32
+	SchemaPageStart PageID
+	LogPageStart    PageID
+	NumberOfPages   int32
 }
 
 func NewRootPage() RootPage {
@@ -32,10 +31,9 @@ func (r *RootPage) Serialize() []byte {
 		WithInt(func(r *RootPage) int32 { return int32(r.PageTyp) }),
 		WithInt(func(r *RootPage) int32 { return r.MagicNumber }),
 		WithInt(func(r *RootPage) int32 { return r.PageSize }),
-		WithInt(func(r *RootPage) int32 { return int32(r.DirectoryPageStart) }),
 		WithInt(func(r *RootPage) int32 { return int32(r.SchemaPageStart) }),
 		WithInt(func(r *RootPage) int32 { return int32(r.NumberOfPages) }),
-		func(_ *RootPage, b *bytes.Buffer) { b.Write(make([]byte, PageSize-4*6)) }, // 6 fields, each has 4 bytes
+		func(_ *RootPage, b *bytes.Buffer) { b.Write(make([]byte, PageSize-4*5)) }, // 5 fields, each has 4 bytes
 	)
 	debugAssert(len(got) == PageSize, "root page should also be size of a page")
 	return got
@@ -46,11 +44,10 @@ func DeserializeRootPage(r io.Reader) (*RootPage, error) {
 		DeserWithInt("page type", func(rp *RootPage, i *int32) { rp.PageTyp = PageType(*i) }),
 		DeserWithInt("magic num", func(rp *RootPage, i *int32) { rp.MagicNumber = *i }),
 		DeserWithInt("page size", func(rp *RootPage, i *int32) { rp.PageSize = *i }),
-		DeserWithInt("directory page start", func(rp *RootPage, i *int32) { rp.DirectoryPageStart = PageID(*i) }),
 		DeserWithInt("schema page start", func(rp *RootPage, i *int32) { rp.SchemaPageStart = PageID(*i) }),
 		DeserWithInt("number of pages", func(rp *RootPage, i *int32) { rp.NumberOfPages = *i }),
 		func(_ *RootPage, r io.Reader) error {
-			_, err := r.Read(make([]byte, PageSize-4*6)) // discard rest of the page
+			_, err := r.Read(make([]byte, PageSize-4*5)) // discard rest of the page
 			return err
 		},
 	)
@@ -70,7 +67,6 @@ const (
 	RootPageType PageType = iota
 	DataPageType
 	SchemaPageType
-	DirectoryPageType
 	OverflowPage
 	LogPageType
 )
@@ -125,9 +121,7 @@ func (g *GenericPage) Serialize() []byte {
 		WithInt(func(g *GenericPage) int32 { return int32(g.Header.NextPage) }),
 		WithInt(func(g *GenericPage) int32 { return int32(g.Header.SlotArraySize) }),
 		func(g *GenericPage, b *bytes.Buffer) {
-			// todo: compose better
-			got := g.SlotArray.Serialize()
-			b.Write(got)
+			b.Write(g.SlotArray.Serialize())
 		},
 	)
 
@@ -157,50 +151,6 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 	}, nil
 }
 
-// for lookup where given data/index page starts
-type DirectoryTuple struct {
-	PageTyp      PageType
-	StartingPage PageID
-	Name         string
-}
-
-func (d DirectoryTuple) Serialize() []byte {
-	return SerializeStruct(
-		&d,
-		WithInt(func(d *DirectoryTuple) int32 { return int32(d.PageTyp) }),
-		WithInt(func(d *DirectoryTuple) int32 { return int32(d.StartingPage) }),
-		WithString(func(d *DirectoryTuple) string { return d.Name }),
-	)
-}
-
-func DeserializeDirectoryTuple(b []byte) (*DirectoryTuple, error) {
-	return DeserializeStruct[DirectoryTuple](bytes.NewReader(b),
-		DeserWithInt("page type", func(t *DirectoryTuple, i *int32) { t.PageTyp = PageType(*i) }),
-		DeserWithInt("starting page", func(t *DirectoryTuple, i *int32) { t.StartingPage = PageID(*i) }),
-		DeserWithStr("name", func(t *DirectoryTuple, s *string) { t.Name = *s }),
-	)
-}
-
-type SchemaTuple struct {
-	TableNameV TableName
-	FieldNameV FieldName
-	FieldTypeV FieldType
-}
-
-func (s SchemaTuple) Serialize() []byte {
-	return SerializeStruct(&s,
-		WithString(func(s *SchemaTuple) string { return string(s.TableNameV) }),
-		WithString(func(s *SchemaTuple) string { return string(s.FieldNameV) }),
-		WithInt(func(s *SchemaTuple) int32 { return int32(s.FieldTypeV) }))
-}
-
-func DeserializeSchemaTuple(b []byte) (*SchemaTuple, error) {
-	return DeserializeStruct[SchemaTuple](bytes.NewReader(b),
-		DeserWithStr("table name", func(st *SchemaTuple, s *string) { st.TableNameV = TableName(*s) }),
-		DeserWithStr("field name", func(st *SchemaTuple, s *string) { st.FieldNameV = FieldName(*s) }),
-		DeserWithInt("field type", func(st *SchemaTuple, s *int32) { st.FieldTypeV = FieldType(*s) }))
-}
-
 // ---------------------
 // new and improved, based on sqlite. Remove directory pages, replace shcema with this
 type SchemaTuple2 struct {
@@ -208,6 +158,16 @@ type SchemaTuple2 struct {
 	Name           string
 	StartingPageID PageID
 	SqlStatement   string // sql stmt used to create this. Will be parsed on boot and cached
+}
+
+func (s SchemaTuple2) Serialize() []byte {
+	return SerializeStruct(
+		&s,
+		WithInt(func(t *SchemaTuple2) int32 { return int32(t.PageTyp) }),
+		WithString(func(t *SchemaTuple2) string { return t.Name }),
+		WithInt(func(t *SchemaTuple2) int32 { return int32(t.StartingPageID) }),
+		WithString(func(t *SchemaTuple2) string { return t.SqlStatement }),
+	)
 }
 
 // todo: make iterator to extract this from slotted
@@ -239,6 +199,15 @@ func SerializeTuple2(t Tuple2) []byte {
 				b.Write(v)
 			}
 		},
+	)
+}
+
+func DeserializeSchemaTuple(b []byte) (*SchemaTuple2, error) {
+	return DeserializeStruct[SchemaTuple2](bytes.NewBuffer(b),
+		DeserWithInt("PageType", func(t *SchemaTuple2, i *int32) { t.PageTyp = PageType(*i) }),
+		DeserWithStr("Name", func(t *SchemaTuple2, i *string) { t.Name = *i }),
+		DeserWithInt("StartingPageID", func(t *SchemaTuple2, i *int32) { t.StartingPageID = PageID(*i) }),
+		DeserWithStr("SqlStatement", func(t *SchemaTuple2, i *string) { t.SqlStatement = *i }),
 	)
 }
 

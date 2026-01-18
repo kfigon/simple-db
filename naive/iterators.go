@@ -46,10 +46,6 @@ func (p PageIterator) tuples() TupleIterator {
 	}
 }
 
-func (p pageIterators) directoryPages() PageIterator {
-	return p.NewPageIterator(p.root.DirectoryPageStart)
-}
-
 func (p pageIterators) schemaPages() PageIterator {
 	return p.NewPageIterator(p.root.SchemaPageStart)
 }
@@ -57,9 +53,9 @@ func (p pageIterators) schemaPages() PageIterator {
 type TupleIterator iter.Seq[[]byte]
 
 func (p pageIterators) FindStartingPageForEntity(pageType PageType, name string) (PageID, bool) {
-	for dir := range p.DirectoryEntriesIterator() {
-		if dir.Name == name && dir.PageTyp == pageType {
-			return dir.StartingPage, true
+	for sch := range p.SchemaEntriesIterator() {
+		if sch.Name == name && sch.PageTyp == pageType {
+			return sch.StartingPageID, true
 		}
 	}
 	return 0, false
@@ -82,33 +78,12 @@ func (p pageIterators) RowIterator(name string, schema []FieldName, schemaLookup
 	}
 }
 
-func (p pageIterators) DirectoryEntriesIterator() iter.Seq[DirectoryTuple] {
-	return func(yield func(DirectoryTuple) bool) {
-		for d := range p.directoryPages().tuples() {
-			dir := must(DeserializeDirectoryTuple(d))
-			if !yield(*dir) {
-				break
-			}
-		}
-	}
-}
-
-func (p pageIterators) SchemaEntriesIterator() iter.Seq[SchemaTuple] {
-	return func(yield func(SchemaTuple) bool) {
-		for d := range p.schemaPages().tuples() {
-			sch := must(DeserializeSchemaTuple(d))
+func (p pageIterators) SchemaEntriesIterator() iter.Seq[SchemaTuple2] {
+	return func(yield func(SchemaTuple2) bool) {
+		for s := range p.schemaPages().tuples() {
+			sch := must(DeserializeSchemaTuple(s))
 			if !yield(*sch) {
 				break
-			}
-		}
-	}
-}
-
-func (p pageIterators) SchemaForTable(t TableName) iter.Seq[SchemaTuple] {
-	return func(yield func(SchemaTuple) bool) {
-		for d := range p.SchemaEntriesIterator() {
-			if d.TableNameV == t && !yield(d) {
-				return
 			}
 		}
 	}

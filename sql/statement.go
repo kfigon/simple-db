@@ -1,5 +1,7 @@
 package sql
 
+import "strings"
+
 type Statement interface {
 	statementTag()
 }
@@ -29,6 +31,15 @@ type CreateStatement struct {
 	Columns []ColumnDefinition
 	Table   string
 }
+
+func (c CreateStatement) String() string {
+	cols := []string{}
+	for _, col := range c.Columns {
+		cols = append(cols, col.Name+" "+col.Typ)
+	}
+	return "create table " + c.Table + "(" + strings.Join(cols, ", ") + ")"
+}
+
 type ColumnDefinition struct {
 	Name string
 	Typ  string

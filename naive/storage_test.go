@@ -145,7 +145,7 @@ func TestSerializeStorage(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, s.AllSchema(), recoveredDb.AllSchema())
 		assert.Equal(t, s.root.NumberOfPages, recoveredDb.root.NumberOfPages)
-		assert.EqualValues(t, recoveredDb.root.NumberOfPages, 3) // root schema directory
+		assert.EqualValues(t, recoveredDb.root.NumberOfPages, 2) // root schema
 	})
 
 	t.Run("single table", func(t *testing.T) {
@@ -159,7 +159,7 @@ func TestSerializeStorage(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, s.AllSchema(), recoveredDb.AllSchema())
 		assert.Equal(t, s.root.NumberOfPages, recoveredDb.root.NumberOfPages)
-		assert.EqualValues(t, 1+1+1+1, recoveredDb.root.NumberOfPages) // root, dir and schema and empty data
+		assert.EqualValues(t, 1+1+1, recoveredDb.root.NumberOfPages) // root schema and empty data
 	})
 
 	t.Run("whole db state", func(t *testing.T) {
@@ -179,7 +179,7 @@ func TestSerializeStorage(t *testing.T) {
 		assert.Equal(t, s.root.NumberOfPages, recoveredDb.root.NumberOfPages)
 
 		assert.Equal(t, s.root.NumberOfPages, recoveredDb.root.NumberOfPages)
-		assert.EqualValues(t, recoveredDb.root.NumberOfPages, 1+1+1+2) // root + directory + schema + 2x data
+		assert.EqualValues(t, recoveredDb.root.NumberOfPages, 1+1+2) // root + schema + 2x data
 
 		assert.Equal(t, s.root, recoveredDb.root)
 		for i := 1; i < int(s.root.NumberOfPages); i++ {
