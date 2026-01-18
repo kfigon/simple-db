@@ -23,6 +23,7 @@
     * [x] add tuple to last page, do not create pages excessively
     * [x] generic serialization/deserialization
     * [ ] overflow pages
+    * [ ] nil column support
     * [x] serialization simplification, cleanup ser de lib
     * [x] fix all byte reads to use reader interface, not read all
     * [x] rework storage to hold raw bytes, not generic page structs
@@ -31,6 +32,7 @@
         * [x] serialize and persist changes to each pages
         * [x] serialization and deserialization of the db
     * [ ] introduce ExecutionEngine class to provide high level api
+    * [ ] document layout in repo, because I constantly forget about it
 
 * [ ] indexes with btree on disk
 * [x] read sqlite code and docs, how it works and get inspired

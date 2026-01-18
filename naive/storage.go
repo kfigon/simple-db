@@ -76,6 +76,7 @@ func NewStorage() *Storage {
 
 	s.root.DirectoryPageStart = dirID
 	s.root.SchemaPageStart = schemaID
+	// todo: optimise this, root persist is done also in dir and schema allocations, but misses setting dir and schema ids
 	s.persistPage(0, s.root.Serialize())
 
 	return s
@@ -98,7 +99,6 @@ func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericP
 	}
 
 	s.root.NumberOfPages++
-	// todo: optimise this, root persist is done also in constructor and multiple times
 	s.persistPage(0, s.root.Serialize())
 	s.persistPage(newPageID, p.Serialize())
 
@@ -111,7 +111,6 @@ func byteOffsetFromPageID(p PageID) int {
 
 func (s *Storage) getPage(id PageID) *GenericPage {
 	// todo: guard
-	// return s.allPages[id]
 
 	offset := byteOffsetFromPageID(id)
 	pageBytes := s.allPagesBytes[offset : offset+PageSize]
