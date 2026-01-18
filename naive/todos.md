@@ -22,8 +22,6 @@
     * [x] schema page on disk, rebuild on startup
     * [x] add tuple to last page, do not create pages excessively
     * [x] generic serialization/deserialization
-    * [ ] overflow pages
-    * [ ] nil column support
     * [x] serialization simplification, cleanup ser de lib
     * [x] fix all byte reads to use reader interface, not read all
     * [x] rework storage to hold raw bytes, not generic page structs
@@ -32,6 +30,17 @@
         * [x] serialize and persist changes to each pages
         * [x] serialization and deserialization of the db
     * [ ] introduce ExecutionEngine class to provide high level api
+    * [ ] overflow pages
+    * [ ] nil column support
+    * [ ] ditch directory pages. Mimic sqlite tuple format and schema:
+        * no directory page type
+        * just the schema page:
+            * page type | name | starting page | sql statement 
+            * parse that sql statement on boot and use as schema
+            * tuple layout:
+            | len() | content|
+                    | num of fields, col 0, col 1... col N | data 0, data 1 ... data N|
+            * types: 0 - null, 1 bool, 2 int, 3 string, 4 blob (these 2 has len+content), 5 overflow string, 6 overflow blob (data: len+starting PageID of rest)
     * [ ] document layout in repo, because I constantly forget about it
 
 * [ ] indexes with btree on disk

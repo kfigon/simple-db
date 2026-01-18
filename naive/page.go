@@ -71,6 +71,7 @@ const (
 	DataPageType
 	SchemaPageType
 	DirectoryPageType
+	OverflowPage
 	LogPageType
 )
 
@@ -80,7 +81,7 @@ type PageOffset int32
 type GenericPageHeader struct {
 	PageTyp       PageType
 	NextPage      PageID
-	SlotArraySize int32 // might be too big, leave for now
+	SlotArraySize int32 // int32 might be too big, leave for now
 }
 
 type GenericPage struct {
@@ -199,3 +200,31 @@ func DeserializeSchemaTuple(b []byte) (*SchemaTuple, error) {
 		DeserWithStr("field name", func(st *SchemaTuple, s *string) { st.FieldNameV = FieldName(*s) }),
 		DeserWithInt("field type", func(st *SchemaTuple, s *int32) { st.FieldTypeV = FieldType(*s) }))
 }
+
+// ---------------------
+// new and improved, based on sqlite. Remove directory
+type SchemaTuple2 struct {
+	PageTyp        PageType // what's the type of data described by schema	- data, index, etc
+	Name           string
+	StartingPageID PageID
+	SqlStatement   string // sql stmt used to create this. Will be parsed on boot and cached
+}
+
+// todo: make iterator to extract this from slotted
+type Tuple2 struct {
+	Length         int // length of the tuple, incl header
+	NumberOfFields int
+	ColumnTypes    []ColumnType
+	ColumnDatas    [][]byte
+}
+
+type ColumnType int
+
+const (
+	NullField ColumnType = iota
+	BooleanField
+	IntField
+
+	StringField
+	OverflowField
+)
