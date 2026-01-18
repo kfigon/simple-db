@@ -25,7 +25,7 @@
     * [ ] overflow pages
     * [x] serialization simplification, cleanup ser de lib
     * [x] fix all byte reads to use reader interface, not read all
-    * [ ] rework storage to hold raw bytes, not generic page structs
+    * [x] rework storage to hold raw bytes, not generic page structs
         * [x] abstract all reads
         * [x] funnel all writes and updates to single method
         * [x] serialize and persist changes to each pages
