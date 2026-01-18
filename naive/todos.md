@@ -33,11 +33,11 @@
     * [ ] overflow pages
     * [ ] nil column support
     * [ ] ditch directory pages. Mimic sqlite tuple format and schema:
-        * no directory page type
-        * just the schema page:
-            * page type | name | starting page | sql statement 
-            * parse that sql statement on boot and use as schema
-            * tuple layout:
+        * [x] no directory page type
+        * [ ] implement just the schema page:
+            * [x] page type | name | starting page | sql statement 
+            * [x] parse that sql statement on boot and use as schema
+            * [ ]tuple layout:
             | len() | content|
                     | num of fields, col 0, col 1... col N | data 0, data 1 ... data N|
             * types: 0 - null, 1 bool, 2 int, 3 string, 4 blob (these 2 has len+content), 5 overflow string, 6 overflow blob (data: len+starting PageID of rest)
