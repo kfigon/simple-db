@@ -29,7 +29,7 @@
         * [x] abstract all reads
         * [x] funnel all writes and updates to single method
         * [x] serialize and persist changes to each pages
-        * [ ] serialization and deserialization of the db
+        * [x] serialization and deserialization of the db
     * [ ] introduce ExecutionEngine class to provide high level api
 
 * [ ] indexes with btree on disk

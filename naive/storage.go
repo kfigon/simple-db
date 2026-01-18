@@ -61,16 +61,12 @@ type Schema map[TableName]TableSchema
 type Row map[FieldName]ColumnData
 
 type Storage struct {
-	root          RootPage // cached root for ease of access
+	root          RootPage // page 0. cached root for ease of access
 	allPagesBytes []byte
-
-	// todo: remove this
-	allPages []*GenericPage // pageId - just an index here. Page 0 is root, so noop
 }
 
 func NewStorage() *Storage {
 	s := &Storage{
-		allPages:      []*GenericPage{&GenericPage{}}, // empty 'root' page in the beginning
 		allPagesBytes: make([]byte, 20*PageSize),
 	}
 
@@ -88,7 +84,6 @@ func NewStorage() *Storage {
 func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericPage) {
 	p := NewPage(pageTyp, PageSize)
 	newPageID := PageID(s.root.NumberOfPages)
-	s.allPages = append(s.allPages, p)
 
 	// link last page to the new one
 	if startId, ok := s.iter().FindStartingPageForEntity(pageTyp, name); ok {
@@ -540,7 +535,6 @@ func SerializeDb(s *Storage) []byte {
 }
 
 func DeserializeDb(r io.Reader) (*Storage, error) {
-	pages := []*GenericPage{{}}
 	allBytes := bytes.NewBuffer(nil)
 	root, err := DeserializeRootPage(r)
 	if err != nil {
@@ -550,6 +544,8 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 
 	// deserialize and validate
 
+	numOfPages := 1
+
 	// -1, because of root page
 	for i := range root.NumberOfPages - 1 {
 		p, err := Deserialize(r)
@@ -558,14 +554,14 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 		} else if err != nil {
 			return nil, err
 		}
-		pages = append(pages, p)
+		numOfPages++
 		allBytes.Write(p.Serialize())
 	}
 
-	if len(pages) != int(root.NumberOfPages) {
-		return nil, fmt.Errorf("corrupted metadata. Expected %d pages, deserialized %d", root.NumberOfPages, len(pages))
+	if numOfPages != int(root.NumberOfPages) {
+		return nil, fmt.Errorf("corrupted metadata. Expected %d pages, deserialized %d", root.NumberOfPages, numOfPages)
 	}
-	return &Storage{root: *root, allPages: pages, allPagesBytes: allBytes.Bytes()}, nil
+	return &Storage{root: *root, allPagesBytes: allBytes.Bytes()}, nil
 }
 
 func must[T any](v T, err error) T {
