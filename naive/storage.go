@@ -331,6 +331,7 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 		}
 	}
 
+	// todo handle overflows, use AddTuple2
 	s.AddTuple(DataPageType, stmt.Table, inputData.Bytes())
 	return nil
 }
@@ -504,28 +505,26 @@ func parseToRow(bytez []byte, schema []FieldName, lookup map[FieldName]FieldType
 	return out
 }
 
-func parseToRow2(t Tuple2, schema []FieldName) Row {
-	// todo: implement
-	panic("todo")
+func parseTuple2ToRow(t Tuple2, schema []FieldName) Row {
+	out := Row{}
+	for i := range t.NumberOfFields {
+		data := t.ColumnDatas[i]
+		typ := t.ColumnTypes[i]
+		fieldName := schema[i]
 
-	// out := Row{}
-	// buf := bytes.NewReader(bytez)
-	// for _, f := range schema {
-	// 	typ := lookup[f]
-	// 	cd := ColumnData{Typ: typ}
-	// 	switch typ {
-	// 	case Int32:
-	// 		cd.Data = must(ReadInt(buf))
-	// 	case String:
-	// 		cd.Data = must(ReadString(buf))
-	// 	case Boolean:
-	// 		cd.Data = must(ReadBool(buf))
-	// 	default:
-	// 		debugAssert(false, "data corruption on parsing, unknown type %v", typ)
-	// 	}
-	// 	out[f] = cd
-	// }
-	// return out
+		columnData := ColumnData{}
+		switch typ {
+		case NullField:
+		case BooleanField:
+		case IntField:
+		case StringField:
+		case OverflowField:
+			// todo: handle overflows
+		default:
+			debugAssert(false, "unexpected field type: %d", typ)
+		}
+	}
+	return out
 }
 
 func colsToQuery(stmt sql.SelectStatement, schema TableSchema) ([]FieldName, error) {
