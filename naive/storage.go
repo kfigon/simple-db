@@ -194,6 +194,40 @@ func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
 	return lastPageID
 }
 
+func (s *Storage) AddTuple2(pageType PageType, name string, t Tuple2) PageID {
+	var lastPage *GenericPage
+	var lastPageID PageID
+
+	if startPage, ok := s.iter().FindStartingPageForEntity(pageType, name); !ok {
+		// allocatePage also links it
+		pageID, newPage := s.allocatePage(pageType, name)
+		lastPage = newPage
+		lastPageID = pageID
+	} else {
+		for pageID, p := range s.iter().NewPageIterator(startPage) {
+			lastPage = p
+			lastPageID = pageID
+		}
+	}
+
+	serialized := t.Serialize()
+	_, err := lastPage.Add(serialized)
+	if errors.Is(err, errNoSpace) {
+		newPageID, p := s.allocatePage(pageType, name)
+		must(p.Add(serialized))
+		lastPage.Header.NextPage = newPageID
+		lastPageID = newPageID
+
+		s.persistPage(lastPageID, lastPage.Serialize())
+		s.persistPage(newPageID, p.Serialize())
+	} else {
+		s.persistPage(lastPageID, lastPage.Serialize())
+		debugAsserErr(err, "unknown error when adding tuple")
+	}
+
+	return lastPageID
+}
+
 func (s *Storage) AddSchemaTuple(sch SchemaTuple2) {
 	var lastPage *GenericPage
 	var lastPageID PageID
@@ -468,6 +502,30 @@ func parseToRow(bytez []byte, schema []FieldName, lookup map[FieldName]FieldType
 		out[f] = cd
 	}
 	return out
+}
+
+func parseToRow2(t Tuple2, schema []FieldName) Row {
+	// todo: implement
+	panic("todo")
+
+	// out := Row{}
+	// buf := bytes.NewReader(bytez)
+	// for _, f := range schema {
+	// 	typ := lookup[f]
+	// 	cd := ColumnData{Typ: typ}
+	// 	switch typ {
+	// 	case Int32:
+	// 		cd.Data = must(ReadInt(buf))
+	// 	case String:
+	// 		cd.Data = must(ReadString(buf))
+	// 	case Boolean:
+	// 		cd.Data = must(ReadBool(buf))
+	// 	default:
+	// 		debugAssert(false, "data corruption on parsing, unknown type %v", typ)
+	// 	}
+	// 	out[f] = cd
+	// }
+	// return out
 }
 
 func colsToQuery(stmt sql.SelectStatement, schema TableSchema) ([]FieldName, error) {
