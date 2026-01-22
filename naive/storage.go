@@ -17,7 +17,8 @@ const assertionsEnabled = true
 type FieldType int32
 
 const (
-	Int32 FieldType = iota
+	Null FieldType = iota
+	Int32
 	String
 	Boolean
 	Float
@@ -25,6 +26,7 @@ const (
 
 func (f FieldType) String() string {
 	return [...]string{
+		"Null",
 		"Int32",
 		"String",
 		"Boolean",
@@ -34,6 +36,8 @@ func (f FieldType) String() string {
 
 func FieldTypeFromString(s string) (FieldType, error) {
 	switch s {
+	case "null":
+		return Null, nil
 	case "int":
 		return Int32, nil
 	case "string":
@@ -317,27 +321,34 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 		}
 	}
 
-	inputData := bytes.NewBuffer(nil)
+	tuple := Tuple2{
+		NumberOfFields: int32(len(schema)),
+	}
 	for _, col := range schema {
 		d := inputLookup[col]
 
 		switch d.Typ {
 		case Int32:
-			inputData.Write(SerializeInt(d.Data.(int32)))
+			tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeInt(d.Data.(int32)))
+			tuple.ColumnTypes = append(tuple.ColumnTypes, IntField)
 		case String:
-			inputData.Write(SerializeString(d.Data.(string)))
+			tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeString(d.Data.(string)))
+			tuple.ColumnTypes = append(tuple.ColumnTypes, StringField)
 		case Boolean:
-			inputData.Write(SerializeBool(d.Data.(bool)))
+			tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeBool(d.Data.(bool)))
+			tuple.ColumnTypes = append(tuple.ColumnTypes, BooleanField)
 		}
 	}
 
-	// todo handle overflows, use AddTuple2
-	s.AddTuple(DataPageType, stmt.Table, inputData.Bytes())
+	// todo handle overflows
+	s.AddTuple2(DataPageType, stmt.Table, tuple)
 	return nil
 }
 
 func parseType(v string, typ FieldType) (any, error) {
 	switch typ {
+	case Null:
+		return nil, nil
 	case Int32:
 		v, err := strconv.ParseInt(v, 10, 32)
 		return int32(v), err
@@ -511,18 +522,25 @@ func parseTuple2ToRow(t Tuple2, schema []FieldName) Row {
 		data := t.ColumnDatas[i]
 		typ := t.ColumnTypes[i]
 		fieldName := schema[i]
+		buf := bytes.NewBuffer(data)
 
-		columnData := ColumnData{}
+		var columnData *ColumnData
 		switch typ {
 		case NullField:
+			columnData = &ColumnData{Null, nil}
 		case BooleanField:
+			columnData = &ColumnData{Null, must(ReadBool(buf))}
 		case IntField:
+			columnData = &ColumnData{Null, must(ReadInt(buf))}
 		case StringField:
+			columnData = &ColumnData{Null, must(ReadString(buf))}
 		case OverflowField:
 			// todo: handle overflows
+			debugAssert(false, "overflow todo - pass storage and follow pointers")
 		default:
 			debugAssert(false, "unexpected field type: %d", typ)
 		}
+		out[fieldName] = *columnData
 	}
 	return out
 }
