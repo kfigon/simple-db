@@ -529,11 +529,11 @@ func parseTuple2ToRow(t Tuple2, schema []FieldName) Row {
 		case NullField:
 			columnData = &ColumnData{Null, nil}
 		case BooleanField:
-			columnData = &ColumnData{Null, must(ReadBool(buf))}
+			columnData = &ColumnData{Boolean, must(ReadBool(buf))}
 		case IntField:
-			columnData = &ColumnData{Null, must(ReadInt(buf))}
+			columnData = &ColumnData{Int32, must(ReadInt(buf))}
 		case StringField:
-			columnData = &ColumnData{Null, must(ReadString(buf))}
+			columnData = &ColumnData{String, must(ReadString(buf))}
 		case OverflowField:
 			// todo: handle overflows
 			debugAssert(false, "overflow todo - pass storage and follow pointers")
