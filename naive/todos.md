@@ -33,7 +33,7 @@
     * [ ] cleanup iterators
     * [ ] overflow pages
     * [ ] nil column support - framework supports it, test and handle cases
-    * [ ] ditch directory pages. Mimic sqlite tuple format and schema:
+    * [x] ditch directory pages. Mimic sqlite tuple format and schema:
         * [x] no directory page type
         * [x] implement just the schema page:
             * [x] page type | name | starting page | sql statement 
