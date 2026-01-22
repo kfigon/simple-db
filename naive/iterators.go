@@ -66,12 +66,12 @@ func (p pageIterators) NewEntityIterator(pageType PageType, name string) TupleIt
 	return p.NewPageIterator(startId).tuples()
 }
 
-func (p pageIterators) RowIterator(name string, schema []FieldName, _ map[FieldName]FieldType) RowIter {
+func (p pageIterators) RowIterator(name string, schema []FieldName) RowIter {
 	startId, _ := p.FindStartingPageForEntity(DataPageType, name)
 	return func(yield func(Row) bool) {
 		for tup := range p.NewPageIterator(startId).tuples() {
-			tupDeserialized := must(DeserializeTuple2(tup))
-			row := parseTuple2ToRow(*tupDeserialized, schema)
+			tupDeserialized := must(DeserializeTuple(tup))
+			row := parseTupleToRow(*tupDeserialized, schema)
 			if !yield(row) {
 				return
 			}
@@ -79,8 +79,8 @@ func (p pageIterators) RowIterator(name string, schema []FieldName, _ map[FieldN
 	}
 }
 
-func (p pageIterators) SchemaEntriesIterator() iter.Seq[SchemaTuple2] {
-	return func(yield func(SchemaTuple2) bool) {
+func (p pageIterators) SchemaEntriesIterator() iter.Seq[SchemaTuple] {
+	return func(yield func(SchemaTuple) bool) {
 		for s := range p.schemaPages().tuples() {
 			sch := must(DeserializeSchemaTuple(s))
 			if !yield(*sch) {

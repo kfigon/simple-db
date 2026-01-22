@@ -132,7 +132,7 @@ func (s *Storage) persistPage(id PageID, pageBytes []byte) {
 	copy(s.allPagesBytes[offset:offset+len(pageBytes)], pageBytes)
 }
 
-func (s *Storage) findSchemaTuple(table TableName) (*SchemaTuple2, bool) {
+func (s *Storage) findSchemaTuple(table TableName) (*SchemaTuple, bool) {
 	for s := range s.iter().SchemaEntriesIterator() {
 		if s.Name == string(table) {
 			return &s, true
@@ -154,7 +154,7 @@ func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
 	dataPageID, dataPage := s.allocatePage(DataPageType, stmt.Table)
 	s.persistPage(dataPageID, dataPage.Serialize())
 
-	sch := SchemaTuple2{
+	sch := SchemaTuple{
 		PageTyp:        DataPageType,
 		Name:           stmt.Table,
 		StartingPageID: dataPageID,
@@ -199,7 +199,7 @@ func (s *Storage) AddTuple(pageType PageType, name string, t Tuple) PageID {
 	return lastPageID
 }
 
-func (s *Storage) AddSchemaTuple(sch SchemaTuple2) {
+func (s *Storage) AddSchemaTuple(sch SchemaTuple) {
 	var lastPage *GenericPage
 	var lastPageID PageID
 	for pageID, p := range s.iter().schemaPages() {
@@ -241,7 +241,7 @@ func (s *Storage) schemaForTable(tableName TableName) (schema []FieldName, schem
 	return extractSchema(*sch)
 }
 
-func extractSchema(sch SchemaTuple2) (schema []FieldName, schemaLookup map[FieldName]FieldType, ok bool) {
+func extractSchema(sch SchemaTuple) (schema []FieldName, schemaLookup map[FieldName]FieldType, ok bool) {
 	got, err := sql.Parse(sql.Lex(sch.SqlStatement))
 	debugAsserErr(err, "schema corruption, invalid sql statement for table: %s", sch.Name)
 	createStmt, ok := got.(*sql.CreateStatement)
@@ -352,7 +352,7 @@ func (s *Storage) Select(stmt sql.SelectStatement) (QueryResult, error) {
 		Header: columnsToQuery,
 	}
 
-	rowIt := s.iter().RowIterator(stmt.Table, schema, schemaLookup)
+	rowIt := s.iter().RowIterator(stmt.Table, schema)
 	if stmt.Where != nil {
 		rowIt = Select(rowIt, buildPredicate(stmt.Where.Predicate))
 	}
@@ -462,7 +462,7 @@ func (s *Storage) AllSchema() Schema {
 	return schema
 }
 
-func parseTuple2ToRow(t Tuple, schema []FieldName) Row {
+func parseTupleToRow(t Tuple, schema []FieldName) Row {
 	out := Row{}
 	for i := range t.NumberOfFields {
 		data := t.ColumnDatas[i]

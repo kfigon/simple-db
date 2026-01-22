@@ -153,29 +153,29 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 
 // ---------------------
 // new and improved, based on sqlite. Remove directory pages, replace shcema with this
-type SchemaTuple2 struct {
+type SchemaTuple struct {
 	PageTyp        PageType // what's the type of data described by schema	- data, index, etc
 	Name           string
 	StartingPageID PageID
 	SqlStatement   string // sql stmt used to create this. Will be parsed on boot and cached
 }
 
-func (s SchemaTuple2) Serialize() []byte {
+func (s SchemaTuple) Serialize() []byte {
 	return SerializeStruct(
 		&s,
-		WithInt(func(t *SchemaTuple2) int32 { return int32(t.PageTyp) }),
-		WithString(func(t *SchemaTuple2) string { return t.Name }),
-		WithInt(func(t *SchemaTuple2) int32 { return int32(t.StartingPageID) }),
-		WithString(func(t *SchemaTuple2) string { return t.SqlStatement }),
+		WithInt(func(t *SchemaTuple) int32 { return int32(t.PageTyp) }),
+		WithString(func(t *SchemaTuple) string { return t.Name }),
+		WithInt(func(t *SchemaTuple) int32 { return int32(t.StartingPageID) }),
+		WithString(func(t *SchemaTuple) string { return t.SqlStatement }),
 	)
 }
 
-func DeserializeSchemaTuple(b []byte) (*SchemaTuple2, error) {
-	return DeserializeStruct[SchemaTuple2](bytes.NewBuffer(b),
-		DeserWithInt("PageType", func(t *SchemaTuple2, i *int32) { t.PageTyp = PageType(*i) }),
-		DeserWithStr("Name", func(t *SchemaTuple2, i *string) { t.Name = *i }),
-		DeserWithInt("StartingPageID", func(t *SchemaTuple2, i *int32) { t.StartingPageID = PageID(*i) }),
-		DeserWithStr("SqlStatement", func(t *SchemaTuple2, i *string) { t.SqlStatement = *i }),
+func DeserializeSchemaTuple(b []byte) (*SchemaTuple, error) {
+	return DeserializeStruct[SchemaTuple](bytes.NewBuffer(b),
+		DeserWithInt("PageType", func(t *SchemaTuple, i *int32) { t.PageTyp = PageType(*i) }),
+		DeserWithStr("Name", func(t *SchemaTuple, i *string) { t.Name = *i }),
+		DeserWithInt("StartingPageID", func(t *SchemaTuple, i *int32) { t.StartingPageID = PageID(*i) }),
+		DeserWithStr("SqlStatement", func(t *SchemaTuple, i *string) { t.SqlStatement = *i }),
 	)
 }
 
@@ -202,7 +202,7 @@ func (t Tuple) Serialize() []byte {
 	)
 }
 
-func DeserializeTuple2(b []byte) (*Tuple, error) {
+func DeserializeTuple(b []byte) (*Tuple, error) {
 	return DeserializeStruct[Tuple](bytes.NewBuffer(b),
 		DeserWithInt("NumberOfFields", func(t *Tuple, i *int32) { t.NumberOfFields = *i }),
 		func(t *Tuple, r io.Reader) error {
