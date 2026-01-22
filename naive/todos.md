@@ -30,7 +30,7 @@
         * [x] serialize and persist changes to each pages
         * [x] serialization and deserialization of the db
     * [ ] introduce ExecutionEngine class to provide high level api
-    * [ ] cleanup iterators
+    * [x] cleanup iterators
     * [ ] overflow pages
     * [ ] nil column support - framework supports it, test and handle cases
     * [x] ditch directory pages. Mimic sqlite tuple format and schema:
