@@ -35,7 +35,7 @@
     * [ ] nil column support - framework supports it, test and handle cases
     * [ ] ditch directory pages. Mimic sqlite tuple format and schema:
         * [x] no directory page type
-        * [ ] implement just the schema page:
+        * [x] implement just the schema page:
             * [x] page type | name | starting page | sql statement 
             * [x] parse that sql statement on boot and use as schema
             * [x]tuple layout:
