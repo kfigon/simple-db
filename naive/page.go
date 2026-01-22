@@ -180,21 +180,21 @@ func DeserializeSchemaTuple(b []byte) (*SchemaTuple2, error) {
 }
 
 // todo: make iterator to extract this from slotted
-type Tuple2 struct {
+type Tuple struct {
 	NumberOfFields int32
 	ColumnTypes    []ColumnType
 	ColumnDatas    [][]byte
 }
 
-func (t Tuple2) Serialize() []byte {
+func (t Tuple) Serialize() []byte {
 	return SerializeStruct(&t,
-		WithInt(func(t *Tuple2) int32 { return t.NumberOfFields }),
-		func(t *Tuple2, b *bytes.Buffer) {
+		WithInt(func(t *Tuple) int32 { return t.NumberOfFields }),
+		func(t *Tuple, b *bytes.Buffer) {
 			for _, v := range t.ColumnTypes {
 				b.Write(SerializeInt(int32(v)))
 			}
 		},
-		func(t *Tuple2, b *bytes.Buffer) {
+		func(t *Tuple, b *bytes.Buffer) {
 			for _, v := range t.ColumnDatas {
 				b.Write(v)
 			}
@@ -202,10 +202,10 @@ func (t Tuple2) Serialize() []byte {
 	)
 }
 
-func DeserializeTuple2(b []byte) (*Tuple2, error) {
-	return DeserializeStruct[Tuple2](bytes.NewBuffer(b),
-		DeserWithInt("NumberOfFields", func(t *Tuple2, i *int32) { t.NumberOfFields = *i }),
-		func(t *Tuple2, r io.Reader) error {
+func DeserializeTuple2(b []byte) (*Tuple, error) {
+	return DeserializeStruct[Tuple](bytes.NewBuffer(b),
+		DeserWithInt("NumberOfFields", func(t *Tuple, i *int32) { t.NumberOfFields = *i }),
+		func(t *Tuple, r io.Reader) error {
 			for i := range t.NumberOfFields {
 				iVal, err := ReadInt(r)
 				if err != nil {
@@ -219,7 +219,7 @@ func DeserializeTuple2(b []byte) (*Tuple2, error) {
 			}
 			return nil
 		},
-		func(t *Tuple2, r io.Reader) error {
+		func(t *Tuple, r io.Reader) error {
 			for i := range t.NumberOfFields {
 				typ := t.ColumnTypes[i]
 

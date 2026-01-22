@@ -165,40 +165,7 @@ func (s *Storage) CreateTable(stmt sql.CreateStatement) error {
 	return nil
 }
 
-func (s *Storage) AddTuple(pageType PageType, name string, b []byte) PageID {
-	var lastPage *GenericPage
-	var lastPageID PageID
-
-	if startPage, ok := s.iter().FindStartingPageForEntity(pageType, name); !ok {
-		// allocatePage also links it
-		pageID, newPage := s.allocatePage(pageType, name)
-		lastPage = newPage
-		lastPageID = pageID
-	} else {
-		for pageID, p := range s.iter().NewPageIterator(startPage) {
-			lastPage = p
-			lastPageID = pageID
-		}
-	}
-
-	_, err := lastPage.Add(b)
-	if errors.Is(err, errNoSpace) {
-		newPageID, p := s.allocatePage(pageType, name)
-		must(p.Add(b))
-		lastPage.Header.NextPage = newPageID
-		lastPageID = newPageID
-
-		s.persistPage(lastPageID, lastPage.Serialize())
-		s.persistPage(newPageID, p.Serialize())
-	} else {
-		s.persistPage(lastPageID, lastPage.Serialize())
-		debugAsserErr(err, "unknown error when adding tuple")
-	}
-
-	return lastPageID
-}
-
-func (s *Storage) AddTuple2(pageType PageType, name string, t Tuple2) PageID {
+func (s *Storage) AddTuple(pageType PageType, name string, t Tuple) PageID {
 	var lastPage *GenericPage
 	var lastPageID PageID
 
@@ -321,7 +288,7 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 		}
 	}
 
-	tuple := Tuple2{
+	tuple := Tuple{
 		NumberOfFields: int32(len(schema)),
 	}
 	for _, col := range schema {
@@ -341,7 +308,7 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 	}
 
 	// todo handle overflows
-	s.AddTuple2(DataPageType, stmt.Table, tuple)
+	s.AddTuple(DataPageType, stmt.Table, tuple)
 	return nil
 }
 
@@ -495,28 +462,7 @@ func (s *Storage) AllSchema() Schema {
 	return schema
 }
 
-func parseToRow(bytez []byte, schema []FieldName, lookup map[FieldName]FieldType) Row {
-	out := Row{}
-	buf := bytes.NewReader(bytez)
-	for _, f := range schema {
-		typ := lookup[f]
-		cd := ColumnData{Typ: typ}
-		switch typ {
-		case Int32:
-			cd.Data = must(ReadInt(buf))
-		case String:
-			cd.Data = must(ReadString(buf))
-		case Boolean:
-			cd.Data = must(ReadBool(buf))
-		default:
-			debugAssert(false, "data corruption on parsing, unknown type %v", typ)
-		}
-		out[f] = cd
-	}
-	return out
-}
-
-func parseTuple2ToRow(t Tuple2, schema []FieldName) Row {
+func parseTuple2ToRow(t Tuple, schema []FieldName) Row {
 	out := Row{}
 	for i := range t.NumberOfFields {
 		data := t.ColumnDatas[i]
