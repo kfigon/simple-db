@@ -106,6 +106,42 @@ func (s *Storage) allocatePage(pageTyp PageType, name string) (PageID, *GenericP
 	return newPageID, p
 }
 
+func (s *Storage) allocateOverflowPages(bigColumn []byte) PageID {
+	firstPageID := PageID(s.root.NumberOfPages)
+
+	type pair struct {
+		pid  PageID
+		page *OverflowPage
+	}
+
+	overFlowPages := make([]*pair, 0)
+	idx := 0
+	for {
+		newPage, rest := NewOverflowPage(PageSize, bigColumn)
+		newPageID := PageID(s.root.NumberOfPages)
+
+		overFlowPages = append(overFlowPages, &pair{newPageID, newPage})
+
+		if idx > 0 {
+			overFlowPages[idx-1].page.Header.NextPage = newPageID
+		}
+
+		s.root.NumberOfPages++
+
+		if len(rest) == 0 {
+			break
+		}
+		idx++
+	}
+
+	for _, p := range overFlowPages {
+		s.persistPage(p.pid, p.page.Serialize())
+	}
+
+	s.persistPage(0, s.root.Serialize())
+	return firstPageID
+}
+
 func byteOffsetFromPageID(p PageID) int {
 	return int(p) * PageSize
 }
@@ -299,15 +335,26 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 			tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeInt(d.Data.(int32)))
 			tuple.ColumnTypes = append(tuple.ColumnTypes, IntField)
 		case String:
-			tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeString(d.Data.(string)))
-			tuple.ColumnTypes = append(tuple.ColumnTypes, StringField)
+			strVal := d.Data.(string)
+			if len(strVal) >= PageSize/2 {
+				overFlowPageStartID := s.allocateOverflowPages([]byte(strVal))
+				first := SerializeInt(int32(len(strVal)))
+				second := SerializeInt(int32(overFlowPageStartID))
+				serializedData := make([]byte, 0, 4+4)
+				serializedData = append(serializedData, first...)
+				serializedData = append(serializedData, second...)
+				tuple.ColumnDatas = append(tuple.ColumnDatas, serializedData)
+				tuple.ColumnTypes = append(tuple.ColumnTypes, OverflowField)
+			} else {
+				tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeString(strVal))
+				tuple.ColumnTypes = append(tuple.ColumnTypes, StringField)
+			}
 		case Boolean:
 			tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeBool(d.Data.(bool)))
 			tuple.ColumnTypes = append(tuple.ColumnTypes, BooleanField)
 		}
 	}
 
-	// todo handle overflows
 	s.AddTuple(DataPageType, stmt.Table, tuple)
 	return nil
 }
