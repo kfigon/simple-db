@@ -589,11 +589,11 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 
 	// -1, because of root page
 	for i := range root.NumberOfPages - 1 {
-		// todo: overflows
 		header, err := DeserializeGenericHeader(r)
 		if err != nil {
 			return nil, fmt.Errorf("header corruption on page %d: %w", i, err)
 		}
+
 		if header.PageTyp == OverflowPageType {
 			p, err := DeserializeOverflowPage(header, r)
 			if errors.Is(err, io.EOF) {
