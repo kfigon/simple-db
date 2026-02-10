@@ -151,7 +151,10 @@ func (s *Storage) getPage(id PageID) *GenericPage {
 
 	offset := byteOffsetFromPageID(id)
 	pageBytes := s.allPagesBytes[offset : offset+PageSize]
-	page := must(Deserialize(bytes.NewBuffer(pageBytes)))
+	buf := bytes.NewBuffer(pageBytes)
+	header := must(DeserializeGenericHeader(buf))
+	// todo: overflow pages?
+	page := must(Deserialize(header, buf))
 	return page
 }
 
@@ -586,14 +589,30 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 
 	// -1, because of root page
 	for i := range root.NumberOfPages - 1 {
-		p, err := Deserialize(r)
-		if errors.Is(err, io.EOF) {
-			return nil, fmt.Errorf("unexpected end of data, expected %d pages, failed at %d", root.NumberOfPages, i)
-		} else if err != nil {
-			return nil, err
+		// todo: overflows
+		header, err := DeserializeGenericHeader(r)
+		if err != nil {
+			return nil, fmt.Errorf("header corruption on page %d: %w", i, err)
 		}
-		numOfPages++
-		allBytes.Write(p.Serialize())
+		if header.PageTyp == OverflowPageType {
+			p, err := DeserializeOverflowPage(header, r)
+			if errors.Is(err, io.EOF) {
+				return nil, fmt.Errorf("unexpected end of data, expected %d pages, failed at %d", root.NumberOfPages, i)
+			} else if err != nil {
+				return nil, err
+			}
+			numOfPages++
+			allBytes.Write(p.Serialize())
+		} else {
+			p, err := Deserialize(header, r)
+			if errors.Is(err, io.EOF) {
+				return nil, fmt.Errorf("unexpected end of data, expected %d pages, failed at %d", root.NumberOfPages, i)
+			} else if err != nil {
+				return nil, err
+			}
+			numOfPages++
+			allBytes.Write(p.Serialize())
+		}
 	}
 
 	if numOfPages != int(root.NumberOfPages) {

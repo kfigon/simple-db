@@ -168,7 +168,7 @@ func (g *GenericPage) Serialize() []byte {
 	return got
 }
 
-func Deserialize(r io.Reader) (*GenericPage, error) {
+func DeserializeGenericHeader(r io.Reader) (*GenericPageHeader, error) {
 	header, err := DeserializeStruct[GenericPageHeader](r,
 		DeserWithInt("page type", func(t *GenericPageHeader, i *int32) { t.PageTyp = PageType(*i) }),
 		DeserWithInt("next page", func(t *GenericPageHeader, i *int32) { t.NextPage = PageID(*i) }),
@@ -177,7 +177,10 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error deserializing page header: %w", err)
 	}
+	return header, nil
+}
 
+func Deserialize(header *GenericPageHeader, r io.Reader) (*GenericPage, error) {
 	slottedSize := PageSize - 4*3
 	slotted, err := DeserializeSlotted(r, slottedSize, int(header.SlotArraySize))
 	if err != nil {
@@ -187,6 +190,21 @@ func Deserialize(r io.Reader) (*GenericPage, error) {
 	return &GenericPage{
 		Header:    *header,
 		SlotArray: slotted,
+	}, nil
+}
+
+func DeserializeOverflowPage(header *GenericPageHeader, r io.Reader) (*OverflowPage, error) {
+	buf := make([]byte, PageSize-4-4-4) //12 bytes for header
+	got, err := r.Read(buf)
+	if err != nil {
+		return nil, fmt.Errorf("error reading overflow page: %w", err)
+	} else if got != len(buf) {
+		return nil, fmt.Errorf("error reading overflow page got %d, expected %d", got, len(buf))
+	}
+
+	return &OverflowPage{
+		Header: *header,
+		Data:   buf,
 	}, nil
 }
 

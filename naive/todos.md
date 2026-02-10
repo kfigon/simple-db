@@ -35,7 +35,7 @@
         * [x] serialization of over flow page
         * [x] build overflow page
         * [ ] restore overflow page during read
-        * [ ] tests
+        * [x] tests
     * [ ] nil column support - framework supports it, test and handle cases
     * [x] ditch directory pages. Mimic sqlite tuple format and schema:
         * [x] no directory page type
