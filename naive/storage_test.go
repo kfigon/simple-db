@@ -3,6 +3,7 @@ package naive
 import (
 	"bytes"
 	"simple-db/sql"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,6 +21,27 @@ func TestNaiveStorage(t *testing.T) {
 				"asdf": Boolean,
 				"xxx":  String,
 			}})
+	})
+
+	t.Run("select with overflow page", func(t *testing.T) {
+		s := NewStorage()
+		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
+
+		bigString := generateBigStr(5*4096 + 10)
+		var queryStr strings.Builder
+		queryStr.WriteString(`insert into foobar(id, name) VALUES (456, "`)
+		queryStr.WriteString(bigString)
+		queryStr.WriteString(`")`)
+
+		assert.NoError(t, execute(t, s, queryStr.String()))
+
+		res, err := query(t, s, "select * from foobar")
+		assert.NoError(t, err)
+
+		assert.ElementsMatch(t, []FieldName{"id", "name"}, res.Header)
+		assert.Len(t, res.Values, 1)
+
+		assert.ElementsMatch(t, []string{"456", bigString}, res.Values[1])
 	})
 
 	t.Run("create already present", func(t *testing.T) {
@@ -136,6 +158,17 @@ func TestNaiveStorage(t *testing.T) {
 	})
 }
 
+func generateBigStr(length int) string {
+	var bigStrBuilder strings.Builder
+	availableChars := "ABCDEFGHIJKLMNOPRSTUWXYZ"
+	for i := range length {
+		idx := i % len(availableChars)
+		bigStrBuilder.WriteByte(availableChars[idx])
+	}
+
+	return bigStrBuilder.String()
+}
+
 func TestSerializeStorage(t *testing.T) {
 	t.Run("serialize empty", func(t *testing.T) {
 		s := NewStorage()
@@ -160,6 +193,44 @@ func TestSerializeStorage(t *testing.T) {
 		assert.Equal(t, s.AllSchema(), recoveredDb.AllSchema())
 		assert.Equal(t, s.root.NumberOfPages, recoveredDb.root.NumberOfPages)
 		assert.EqualValues(t, 1+1+1, recoveredDb.root.NumberOfPages) // root schema and empty data
+	})
+
+	t.Run("overflow pages", func(t *testing.T) {
+		s := NewStorage()
+		bigString := generateBigStr(5*4096 + 10)
+		var queryStr strings.Builder
+		queryStr.WriteString(`insert into foobar(id, name) VALUES (456, "`)
+		queryStr.WriteString(bigString)
+		queryStr.WriteString(`")`)
+
+		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
+		assert.NoError(t, execute(t, s, queryStr.String()))
+		data := SerializeDb(s)
+
+		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
+		assert.NoError(t, err)
+		assert.Equal(t, s.AllSchema(), recoveredDb.AllSchema())
+		assert.Equal(t, s.root.NumberOfPages, recoveredDb.root.NumberOfPages)
+		assert.EqualValues(t, 3+6, recoveredDb.root.NumberOfPages) // root schema data 6overflows
+	})
+
+	t.Run("overflow pages off by 1", func(t *testing.T) {
+		s := NewStorage()
+		bigString := generateBigStr(5 * 4096)
+		var queryStr strings.Builder
+		queryStr.WriteString(`insert into foobar(id, name) VALUES (456, "`)
+		queryStr.WriteString(bigString)
+		queryStr.WriteString(`")`)
+
+		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
+		assert.NoError(t, execute(t, s, queryStr.String()))
+		data := SerializeDb(s)
+
+		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
+		assert.NoError(t, err)
+		assert.Equal(t, s.AllSchema(), recoveredDb.AllSchema())
+		assert.Equal(t, s.root.NumberOfPages, recoveredDb.root.NumberOfPages)
+		assert.EqualValues(t, 3+5, recoveredDb.root.NumberOfPages) // root schema data 5overflows
 	})
 
 	t.Run("whole db state", func(t *testing.T) {
