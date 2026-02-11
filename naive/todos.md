@@ -30,6 +30,10 @@
         * [x] serialize and persist changes to each pages
         * [x] serialization and deserialization of the db
     * [ ] introduce ExecutionEngine class to provide high level api
+        * [ ] exec engine - operates on sql, cached schema and operators. Uses IDs. Decoding happens here
+            * [ ] row iterator and column accessors should be lazy to avoid eager fetching overflows
+        * [ ] storage engine - operates on pages, bytes. Uses page IDs. Also uses overflow pages
+        * [ ] pages - operates on tuples, slots. Generic pages only
     * [x] cleanup iterators
     * [ ] overflow pages
         * [x] serialization of over flow page
