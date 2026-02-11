@@ -34,6 +34,13 @@ func (p pageIterators) AllPages(startingPage PageID) PageIterator {
 
 type PageIterator iter.Seq2[PageID, *GenericPage]
 
+// to support generic pages and overflows
+type CombinedPageIteratorEntry struct {
+	GenericPageHeader
+	data []byte
+}
+type PageIteratorCombined iter.Seq2[PageID, CombinedPageIteratorEntry]
+
 func (p PageIterator) tuples() TupleIterator {
 	return func(yield func([]byte) bool) {
 		for _, thisPage := range p {
@@ -51,6 +58,7 @@ func (p pageIterators) schemaPages() PageIterator {
 }
 
 type TupleIterator iter.Seq[[]byte]
+type NewTupleIterator iter.Seq[Tuple]
 
 func (p pageIterators) FindStartingPageForEntity(pageType PageType, name string) (PageID, bool) {
 	for sch := range p.SchemaEntriesIterator() {
