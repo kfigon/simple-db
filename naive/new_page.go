@@ -6,7 +6,7 @@ type RootzPagezzz struct{}
 // generic page with slotted
 type NewPageStruct struct {
 	GenericPageHeader
-	*Slotted
+	*Slotted // inline this logic here. Dont need another type for slots
 }
 
 type OverflowPagezz struct{}

@@ -227,6 +227,14 @@ func (s SchemaTuple) Serialize() []byte {
 	)
 }
 
+func (s SchemaTuple) ToTuple() Tuple {
+	// todo
+}
+
+func SchemaTupleFromTuple(t Tuple) (*SchemaTuple, error) {
+	// todo
+}
+
 func DeserializeSchemaTuple(b []byte) (*SchemaTuple, error) {
 	return DeserializeStruct[SchemaTuple](bytes.NewBuffer(b),
 		DeserWithInt("PageType", func(t *SchemaTuple, i *int32) { t.PageTyp = PageType(*i) }),
