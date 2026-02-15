@@ -239,11 +239,10 @@ func (s *Storage) AddTuple(pageType PageType, name string, t Tuple) PageID {
 		}
 	}
 
-	serialized := t.Serialize()
-	_, err := lastPage.Add(serialized)
+	_, err := lastPage.Add(t)
 	if errors.Is(err, errNoSpace) {
 		newPageID, p := s.allocatePage(pageType, name)
-		must(p.Add(serialized))
+		must(p.Add(t)) // return an error here. Postgres does not allow for rows exceeding size of a single fresh page
 		lastPage.Header.NextPage = newPageID
 		lastPageID = newPageID
 
@@ -258,33 +257,8 @@ func (s *Storage) AddTuple(pageType PageType, name string, t Tuple) PageID {
 }
 
 func (s *Storage) AddSchemaTuple(sch SchemaTuple) {
-	var lastPage *GenericPage
-	var lastPageID PageID
-	for pageID, p := range s.iter().schemaPages() {
-		lastPage = p
-		lastPageID = pageID
-	}
-
-	if lastPage == nil {
-		newPageID, newPage := s.allocatePage(SchemaPageType, schemaName)
-		lastPage = newPage
-		lastPageID = newPageID
-	}
-
-	d := sch.Serialize()
-	_, err := lastPage.Add(d)
-	// retry if end of space
-	if errors.Is(err, errNoSpace) {
-		newPageID, p := s.allocatePage(SchemaPageType, schemaName)
-		must(p.Add(d))
-		lastPage.Header.NextPage = newPageID
-
-		s.persistPage(lastPageID, lastPage.Serialize())
-		s.persistPage(newPageID, p.Serialize())
-	} else {
-		s.persistPage(lastPageID, lastPage.Serialize())
-		debugAsserErr(err, "unknown error when adding schema tuple")
-	}
+	t := sch.ToTuple()
+	s.AddTuple(SchemaPageType, schemaName, t)
 }
 
 func (s *Storage) iter() pageIterators {
