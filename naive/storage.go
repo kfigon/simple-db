@@ -173,7 +173,7 @@ func (s *Storage) getPage(id PageID) *GenericPage {
 	buf := bytes.NewBuffer(pageBytes)
 	header := must(DeserializeGenericHeader(buf))
 	// todo: overflow pages?
-	page := must(Deserialize(header, buf))
+	page := must(DeserializeGenericPage(header, buf))
 	return page
 }
 
@@ -605,7 +605,7 @@ func DeserializeDb(r io.Reader) (*Storage, error) {
 			numOfPages++
 			allBytes.Write(p.Serialize())
 		} else {
-			p, err := Deserialize(header, r)
+			p, err := DeserializeGenericPage(header, r)
 			if errors.Is(err, io.EOF) {
 				return nil, fmt.Errorf("unexpected end of data, expected %d pages, failed at %d", root.NumberOfPages, i)
 			} else if err != nil {

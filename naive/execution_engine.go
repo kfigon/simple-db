@@ -5,6 +5,14 @@ import (
 	"simple-db/sql"
 )
 
+type Database struct {
+	*ExecutionEngine
+}
+
+func NewDatabase() *Database {
+	return &Database{NewExecutionEngine()}
+}
+
 type ExecutionEngine struct {
 }
 
@@ -37,7 +45,7 @@ func (e *ExecutionEngine) Select(stmt sql.SelectStatement) (QueryResult, error) 
 
 func (e *ExecutionEngine) AllSchema() Schema {
 	// make schema fit in regular generic pages, just add typed deserialized materialized entries
-	// schema of schema tuple is known
+	// schema of schema tuple is known. Make it an iterator and filter required table
 	return Schema{}
 }
 
