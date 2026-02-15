@@ -51,16 +51,35 @@ func FieldTypeFromString(s string) (FieldType, error) {
 	}
 }
 
-type TableName string
-type FieldName string
+func ParseFieldTypeToData(v string, typ FieldType) (any, error) {
+	switch typ {
+	case Null:
+		return nil, nil
+	case Int32:
+		v, err := strconv.ParseInt(v, 10, 32)
+		return int32(v), err
+	case String:
+		return v, nil
+	case Boolean:
+		return strconv.ParseBool(v)
+	case Float:
+		return strconv.ParseFloat(v, 64)
+	default:
+		return nil, fmt.Errorf("invalid data type %v", typ)
+	}
+}
 
 type ColumnData struct {
 	Typ  FieldType
 	Data any
 }
 
+type TableName string
+type FieldName string
+
 type TableSchema map[FieldName]FieldType
 type Schema map[TableName]TableSchema
+
 type Row map[FieldName]ColumnData
 
 type Storage struct {
@@ -317,7 +336,7 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 			return fmt.Errorf("invalid column %v, not defined in schema for table %v", col, stmt.Table)
 		}
 
-		parsed, err := parseType(val, fieldType)
+		parsed, err := ParseFieldTypeToData(val, fieldType)
 		if err != nil {
 			return err
 		}
@@ -360,24 +379,6 @@ func (s *Storage) Insert(stmt sql.InsertStatement) error {
 
 	s.AddTuple(DataPageType, stmt.Table, tuple)
 	return nil
-}
-
-func parseType(v string, typ FieldType) (any, error) {
-	switch typ {
-	case Null:
-		return nil, nil
-	case Int32:
-		v, err := strconv.ParseInt(v, 10, 32)
-		return int32(v), err
-	case String:
-		return v, nil
-	case Boolean:
-		return strconv.ParseBool(v)
-	case Float:
-		return strconv.ParseFloat(v, 64)
-	default:
-		return nil, fmt.Errorf("invalid data type %v", typ)
-	}
 }
 
 type QueryResult struct {
