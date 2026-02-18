@@ -182,8 +182,12 @@ func (s *StorageEngine) persistPage(id PageID, pageData []byte) {
 
 func (s *StorageEngine) AddTuple(pid PageID, t Tuple) error {
 	// add tuple to the page id
-	// check if the page type is fine
-	return nil
+	// todo: check if the page type is fine?
+
+	got, ok := s.ReadGenericPage(pid)
+	debugAssert(ok, "invalid page id: %d", pid)
+	_, err := got.Add(t)
+	return err
 }
 
 func (s *StorageEngine) ReadPages(startingPageID PageID) PageIteratorCombined {
