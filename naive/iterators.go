@@ -44,8 +44,8 @@ type PageIteratorCombined iter.Seq2[PageID, CombinedPageIteratorEntry]
 func (p PageIterator) tuples() TupleIterator {
 	return func(yield func([]byte) bool) {
 		for _, thisPage := range p {
-			for tuple := range thisPage.SlotArray.Iterator() {
-				if !yield(tuple) {
+			for tuple := range thisPage.Iterator() {
+				if !yield(tuple.Serialize()) {
 					return
 				}
 			}

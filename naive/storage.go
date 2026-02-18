@@ -78,7 +78,13 @@ type TableName string
 type FieldName string
 
 type TableSchema map[FieldName]FieldType
+type TableSchema2 struct {
+	FieldsTypes []FieldType
+	FieldNames  []FieldName
+	StartPage   PageID
+}
 type Schema map[TableName]TableSchema
+type Schema2 map[TableName]TableSchema2
 
 type Row map[FieldName]ColumnData
 

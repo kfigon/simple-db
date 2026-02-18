@@ -12,7 +12,7 @@ type PageType int32
 const (
 	RootPageType PageType = iota
 	DataPageType
-	SchemaPageType
+	SchemaPageType // todo: do we need it? Should be just generic data page, starting from the root pointer
 	OverflowPageType
 	LogPageType
 )
