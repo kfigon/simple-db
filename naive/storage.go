@@ -82,6 +82,7 @@ type TableSchema2 struct {
 	FieldsTypes []FieldType
 	FieldNames  []FieldName
 	StartPage   PageID
+	PageTyp     PageType
 }
 type Schema map[TableName]TableSchema
 type Schema2 map[TableName]TableSchema2
