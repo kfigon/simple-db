@@ -32,7 +32,7 @@
     * [ ] introduce ExecutionEngine class to provide high level api
         * [ ] exec engine - operates on sql, cached schema and operators. Uses IDs. Decoding happens here
             * [ ] row iterator and column accessors should be lazy to avoid eager fetching overflows
-        * [ ] storage engine - operates on pages, tuples and bytes. Uses page IDs. Also uses overflow pages
+        * [x] storage engine - operates on pages, tuples and bytes. Uses page IDs. Also uses overflow pages
         * [x] pages - operates on byte tuples, slots. Generic page, root, overflow
     * [x] cleanup iterators
     * [ ] overflow pages

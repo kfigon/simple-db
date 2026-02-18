@@ -79,7 +79,7 @@ func (s *StorageEngine) AllocatePage(pageTyp PageType, name string) (PageID, *Ge
 	newPageID := PageID(s.root.NumberOfPages)
 
 	// link last page to the new one
-	if startPage, ok := findStartingPage(s.GetSchema2(), pageTyp, name); ok {
+	if startPage, ok := FindStartingPage(s.GetSchema2(), pageTyp, name); ok {
 		var lastPageID PageID
 		for id := range s.ReadPages(startPage) {
 			lastPageID = id
@@ -96,7 +96,7 @@ func (s *StorageEngine) AllocatePage(pageTyp PageType, name string) (PageID, *Ge
 	return newPageID, p
 }
 
-func findStartingPage(s Schema2, pageTyp PageType, name string) (PageID, bool) {
+func FindStartingPage(s Schema2, pageTyp PageType, name string) (PageID, bool) {
 	for tableName, tableSchema := range s {
 		if pageTyp == tableSchema.PageTyp && name == string(tableName) {
 			return tableSchema.StartPage, true
