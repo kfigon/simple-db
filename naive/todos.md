@@ -40,7 +40,9 @@
         * [x] build overflow page
         * [ ] restore overflow page during read
         * [x] tests
-    * [ ] nil column support - framework supports it, test and handle cases
+    * [ ] nil column support
+    * [ ] nil column validation for inserts
+    * [ ] nil column support in sql
     * [x] ditch directory pages. Mimic sqlite tuple format and schema:
         * [x] no directory page type
         * [x] implement just the schema page:
