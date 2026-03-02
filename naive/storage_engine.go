@@ -54,7 +54,7 @@ func (s *StorageEngine) SchemaTuples() iter.Seq[SchemaTuple] {
 	return func(yield func(SchemaTuple) bool) {
 		for _, page := range s.ReadPages(s.root.SchemaPageStart) {
 			if page.PageTyp != SchemaPageType {
-				// should not happen
+				debugAssert(false, "page type %v != schema", page.PageTyp)
 				continue
 			}
 
@@ -180,14 +180,22 @@ func (s *StorageEngine) persistPage(id PageID, pageData []byte) {
 	copy(s.allPages[offset:offset+len(pageData)], pageData)
 }
 
-func (s *StorageEngine) AddTuple(pid PageID, t Tuple) error {
-	// add tuple to the page id
-	// todo: check if the page type is fine?
+func (s *StorageEngine) AddTuple(pageTyp PageType, name string, t Tuple) (PageID, error) {
+	var lastPageID *PageID
 
-	got, ok := s.ReadGenericPage(pid)
-	debugAssert(ok, "invalid page id: %d", pid)
-	_, err := got.Add(t)
-	return err
+	for table, schema := range s.GetSchema2() {
+		if table == TableName(name) && schema.PageTyp == pageTyp {
+			lastPageID = &schema.StartPage
+			break
+		}
+	}
+	debugAssert(lastPageID != nil, "page for %s not found", name)
+
+	lastPage, ok := s.ReadGenericPage(*lastPageID)
+	debugAssert(ok, "data corruption, page %d from schema not found for %s", *lastPageID, name)
+
+	_, err := lastPage.Add(t)
+	return *lastPageID, err
 }
 
 func (s *StorageEngine) ReadPages(startingPageID PageID) PageIteratorCombined {

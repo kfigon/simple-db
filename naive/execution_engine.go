@@ -1,6 +1,8 @@
 package naive
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"simple-db/sql"
 )
@@ -14,17 +16,42 @@ func NewDatabase() *Database {
 }
 
 type ExecutionEngine struct {
+	storage *StorageEngine
 }
 
 func NewExecutionEngine() *ExecutionEngine {
-	return &ExecutionEngine{}
+	return &ExecutionEngine{
+		storage: NewStorageEngine(),
+	}
 }
 
 func (e *ExecutionEngine) CreateTable(stmt sql.CreateStatement) error {
-	// validate
-	// allocate page
-	// add schema tuple
-	return nil
+	_, schemaFound := FindStartingPage(e.storage.GetSchema2(), DataPageType, string(stmt.Table))
+	if !schemaFound {
+		return fmt.Errorf("table %v already present", stmt.Table)
+	} else if len(stmt.Columns) == 0 {
+		return fmt.Errorf("empty table definition provided")
+	}
+
+	// empty data page
+	dataPageID, _ := e.storage.AllocatePage(DataPageType, stmt.Table)
+
+	sch := SchemaTuple{
+		PageTyp:        DataPageType,
+		StartingPageID: dataPageID,
+		Name:           stmt.Table,
+		SqlStatement:   stmt.String(),
+	}
+	return e.addTupleAndAllocIfFull(schemaName, SchemaPageType, sch.ToTuple())
+}
+
+func (e *ExecutionEngine) addTupleAndAllocIfFull(name string, pageTyp PageType, t Tuple) error {
+	_, err := e.storage.AddTuple(pageTyp, name, t)
+	if errors.Is(err, errNoSpace) {
+		// todo: realloc page
+		debugAssert(false, "todo: realloc if full")
+	}
+	return err
 }
 
 func (e *ExecutionEngine) Insert(stmt sql.InsertStatement) error {
