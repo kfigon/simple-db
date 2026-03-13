@@ -65,11 +65,72 @@ func (e *ExecutionEngine) addTupleAndAllocIfFull(name string, pageTyp PageType, 
 }
 
 func (e *ExecutionEngine) Insert(stmt sql.InsertStatement) error {
-	// validate
-	// serialize to tuple
-	// allocate overflows if required
-	// find free page or allocate new
-	return nil
+	schema, schemaFound := e.storage.GetSchema2()[TableName(stmt.Table)]
+	if !schemaFound {
+		return fmt.Errorf("table %v not found", stmt.Table)
+	}
+
+	lookup := map[FieldName]FieldType{}
+	for i := 0; i < len(schema.FieldNames); i++ {
+		lookup[schema.FieldNames[i]] = schema.FieldsTypes[i]
+	}
+
+	inputLookup := Row{}
+	for i := 0; i < len(stmt.Columns); i++ {
+		col := stmt.Columns[i]
+		val := stmt.Values[i]
+
+		typ, ok := lookup[FieldName(col)]
+		if !ok {
+			return fmt.Errorf("unknown column %q for %v", col, stmt.Table)
+		}
+		parsed, err := ParseFieldTypeToData(val, typ)
+		if err != nil {
+			return fmt.Errorf("type mismatch for column %q for table %v, expected %v", col, stmt.Table, typ)
+		}
+
+		inputLookup[FieldName(col)] = ColumnData{
+			Typ:  typ,
+			Data: parsed,
+		}
+	}
+
+	tuple := Tuple{
+		NumberOfFields: int32(len(schema.FieldsTypes)),
+	}
+
+	for _, col := range schema.FieldNames {
+		d, ok := inputLookup[col]
+		if !ok {
+			return fmt.Errorf("column %q not provided for %v", col, stmt.Table)
+		}
+
+		switch d.Typ {
+		case Int32:
+			tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeInt(d.Data.(int32)))
+			tuple.ColumnTypes = append(tuple.ColumnTypes, IntField)
+		case String:
+			strVal := d.Data.(string)
+			if len(strVal) >= PageSize/2 {
+				overFlowPageStartID := e.storage.AllocateOverflowPage([]byte(strVal))
+				first := SerializeInt(int32(len(strVal)))
+				second := SerializeInt(int32(overFlowPageStartID))
+				serializedData := make([]byte, 0, 4+4)
+				serializedData = append(serializedData, first...)
+				serializedData = append(serializedData, second...)
+				tuple.ColumnDatas = append(tuple.ColumnDatas, serializedData)
+				tuple.ColumnTypes = append(tuple.ColumnTypes, OverflowField)
+			} else {
+				tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeString(strVal))
+				tuple.ColumnTypes = append(tuple.ColumnTypes, StringField)
+			}
+		case Boolean:
+			tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeBool(d.Data.(bool)))
+			tuple.ColumnTypes = append(tuple.ColumnTypes, BooleanField)
+		}
+	}
+
+	return e.addTupleAndAllocIfFull(stmt.Table, DataPageType, tuple)
 }
 
 func (e *ExecutionEngine) Select(stmt sql.SelectStatement) (QueryResult, error) {
