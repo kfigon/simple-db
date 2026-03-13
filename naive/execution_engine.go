@@ -37,7 +37,7 @@ func NewExecutionEngine() *ExecutionEngine {
 
 func (e *ExecutionEngine) CreateTable(stmt sql.CreateStatement) error {
 	_, schemaFound := FindStartingPage(e.storage.GetSchema2(), DataPageType, string(stmt.Table))
-	if !schemaFound {
+	if schemaFound {
 		return fmt.Errorf("table %v already present", stmt.Table)
 	} else if len(stmt.Columns) == 0 {
 		return fmt.Errorf("empty table definition provided")
