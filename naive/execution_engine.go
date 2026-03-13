@@ -11,6 +11,16 @@ type Database struct {
 	*ExecutionEngine
 }
 
+func (d *Database) Serialize() []byte {
+	// todo
+	return nil
+}
+
+func NewDatabaseFromBytes(r io.Reader) (*Database, error) {
+	// todo
+	return nil, nil
+}
+
 func NewDatabase() *Database {
 	return &Database{NewExecutionEngine()}
 }
@@ -74,13 +84,4 @@ func (e *ExecutionEngine) AllSchema() Schema {
 	// make schema fit in regular generic pages, just add typed deserialized materialized entries
 	// schema of schema tuple is known. Make it an iterator and filter required table
 	return Schema{}
-}
-
-// probably should be done on top DB class
-func (e *ExecutionEngine) Serialize() []byte {
-	return nil
-}
-
-func BuildFromBytes(r io.Reader) (*ExecutionEngine, error) {
-	return nil, nil
 }
