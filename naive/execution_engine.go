@@ -134,11 +134,55 @@ func (e *ExecutionEngine) Insert(stmt sql.InsertStatement) error {
 }
 
 func (e *ExecutionEngine) Select(stmt sql.SelectStatement) (QueryResult, error) {
+	// todo: better structure, currently it's not lazy
 	// validate
 	// prepare plan, build operators
 	// execute plan
 	// materialize to query result
-	return QueryResult{}, nil
+
+	var zero QueryResult
+	schema, ok := e.storage.GetSchema2()[TableName(stmt.Table)]
+	if !ok {
+		return zero, fmt.Errorf("table %v does not exist", stmt.Table)
+	}
+
+	schemaLookup := map[FieldName]FieldType{}
+	for i := 0; i < len(schema.FieldsTypes); i++ {
+		schemaLookup[schema.FieldNames[i]] = schema.FieldsTypes[i]
+	}
+
+	columnsToQuery, err := colsToQuery(stmt, schemaLookup)
+	if err != nil {
+		return zero, err
+	}
+
+	out := QueryResult{
+		Header: columnsToQuery,
+	}
+
+	// todo: row iterator
+	rowIt := e.rowIteratorzz(schema)
+	if stmt.Where != nil {
+		rowIt = Select(rowIt, buildPredicate(stmt.Where.Predicate))
+	}
+	projection := Project(rowIt, columnsToQuery)
+
+	for row := range projection {
+		vals := make([]string, 0, len(columnsToQuery))
+		for _, col := range columnsToQuery {
+			vals = append(vals, fmt.Sprint(row[FieldName(col)].Data))
+		}
+		out.Values = append(out.Values, vals)
+	}
+
+	return out, nil
+}
+
+// todo: move to proper place
+func (e *ExecutionEngine) rowIteratorzz(tableSchema TableSchema2) RowIter {
+	return func(yield func(Row) bool) {
+		// todo: impl it
+	}
 }
 
 func (e *ExecutionEngine) AllSchema() Schema {
