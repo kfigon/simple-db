@@ -69,6 +69,24 @@ func (s *StorageEngine) SchemaTuples() iter.Seq[SchemaTuple] {
 	}
 }
 
+func (s *StorageEngine) Tuples(startingPageId PageID) iter.Seq[Tuple] {
+	return func(yield func(Tuple) bool) {
+		for _, page := range s.ReadPages(startingPageId) {
+			if page.PageTyp != DataPageType {
+				debugAssert(false, "page type %v != dataPageType", page.PageTyp)
+				continue
+			}
+
+			p := must(DeserializeGenericPage(&page.GenericPageHeader, bytes.NewBuffer(page.data)))
+			for tup := range p.Iterator() {
+				if !yield(tup) {
+					return
+				}
+			}
+		}
+	}
+}
+
 func (s *StorageEngine) AllocatePage(pageTyp PageType, name string) (PageID, *GenericPage) {
 	// find last page of the type
 	// connect to previous page

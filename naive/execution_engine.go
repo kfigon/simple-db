@@ -183,7 +183,12 @@ func (e *ExecutionEngine) Select(stmt sql.SelectStatement) (QueryResult, error) 
 // todo: move to proper place
 func (e *ExecutionEngine) rowIteratorzz(tableSchema TableSchema2) RowIter {
 	return func(yield func(Row) bool) {
-		// todo: impl it
+		for tup := range e.storage.Tuples(tableSchema.StartPage) {
+			row := parseTupleToRow(tup, tableSchema.FieldNames)
+			if !yield(row) {
+				return
+			}
+		}
 	}
 }
 
