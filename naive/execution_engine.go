@@ -191,9 +191,3 @@ func (e *ExecutionEngine) rowIteratorzz(tableSchema TableSchema2) RowIter {
 		}
 	}
 }
-
-func (e *ExecutionEngine) AllSchema() Schema {
-	// make schema fit in regular generic pages, just add typed deserialized materialized entries
-	// schema of schema tuple is known. Make it an iterator and filter required table
-	return Schema{}
-}
