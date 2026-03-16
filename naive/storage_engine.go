@@ -180,7 +180,7 @@ func (s *StorageEngine) persistPage(id PageID, pageData []byte) {
 	copy(s.allPages[offset:offset+len(pageData)], pageData)
 }
 
-func (s *StorageEngine) AddTuple(pageTyp PageType, name string, t Tuple) (PageID, error) {
+func (s *StorageEngine) AddTuple(pageTyp PageType, name string, t Tuple) (*GenericPage, PageID, error) {
 	var lastPageID *PageID
 
 	for table, schema := range s.GetSchema2() {
@@ -195,7 +195,7 @@ func (s *StorageEngine) AddTuple(pageTyp PageType, name string, t Tuple) (PageID
 	debugAssert(ok, "data corruption, page %d from schema not found for %s", *lastPageID, name)
 
 	_, err := lastPage.Add(t)
-	return *lastPageID, err
+	return lastPage, *lastPageID, err
 }
 
 func (s *StorageEngine) ReadPages(startingPageID PageID) PageIteratorCombined {

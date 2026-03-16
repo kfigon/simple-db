@@ -56,10 +56,17 @@ func (e *ExecutionEngine) CreateTable(stmt sql.CreateStatement) error {
 }
 
 func (e *ExecutionEngine) addTupleAndAllocIfFull(name string, pageTyp PageType, t Tuple) error {
-	_, err := e.storage.AddTuple(pageTyp, name, t)
-	if errors.Is(err, errNoSpace) {
-		// todo: realloc page
-		debugAssert(false, "todo: realloc if full")
+	page, id, err := e.storage.AddTuple(pageTyp, name, t)
+
+	if err == nil {
+		e.storage.persistPage(id, page.Serialize())
+	} else if errors.Is(err, errNoSpace) {
+		id, page := e.storage.AllocatePage(pageTyp, name)
+		_, err = page.Add(t)
+		if err != nil {
+			return fmt.Errorf("error during realloc and add: %w", err)
+		}
+		e.storage.persistPage(id, page.Serialize())
 	}
 	return err
 }
@@ -135,11 +142,6 @@ func (e *ExecutionEngine) Insert(stmt sql.InsertStatement) error {
 
 func (e *ExecutionEngine) Select(stmt sql.SelectStatement) (QueryResult, error) {
 	// todo: better structure, currently it's not lazy
-	// validate
-	// prepare plan, build operators
-	// execute plan
-	// materialize to query result
-
 	var zero QueryResult
 	schema, ok := e.storage.GetSchema2()[TableName(stmt.Table)]
 	if !ok {
@@ -160,7 +162,7 @@ func (e *ExecutionEngine) Select(stmt sql.SelectStatement) (QueryResult, error) 
 		Header: columnsToQuery,
 	}
 
-	// todo: row iterator
+	// todo: row iterator. Should I use regular tuples here and late materialize?
 	rowIt := e.rowIteratorzz(schema)
 	if stmt.Where != nil {
 		rowIt = Select(rowIt, buildPredicate(stmt.Where.Predicate))

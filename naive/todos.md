@@ -34,7 +34,7 @@
             * [ ] row iterator and column accessors should be lazy to avoid eager fetching overflows
         * [x] storage engine - operates on pages, tuples and bytes. Uses page IDs. Also uses overflow pages
         * [x] pages - operates on byte tuples, slots. Generic page, root, overflow
-        * [ ] realloc if page size exceeded
+        * [x] realloc if page size exceeded
     * [x] cleanup iterators
     * [ ] overflow pages
         * [x] serialization of over flow page
