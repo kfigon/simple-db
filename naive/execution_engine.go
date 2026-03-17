@@ -187,7 +187,7 @@ func (e *ExecutionEngine) CreateTable(stmt sql.CreateStatement) error {
 		Name:           stmt.Table,
 		SqlStatement:   stmt.String(),
 	}
-	return e.addTupleAndAllocIfFull(schemaName, SchemaPageType, sch.ToTuple())
+	return e.addTupleAndAllocIfFull(schemaName, DataPageType, sch.ToTuple())
 }
 
 func (e *ExecutionEngine) addTupleAndAllocIfFull(name string, pageTyp PageType, t Tuple) error {

@@ -17,7 +17,7 @@ type CombinedPageIteratorEntry struct {
 	data []byte
 }
 type PageIteratorCombined iter.Seq2[PageID, CombinedPageIteratorEntry]
-type NewTupleIterator iter.Seq[Tuple]
+type TupleIterator iter.Seq[Tuple]
 
 func NewStorageEngine() *StorageEngine {
 	s := &StorageEngine{
@@ -25,7 +25,7 @@ func NewStorageEngine() *StorageEngine {
 	}
 
 	s.root = NewRootPage()
-	schemaID, _ := s.AllocatePage(SchemaPageType, schemaName)
+	schemaID, _ := s.AllocatePage(DataPageType, schemaName)
 
 	s.root.SchemaPageStart = schemaID
 	// todo: optimise this, root persist is done also in dir and schema allocations, but misses setting dir and schema ids
@@ -64,18 +64,10 @@ func (s *StorageEngine) GetSchema() Schema {
 
 func (s *StorageEngine) SchemaTuples() iter.Seq[SchemaTuple] {
 	return func(yield func(SchemaTuple) bool) {
-		for _, page := range s.ReadPages(s.root.SchemaPageStart) {
-			if page.PageTyp != SchemaPageType {
-				debugAssert(false, "page type %v != schema", page.PageTyp)
-				continue
-			}
-
-			p := must(DeserializeGenericPage(&page.GenericPageHeader, bytes.NewBuffer(page.data)))
-			for tup := range p.Iterator() {
-				sch := must(SchemaTupleFromTuple(tup))
-				if !yield(*sch) {
-					return
-				}
+		for tup := range s.Tuples(s.root.SchemaPageStart) {
+			sch := must(SchemaTupleFromTuple(tup))
+			if !yield(*sch) {
+				return
 			}
 		}
 	}
