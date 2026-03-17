@@ -19,6 +19,10 @@ type CombinedPageIteratorEntry struct {
 type PageIteratorCombined iter.Seq2[PageID, CombinedPageIteratorEntry]
 type TupleIterator iter.Seq[Tuple]
 
+func byteOffsetFromPageID(p PageID) int {
+	return int(p) * PageSize
+}
+
 func NewStorageEngine() *StorageEngine {
 	s := &StorageEngine{
 		allPages: make([]byte, 20*PageSize),

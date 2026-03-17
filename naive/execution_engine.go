@@ -322,10 +322,6 @@ func (e *ExecutionEngine) rowIteratorzz(tableSchema TableSchema) RowIter {
 	}
 }
 
-func byteOffsetFromPageID(p PageID) int {
-	return int(p) * PageSize
-}
-
 type QueryResult struct {
 	Header []FieldName
 	Values [][]string
