@@ -18,7 +18,7 @@ func main() {
 	fmt.Println("'load_sql <filename>' - execute sql file, statements separated by newlines")
 	fmt.Println("or type some sql statement to execute")
 
-	storage := naive.NewStorage()
+	storage := naive.NewDatabase()
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for scanner.Scan() {
@@ -43,7 +43,7 @@ func main() {
 				fmt.Printf("db refreshed from %q\n", fileName)
 			}
 		} else if ok, _ := hasPrefixAndTrim(s, "schema"); ok {
-			schema := storage.AllSchema()
+			schema := storage.Schema()
 			fmt.Println()
 			if len(schema) == 0 {
 				fmt.Println("empty schema")
@@ -73,7 +73,7 @@ func main() {
 	}
 }
 
-func handleSql(storage *naive.Storage, s string) error {
+func handleSql(storage *naive.Database, s string) error {
 	stmt, err := sql.Parse(sql.Lex(s))
 	if err != nil {
 		return fmt.Errorf("error parsing sql: %w", err)
@@ -128,7 +128,7 @@ func hasPrefixAndTrim(s string, prefix string) (bool, string) {
 	return false, s
 }
 
-func dumpDbToFile(s *naive.Storage, fileName string) error {
+func dumpDbToFile(s *naive.Database, fileName string) error {
 	if fileName == "" {
 		return fmt.Errorf("please provide file name for 'dump' command")
 	}
@@ -138,7 +138,7 @@ func dumpDbToFile(s *naive.Storage, fileName string) error {
 	}
 	defer f.Close()
 
-	_, err = f.Write(naive.SerializeDb(s))
+	_, err = f.Write(s.Serialize())
 	if err != nil {
 		return fmt.Errorf("error writing to file %v: %w", fileName, err)
 	}
@@ -146,7 +146,7 @@ func dumpDbToFile(s *naive.Storage, fileName string) error {
 	return nil
 }
 
-func executeCommandsFromFile(s *naive.Storage, fileName string) error {
+func executeCommandsFromFile(s *naive.Database, fileName string) error {
 	f, err := os.ReadFile(fileName)
 	if err != nil {
 		return fmt.Errorf("error reading the file %v: %w", fileName, err)
@@ -160,13 +160,13 @@ func executeCommandsFromFile(s *naive.Storage, fileName string) error {
 	return nil
 }
 
-func loadFile(s *naive.Storage, fileName string) error {
+func loadFile(s *naive.Database, fileName string) error {
 	f, err := os.Open(fileName)
 	if err != nil {
 		return fmt.Errorf("error reading the file: %w", err)
 	}
 	defer f.Close()
-	newDb, err := naive.DeserializeDb(f)
+	newDb, err := naive.NewDatabaseFromBytes(f)
 	if err != nil {
 		return fmt.Errorf("error deserializing the file %q: %w", fileName, err)
 	}
@@ -175,9 +175,11 @@ func loadFile(s *naive.Storage, fileName string) error {
 	return nil
 }
 
-func schemaToQuery(sch naive.TableSchema) naive.QueryResult {
+func schemaToQuery(sch naive.TableSchema2) naive.QueryResult {
 	columns := [][]string{}
-	for fieldName, fieldType := range sch {
+	for i := 0; i < len(sch.FieldNames); i++ {
+		fieldName := sch.FieldNames[i]
+		fieldType := sch.FieldsTypes[i]
 		columns = append(columns, []string{string(fieldName), fieldType.String()})
 	}
 	return naive.QueryResult{

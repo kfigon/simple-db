@@ -4,75 +4,23 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"iter"
 )
-
-type RootPage struct {
-	PageTyp         PageType
-	MagicNumber     int32
-	PageSize        int32
-	SchemaPageStart PageID
-	LogPageStart    PageID
-	NumberOfPages   int32
-}
-
-func NewRootPage() RootPage {
-	return RootPage{
-		PageTyp:       RootPageType,
-		MagicNumber:   MagicNumber,
-		PageSize:      PageSize,
-		NumberOfPages: 1, //root itself
-	}
-}
-
-const MagicNumber int32 = 0xc0de
-
-func (r *RootPage) Serialize() []byte {
-	got := SerializeStruct(r,
-		WithInt(func(r *RootPage) int32 { return int32(r.PageTyp) }),
-		WithInt(func(r *RootPage) int32 { return r.MagicNumber }),
-		WithInt(func(r *RootPage) int32 { return r.PageSize }),
-		WithInt(func(r *RootPage) int32 { return int32(r.SchemaPageStart) }),
-		WithInt(func(r *RootPage) int32 { return int32(r.NumberOfPages) }),
-		func(_ *RootPage, b *bytes.Buffer) { b.Write(make([]byte, PageSize-4*5)) }, // 5 fields, each has 4 bytes
-	)
-	debugAssert(len(got) == PageSize, "root page should also be size of a page")
-	return got
-}
-
-func DeserializeRootPage(r io.Reader) (*RootPage, error) {
-	root, err := DeserializeStruct(r,
-		DeserWithInt("page type", func(rp *RootPage, i *int32) { rp.PageTyp = PageType(*i) }),
-		DeserWithInt("magic num", func(rp *RootPage, i *int32) { rp.MagicNumber = *i }),
-		DeserWithInt("page size", func(rp *RootPage, i *int32) { rp.PageSize = *i }),
-		DeserWithInt("schema page start", func(rp *RootPage, i *int32) { rp.SchemaPageStart = PageID(*i) }),
-		DeserWithInt("number of pages", func(rp *RootPage, i *int32) { rp.NumberOfPages = *i }),
-		func(_ *RootPage, r io.Reader) error {
-			_, err := r.Read(make([]byte, PageSize-4*5)) // discard rest of the page
-			return err
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error deserializing root page: %w", err)
-	}
-
-	if root.MagicNumber != MagicNumber {
-		return nil, fmt.Errorf("invalid magic num, got: %x", root.MagicNumber)
-	}
-	return root, nil
-}
 
 type PageType int32
 
 const (
 	RootPageType PageType = iota
 	DataPageType
-	SchemaPageType
+	SchemaPageType // todo: do we need it? Should be just generic data page, starting from the root pointer
 	OverflowPageType
 	LogPageType
 )
 
 type PageID int32
 type PageOffset int32
+
+type SlotIdx int
 
 type GenericPageHeader struct {
 	PageTyp       PageType
@@ -81,91 +29,92 @@ type GenericPageHeader struct {
 }
 
 type GenericPage struct {
-	Header    GenericPageHeader
-	SlotArray *Slotted
-}
-
-type OverflowPage struct {
 	Header GenericPageHeader
-	Data   []byte
+
+	// slots for tuples
+	Indexes    []PageOffset // RowId -> offset within page
+	CellData   []byte
+	lastOffset PageOffset
 }
 
 func NewPage(pageType PageType, pageSize int) *GenericPage {
+	slotsSize := pageSize - 4 - 4 - 4 // generic size header
+
 	return &GenericPage{
 		Header: GenericPageHeader{
 			PageTyp: pageType,
+			// 0s for rest
 		},
-		SlotArray: NewSlotted(pageSize - 4 - 4 - 4), //12 bytes for header
+		lastOffset: PageOffset(slotsSize),
+		CellData:   make([]byte, slotsSize),
 	}
 }
 
-func NewOverflowPage(pageSize int, data []byte) (page *OverflowPage, rest []byte) {
-	page = &OverflowPage{
-		Header: GenericPageHeader{
-			PageTyp:       OverflowPageType,
-			NextPage:      0, // next pageID
-			SlotArraySize: 0, // not used
-		},
-		Data: make([]byte, pageSize-4-4-4), //12 bytes for header
-	}
+var errNoSpace = fmt.Errorf("no space in slot array")
 
-	if len(data) >= len(page.Data) {
-		copy(page.Data, data[:len(page.Data)])
-		rest = data[len(page.Data):]
-	} else {
-		copy(page.Data, data)
-		rest = nil
+const rowIdSize = 4
+
+func (g *GenericPage) Add(t Tuple) (SlotIdx, error) {
+	buf := t.Serialize()
+	bytesWithHeader := SerializeBytes(buf)
+	ln := len(bytesWithHeader)
+
+	if !g.hasSpace(ln) {
+		return 0, errNoSpace
 	}
-	return page, rest
+	copy(g.CellData[int(g.lastOffset)-ln:], bytesWithHeader)
+	g.lastOffset -= PageOffset(ln)
+
+	g.Indexes = append(g.Indexes, g.lastOffset)
+
+	idx := SlotIdx(len(g.Indexes) - 1)
+
+	g.Header.SlotArraySize = int32(len(g.Indexes))
+	return idx, nil
 }
 
-func (o *OverflowPage) Serialize() []byte {
-	got := SerializeStruct(o,
-		WithInt(func(g *OverflowPage) int32 { return int32(g.Header.PageTyp) }),
-		WithInt(func(g *OverflowPage) int32 { return int32(g.Header.NextPage) }),
-		WithInt(func(g *OverflowPage) int32 { return int32(g.Header.SlotArraySize) }),
-		func(g *OverflowPage, b *bytes.Buffer) {
-			b.Write(g.Data)
-		},
-	)
+func (g *GenericPage) Read(idx SlotIdx) (*Tuple, error) {
+	if int(idx) >= len(g.Indexes) {
+		return nil, fmt.Errorf("invalid idx %d, got only %d", idx, len(g.Indexes))
+	}
 
-	debugAssert(len(got) == PageSize, "overflow page size should be consistent")
-	return got
-}
-
-func (g *GenericPage) Add(b []byte) (SlotIdx, error) {
-	r, err := g.SlotArray.Add(b)
+	offset := g.Indexes[idx]
+	rawBytes, err := DeserializeBytes(BytesWithHeader(g.CellData[offset:]))
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	g.Header.SlotArraySize = int32(len(g.SlotArray.Indexes))
-	return r, nil
+	return DeserializeTuple(rawBytes)
 }
 
-func (g *GenericPage) Read(r SlotIdx) ([]byte, error) {
-	return g.SlotArray.Read(r)
-}
+func (g *GenericPage) Put(id SlotIdx, t Tuple) error {
+	if int(id) >= len(g.Indexes) {
+		return fmt.Errorf("invalid idx %d, got only %d", id, len(g.Indexes))
+	}
 
-func (g *GenericPage) Put(r SlotIdx, b []byte) error {
-	if err := g.SlotArray.Put(r, b); err != nil {
+	offset := g.Indexes[id]
+	existing, err := DeserializeBytes(BytesWithHeader(g.CellData[offset:]))
+	if err != nil {
 		return err
 	}
-	g.Header.SlotArraySize = int32(len(g.SlotArray.Indexes))
+	buf := t.Serialize()
+	if len(buf) <= len(existing) {
+		bytesWithHeader := SerializeBytes(buf)
+		offset := g.Indexes[id]
+		copy(g.CellData[offset:], bytesWithHeader)
+
+		return nil
+	}
+
+	newRowId, err := g.Add(t)
+	if err != nil {
+		return err
+	}
+	g.Indexes[id] = g.Indexes[newRowId]
+	g.Indexes[newRowId] = -1 // tombstone value
+
+	g.Header.SlotArraySize = int32(len(g.Indexes))
 	return nil
-}
-
-func (g *GenericPage) Serialize() []byte {
-	got := SerializeStruct(g,
-		WithInt(func(g *GenericPage) int32 { return int32(g.Header.PageTyp) }),
-		WithInt(func(g *GenericPage) int32 { return int32(g.Header.NextPage) }),
-		WithInt(func(g *GenericPage) int32 { return int32(g.Header.SlotArraySize) }),
-		func(g *GenericPage, b *bytes.Buffer) {
-			b.Write(g.SlotArray.Serialize())
-		},
-	)
-
-	debugAssert(len(got) == PageSize, "generic page size should be consistent")
-	return got
+	// todo: reclaim page space
 }
 
 func DeserializeGenericHeader(r io.Reader) (*GenericPageHeader, error) {
@@ -180,173 +129,64 @@ func DeserializeGenericHeader(r io.Reader) (*GenericPageHeader, error) {
 	return header, nil
 }
 
-func Deserialize(header *GenericPageHeader, r io.Reader) (*GenericPage, error) {
-	slottedSize := PageSize - 4*3
-	slotted, err := DeserializeSlotted(r, slottedSize, int(header.SlotArraySize))
-	if err != nil {
-		return nil, err
+func (g *GenericPage) Serialize() []byte {
+	got := SerializeStruct(g,
+		WithInt(func(g *GenericPage) int32 { return int32(g.Header.PageTyp) }),
+		WithInt(func(g *GenericPage) int32 { return int32(g.Header.NextPage) }),
+		WithInt(func(g *GenericPage) int32 { return int32(g.Header.SlotArraySize) }),
+		func(g *GenericPage, b *bytes.Buffer) {
+			for _, id := range g.Indexes {
+				b.Write(SerializeInt(int32(id)))
+			}
+
+			paddingLen := int(g.lastOffset) - len(g.Indexes)*rowIdSize
+
+			b.Write(make([]byte, paddingLen))
+			b.Write(g.CellData[g.lastOffset:])
+		},
+	)
+
+	debugAssert(len(got) == PageSize, "generic page size should be consistent")
+	return got
+}
+
+func DeserializeGenericPage(header *GenericPageHeader, r io.Reader) (*GenericPage, error) {
+	p := NewPage(header.PageTyp, PageSize)
+
+	lastOffset := int(p.lastOffset)
+
+	for range header.SlotArraySize {
+		i, err := ReadInt(r)
+		if err != nil {
+			return nil, fmt.Errorf("error deserializing slot array: %w", err)
+		}
+		ithPageOffset := PageOffset(i)
+		p.Indexes = append(p.Indexes, ithPageOffset)
+
+		lastOffset = min(lastOffset, int(ithPageOffset))
 	}
+	p.lastOffset = PageOffset(lastOffset)
+	slotArrayAreaSize := len(p.Indexes) * rowIdSize
+	freeSpaceAreaSize := lastOffset - slotArrayAreaSize
+	r.Read(make([]byte, freeSpaceAreaSize)) // discard
+	r.Read(p.CellData[lastOffset:])
 
-	return &GenericPage{
-		Header:    *header,
-		SlotArray: slotted,
-	}, nil
+	return p, nil
 }
 
-func DeserializeOverflowPage(header *GenericPageHeader, r io.Reader) (*OverflowPage, error) {
-	buf := make([]byte, PageSize-4-4-4) //12 bytes for header
-	got, err := r.Read(buf)
-	if err != nil {
-		return nil, fmt.Errorf("error reading overflow page: %w", err)
-	} else if got != len(buf) {
-		return nil, fmt.Errorf("error reading overflow page got %d, expected %d", got, len(buf))
-	}
-
-	return &OverflowPage{
-		Header: *header,
-		Data:   buf,
-	}, nil
+func (g *GenericPage) hasSpace(newData int) bool {
+	return int(g.lastOffset)-newData-(len(g.Indexes)*rowIdSize) > 0
 }
 
-// ---------------------
-// new and improved, based on sqlite. Remove directory pages, replace shcema with this
-type SchemaTuple struct {
-	PageTyp        PageType // what's the type of data described by schema	- data, index, etc
-	Name           string
-	StartingPageID PageID
-	SqlStatement   string // sql stmt used to create this. Will be parsed on boot and cached
-}
+type TupleIteratorz iter.Seq[Tuple]
 
-func (s SchemaTuple) Serialize() []byte {
-	return SerializeStruct(
-		&s,
-		WithInt(func(t *SchemaTuple) int32 { return int32(t.PageTyp) }),
-		WithString(func(t *SchemaTuple) string { return t.Name }),
-		WithInt(func(t *SchemaTuple) int32 { return int32(t.StartingPageID) }),
-		WithString(func(t *SchemaTuple) string { return t.SqlStatement }),
-	)
-}
-
-func DeserializeSchemaTuple(b []byte) (*SchemaTuple, error) {
-	return DeserializeStruct[SchemaTuple](bytes.NewBuffer(b),
-		DeserWithInt("PageType", func(t *SchemaTuple, i *int32) { t.PageTyp = PageType(*i) }),
-		DeserWithStr("Name", func(t *SchemaTuple, i *string) { t.Name = *i }),
-		DeserWithInt("StartingPageID", func(t *SchemaTuple, i *int32) { t.StartingPageID = PageID(*i) }),
-		DeserWithStr("SqlStatement", func(t *SchemaTuple, i *string) { t.SqlStatement = *i }),
-	)
-}
-
-// todo: make iterator to extract this from slotted
-type Tuple struct {
-	NumberOfFields int32
-	ColumnTypes    []ColumnType
-	ColumnDatas    [][]byte
-}
-
-func (t Tuple) Serialize() []byte {
-	return SerializeStruct(&t,
-		WithInt(func(t *Tuple) int32 { return t.NumberOfFields }),
-		func(t *Tuple, b *bytes.Buffer) {
-			for _, v := range t.ColumnTypes {
-				b.Write(SerializeInt(int32(v)))
+func (g *GenericPage) Iterator() TupleIteratorz {
+	return func(yield func(Tuple) bool) {
+		for slotId := 0; slotId < len(g.Indexes); slotId++ {
+			d := must(g.Read(SlotIdx(slotId)))
+			if !yield(*d) {
+				return
 			}
-		},
-		func(t *Tuple, b *bytes.Buffer) {
-			for _, v := range t.ColumnDatas {
-				b.Write(v)
-			}
-		},
-	)
-}
-
-func DeserializeTuple(b []byte) (*Tuple, error) {
-	return DeserializeStruct[Tuple](bytes.NewBuffer(b),
-		DeserWithInt("NumberOfFields", func(t *Tuple, i *int32) { t.NumberOfFields = *i }),
-		func(t *Tuple, r io.Reader) error {
-			for i := range t.NumberOfFields {
-				iVal, err := ReadInt(r)
-				if err != nil {
-					return fmt.Errorf("error deserializing tuple, column %d/%d: %w", i, t.NumberOfFields, err)
-				}
-				v, err := ColumnTypeFromInt(iVal)
-				if err != nil {
-					return fmt.Errorf("error deserializing tuple, column %d/%d: %w", i, t.NumberOfFields, err)
-				}
-				t.ColumnTypes = append(t.ColumnTypes, v)
-			}
-			return nil
-		},
-		func(t *Tuple, r io.Reader) error {
-			for i := range t.NumberOfFields {
-				typ := t.ColumnTypes[i]
-
-				// todo: inefficient, but with data validation
-				switch typ {
-				case NullField:
-					t.ColumnDatas = append(t.ColumnDatas, nil)
-				case BooleanField:
-					b, err := ReadBool(r)
-					if err != nil {
-						return fmt.Errorf("error deserializing tuple, bool column %d/%d: %w", i, t.NumberOfFields, err)
-					}
-					t.ColumnDatas = append(t.ColumnDatas, SerializeBool(b))
-				case IntField:
-					v, err := ReadInt(r)
-					if err != nil {
-						return fmt.Errorf("error deserializing tuple, int column %d/%d: %w", i, t.NumberOfFields, err)
-					}
-					t.ColumnDatas = append(t.ColumnDatas, SerializeInt(v))
-				case StringField:
-					v, err := ReadString(r)
-					if err != nil {
-						return fmt.Errorf("error deserializing tuple, string column %d/%d: %w", i, t.NumberOfFields, err)
-					}
-					t.ColumnDatas = append(t.ColumnDatas, SerializeString(v))
-				case OverflowField:
-					ln, err := ReadInt(r)
-					if err != nil {
-						return fmt.Errorf("error deserializing tuple, overflow length column %d/%d: %w", i, t.NumberOfFields, err)
-					}
-					pageID, err := ReadInt(r)
-					if err != nil {
-						return fmt.Errorf("error deserializing tuple, overflow pageID column %d/%d: %w", i, t.NumberOfFields, err)
-					}
-					t.ColumnDatas = append(t.ColumnDatas, append(SerializeInt(ln), SerializeInt(pageID)...))
-				default:
-					return fmt.Errorf("error deserializing tuple, column %d/%d: unknown column type %d", i, t.NumberOfFields, typ)
-				}
-			}
-			return nil
-		},
-	)
-}
-
-type ColumnType int32
-
-const (
-	// fixed size
-	NullField    ColumnType = iota // size 0
-	BooleanField                   // size 1
-	IntField                       // size 4
-
-	// var size
-	StringField   // size 4 + len
-	OverflowField // size 4 + 4 (PageID)
-)
-
-func ColumnTypeFromInt(i int32) (ColumnType, error) {
-	switch i {
-	case 0:
-		return NullField, nil
-	case 1:
-		return BooleanField, nil
-	case 2:
-		return IntField, nil
-	case 3:
-		return StringField, nil
-	case 4:
-		return OverflowField, nil
-	default:
-		return 0, fmt.Errorf("invalid column type: %d", i)
+		}
 	}
 }

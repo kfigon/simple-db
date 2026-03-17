@@ -32,15 +32,18 @@
     * [ ] introduce ExecutionEngine class to provide high level api
         * [ ] exec engine - operates on sql, cached schema and operators. Uses IDs. Decoding happens here
             * [ ] row iterator and column accessors should be lazy to avoid eager fetching overflows
-        * [ ] storage engine - operates on pages, bytes. Uses page IDs. Also uses overflow pages
-        * [ ] pages - operates on tuples, slots. Generic pages only
+        * [x] storage engine - operates on pages, tuples and bytes. Uses page IDs. Also uses overflow pages
+        * [x] pages - operates on byte tuples, slots. Generic page, root, overflow
+        * [x] realloc if page size exceeded
     * [x] cleanup iterators
     * [ ] overflow pages
         * [x] serialization of over flow page
         * [x] build overflow page
         * [ ] restore overflow page during read
         * [x] tests
-    * [ ] nil column support - framework supports it, test and handle cases
+    * [ ] nil column support
+    * [ ] nil column validation for inserts
+    * [ ] nil column support in sql
     * [x] ditch directory pages. Mimic sqlite tuple format and schema:
         * [x] no directory page type
         * [x] implement just the schema page:
