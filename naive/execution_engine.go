@@ -1,10 +1,13 @@
 package naive
 
 import (
+	"bytes"
+	"cmp"
 	"errors"
 	"fmt"
 	"io"
 	"simple-db/sql"
+	"strconv"
 )
 
 type Database struct {
@@ -12,27 +15,160 @@ type Database struct {
 }
 
 func (d *Database) Serialize() []byte {
-	// todo
-	return nil
+	var out bytes.Buffer
+	for i := range d.storage.root.NumberOfPages {
+		p := d.storage.allPages[i*PageSize : (i+1)*PageSize]
+		out.Write(p)
+	}
+	res := out.Bytes()
+	debugAssert(len(res)%PageSize == 0, "serialized database should be multiplication of page size")
+	return res
 }
 
 func NewDatabaseFromBytes(r io.Reader) (*Database, error) {
-	// todo
-	return nil, nil
+	allBytes := bytes.NewBuffer(nil)
+	root, err := DeserializeRootPage(r)
+	if err != nil {
+		return nil, err
+	}
+	allBytes.Write(root.Serialize())
+
+	// deserialize and validate
+
+	numOfPages := 1
+
+	// -1, because of root page
+	for i := range root.NumberOfPages - 1 {
+		header, err := DeserializeGenericHeader(r)
+		if err != nil {
+			return nil, fmt.Errorf("header corruption on page %d: %w", i, err)
+		}
+
+		if header.PageTyp == OverflowPageType {
+			p, err := DeserializeOverflowPage(header, r)
+			if errors.Is(err, io.EOF) {
+				return nil, fmt.Errorf("unexpected end of data, expected %d pages, failed at %d", root.NumberOfPages, i)
+			} else if err != nil {
+				return nil, err
+			}
+			numOfPages++
+			allBytes.Write(p.Serialize())
+		} else {
+			p, err := DeserializeGenericPage(header, r)
+			if errors.Is(err, io.EOF) {
+				return nil, fmt.Errorf("unexpected end of data, expected %d pages, failed at %d", root.NumberOfPages, i)
+			} else if err != nil {
+				return nil, err
+			}
+			numOfPages++
+			allBytes.Write(p.Serialize())
+		}
+	}
+
+	if numOfPages != int(root.NumberOfPages) {
+		return nil, fmt.Errorf("corrupted metadata. Expected %d pages, deserialized %d", root.NumberOfPages, numOfPages)
+	}
+
+	return NewDatabaseWithStorage(NewStorageEngineWithData(root, allBytes.Bytes())), nil
 }
 
 func NewDatabase() *Database {
-	return &Database{NewExecutionEngine()}
+	return &Database{NewExecutionEngine(NewStorageEngine())}
 }
+
+func NewDatabaseWithStorage(storage *StorageEngine) *Database {
+	return &Database{NewExecutionEngine(storage)}
+}
+
+const PageSize = 4 * 1024
+const schemaName = "catalog_schema"
+const assertionsEnabled = true
+
+type FieldType int32
+
+const (
+	Null FieldType = iota
+	Int32
+	String
+	Boolean
+	Float
+)
+
+func (f FieldType) String() string {
+	return [...]string{
+		"Null",
+		"Int32",
+		"String",
+		"Boolean",
+		"Float",
+	}[f]
+}
+
+func FieldTypeFromString(s string) (FieldType, error) {
+	switch s {
+	case "null":
+		return Null, nil
+	case "int":
+		return Int32, nil
+	case "string":
+		return String, nil
+	case "boolean":
+		return Boolean, nil
+	case "float":
+		return Float, nil
+	default:
+		return 0, fmt.Errorf("invalid type %v", s)
+	}
+}
+
+func ParseFieldTypeToData(v string, typ FieldType) (any, error) {
+	switch typ {
+	case Null:
+		return nil, nil
+	case Int32:
+		v, err := strconv.ParseInt(v, 10, 32)
+		return int32(v), err
+	case String:
+		return v, nil
+	case Boolean:
+		return strconv.ParseBool(v)
+	case Float:
+		return strconv.ParseFloat(v, 64)
+	default:
+		return nil, fmt.Errorf("invalid data type %v", typ)
+	}
+}
+
+type ColumnData struct {
+	Typ  FieldType
+	Data any
+}
+
+type TableName string
+type FieldName string
+
+type TableSchema2 struct {
+	FieldsTypes []FieldType
+	FieldNames  []FieldName
+	StartPage   PageID
+	PageTyp     PageType
+}
+type Schema2 map[TableName]TableSchema2
+
+type Row map[FieldName]ColumnData
 
 type ExecutionEngine struct {
 	storage *StorageEngine
 }
 
-func NewExecutionEngine() *ExecutionEngine {
+func NewExecutionEngine(storage *StorageEngine) *ExecutionEngine {
 	return &ExecutionEngine{
-		storage: NewStorageEngine(),
+		storage: storage,
 	}
+}
+
+func (e *ExecutionEngine) Schema() Schema2 {
+	return e.storage.GetSchema2()
 }
 
 func (e *ExecutionEngine) CreateTable(stmt sql.CreateStatement) error {
@@ -148,12 +284,7 @@ func (e *ExecutionEngine) Select(stmt sql.SelectStatement) (QueryResult, error) 
 		return zero, fmt.Errorf("table %v does not exist", stmt.Table)
 	}
 
-	schemaLookup := map[FieldName]FieldType{}
-	for i := 0; i < len(schema.FieldsTypes); i++ {
-		schemaLookup[schema.FieldNames[i]] = schema.FieldsTypes[i]
-	}
-
-	columnsToQuery, err := colsToQuery(stmt, schemaLookup)
+	columnsToQuery, err := colsToQuery(stmt, schema)
 	if err != nil {
 		return zero, err
 	}
@@ -190,4 +321,163 @@ func (e *ExecutionEngine) rowIteratorzz(tableSchema TableSchema2) RowIter {
 			}
 		}
 	}
+}
+
+func byteOffsetFromPageID(p PageID) int {
+	return int(p) * PageSize
+}
+
+type QueryResult struct {
+	Header []FieldName
+	Values [][]string
+}
+
+// todo: add error handling
+func buildPredicate(pred sql.BoolExpression) func(Row) bool {
+	return func(r Row) bool {
+		col := predBuilder(pred, r)
+		debugAssert(col.Typ == Boolean, "boolean predicate required, got %v", col.Typ)
+		return col.Data.(bool)
+	}
+}
+
+func castAndBinaryOp[T any](left, right any, op func(T, T) bool) bool {
+	lV := left.(T)
+	rV := right.(T)
+	return op(lV, rV)
+}
+
+func eq[T comparable](a, b T) bool   { return a == b }
+func neq[T comparable](a, b T) bool  { return a != b }
+func or(a, b bool) bool              { return a || b }
+func and(a, b bool) bool             { return a && b }
+func gt[T cmp.Ordered](a, b T) bool  { return a > b }
+func geq[T cmp.Ordered](a, b T) bool { return a >= b }
+func lt[T cmp.Ordered](a, b T) bool  { return a < b }
+func leq[T cmp.Ordered](a, b T) bool { return a <= b }
+
+func buildCastAndOperand[T any](left, right ColumnData, fn func(a, b T) bool) func() bool {
+	return func() bool {
+		return castAndBinaryOp(left.Data, right.Data, fn)
+	}
+}
+
+func predBuilder(pred sql.BoolExpression, r Row) ColumnData {
+	switch v := pred.(type) {
+	case *sql.InfixExpression:
+		left := predBuilder(v.Left, r)
+		right := predBuilder(v.Right, r)
+
+		if v.Operator.Lexeme == "and" {
+			return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, and)}
+		} else if v.Operator.Lexeme == "or" {
+			return ColumnData{Boolean, castAndBinaryOp(left.Data, right.Data, or)}
+		}
+
+		op := map[string]map[FieldType]func() bool{
+			"=": {
+				String:  buildCastAndOperand(left, right, eq[string]),
+				Int32:   buildCastAndOperand(left, right, eq[int32]),
+				Boolean: buildCastAndOperand(left, right, eq[bool]),
+			},
+			"!=": {
+				String:  buildCastAndOperand(left, right, neq[string]),
+				Int32:   buildCastAndOperand(left, right, neq[int32]),
+				Boolean: buildCastAndOperand(left, right, neq[bool]),
+			},
+			">":  {Int32: buildCastAndOperand(left, right, gt[int32])},
+			">=": {Int32: buildCastAndOperand(left, right, geq[int32])},
+			"<":  {Int32: buildCastAndOperand(left, right, lt[int32])},
+			"<=": {Int32: buildCastAndOperand(left, right, leq[int32])},
+		}
+
+		ops, ok := op[v.Operator.Lexeme]
+		debugAssert(ok, "unsupported op: %v", v.Operator)
+		debugAssert(left.Typ == right.Typ, "incompatible types %v %v", left.Typ, right.Typ)
+
+		fn, ok := ops[left.Typ]
+		debugAssert(ok, "unknown type %v", left.Typ)
+		return ColumnData{Boolean, fn()}
+	case sql.ValueLiteral:
+		if v.Tok.Typ == sql.Number {
+			return ColumnData{Int32, int32(must(strconv.Atoi(v.Tok.Lexeme)))}
+		} else if v.Tok.Typ == sql.String {
+			return ColumnData{String, v.Tok.Lexeme}
+		} else if v.Tok.Typ == sql.Boolean {
+			return ColumnData{Boolean, must(strconv.ParseBool(v.Tok.Lexeme))}
+		}
+		debugAssert(false, "unsupported type %v", v)
+	case sql.ColumnLiteral:
+		return r[FieldName(v.Name.Lexeme)]
+	}
+
+	debugAssert(false, "unknown predicate type received %T", pred)
+	panic("")
+}
+
+func parseTupleToRow(t Tuple, schema []FieldName) Row {
+	out := Row{}
+	for i := range t.NumberOfFields {
+		data := t.ColumnDatas[i]
+		typ := t.ColumnTypes[i]
+		fieldName := schema[i]
+		buf := bytes.NewBuffer(data)
+
+		var columnData *ColumnData
+		switch typ {
+		case NullField:
+			columnData = &ColumnData{Null, nil}
+		case BooleanField:
+			columnData = &ColumnData{Boolean, must(ReadBool(buf))}
+		case IntField:
+			columnData = &ColumnData{Int32, must(ReadInt(buf))}
+		case StringField:
+			columnData = &ColumnData{String, must(ReadString(buf))}
+		case OverflowField:
+			// todo: handle overflows
+			debugAssert(false, "overflow todo - pass storage and follow pointers")
+		default:
+			debugAssert(false, "unexpected field type: %d", typ)
+		}
+		out[fieldName] = *columnData
+	}
+	return out
+}
+
+func colsToQuery(stmt sql.SelectStatement, schema TableSchema2) ([]FieldName, error) {
+	out := []FieldName{}
+
+	if stmt.HasWildcard {
+		for _, name := range schema.FieldNames {
+			out = append(out, FieldName(name))
+		}
+		return out, nil
+	}
+	allNames := map[FieldName]bool{}
+	for _, v := range schema.FieldNames {
+		allNames[v] = true
+	}
+
+	for _, v := range stmt.Columns {
+		if _, ok := allNames[FieldName(v)]; !ok {
+			return nil, fmt.Errorf("unknown column %v in table %v", v, stmt.Table)
+		}
+		out = append(out, FieldName(v))
+	}
+	return out, nil
+}
+
+func must[T any](v T, err error) T {
+	debugAsserErr(err, "expected no error")
+	return v
+}
+
+func debugAssert(expectTrue bool, format string, args ...any) {
+	if assertionsEnabled && !expectTrue {
+		panic(fmt.Sprintf(format, args...))
+	}
+}
+
+func debugAsserErr(err error, format string, args ...any) {
+	debugAssert(err == nil, format, args...)
 }

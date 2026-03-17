@@ -29,18 +29,18 @@ func NewLog(p *GenericPage) *Log {
 	}
 }
 
-func (l *Log) Append(s *Storage, entry LogEntry) LSN {
+func (l *Log) Append(entry LogEntry) LSN {
 	// todo
 	l.lastLsn++
 	return l.lastLsn
 }
 
-func (l *Log) Iterator(s *Storage) iter.Seq[LogEntry] {
+func (l *Log) Iterator() iter.Seq[LogEntry] {
 	return func(yield func(LogEntry) bool) {
-		for range s.iter().NewEntityIterator(LogPageType, "wal_log") {
-			if !yield(LogEntry{}) {
-				return
-			}
-		}
+		// for range s.iter().NewEntityIterator(LogPageType, "wal_log") {
+		// 	if !yield(LogEntry{}) {
+		// 		return
+		// 	}
+		// }
 	}
 }

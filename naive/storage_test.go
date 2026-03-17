@@ -11,21 +11,22 @@ import (
 
 func TestNaiveStorage(t *testing.T) {
 	t.Run("basic create", func(t *testing.T) {
-		s := NewStorage()
+		s := NewDatabase()
 		sql := `create table foobar(abc int, asdf boolean, xxx string)`
 		assert.NoError(t, execute(t, s, sql))
 
-		assert.Equal(t, s.AllSchema(), Schema{
-			"foobar": TableSchema{
-				"abc":  Int32,
-				"asdf": Boolean,
-				"xxx":  String,
+		assert.Equal(t, s.storage.GetSchema2(), Schema2{
+			"foobar": TableSchema2{
+				FieldsTypes: []FieldType{Int32, Boolean, String},
+				FieldNames:  []FieldName{"abc", "asdf", "xxx"},
+				StartPage:   2,
+				PageTyp:     DataPageType,
 			}})
 	})
 
 	t.Run("select with overflow page", func(t *testing.T) {
 		t.Skip()
-		s := NewStorage()
+		s := NewDatabase()
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
 
 		bigString := generateBigStr(5*4096 + 10)
@@ -47,21 +48,21 @@ func TestNaiveStorage(t *testing.T) {
 	})
 
 	t.Run("create already present", func(t *testing.T) {
-		s := NewStorage()
+		s := NewDatabase()
 
 		assert.NoError(t, execute(t, s, `create table foobar(abc int, asdf boolean, xxx string)`))
 		assert.Error(t, execute(t, s, `create table foobar(opps int)`))
 	})
 
 	t.Run("select for nonexisting table", func(t *testing.T) {
-		s := NewStorage()
+		s := NewDatabase()
 
 		_, err := query(t, s, "select * from foobar")
 		assert.Error(t, err)
 	})
 
 	t.Run("unknown field in select", func(t *testing.T) {
-		s := NewStorage()
+		s := NewDatabase()
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
 
 		_, err := query(t, s, "select oops from foobar")
@@ -69,7 +70,7 @@ func TestNaiveStorage(t *testing.T) {
 	})
 
 	t.Run("empty select", func(t *testing.T) {
-		s := NewStorage()
+		s := NewDatabase()
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
 
 		res, err := query(t, s, "select * from foobar")
@@ -80,7 +81,7 @@ func TestNaiveStorage(t *testing.T) {
 	})
 
 	t.Run("basic select", func(t *testing.T) {
-		s := NewStorage()
+		s := NewDatabase()
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
 		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (123, "asdf")`))
 		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (456, "baz")`))
@@ -96,7 +97,7 @@ func TestNaiveStorage(t *testing.T) {
 	})
 
 	t.Run("basic select with specified columns", func(t *testing.T) {
-		s := NewStorage()
+		s := NewDatabase()
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
 		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (123, "asdf")`))
 		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (456, "baz")`))
@@ -111,7 +112,7 @@ func TestNaiveStorage(t *testing.T) {
 	})
 
 	t.Run("basic select with specified columns and filter", func(t *testing.T) {
-		s := NewStorage()
+		s := NewDatabase()
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
 		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (1, "asdf")`))
 		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (2, "baz")`))
@@ -174,32 +175,32 @@ func generateBigStr(length int) string {
 
 func TestSerializeStorage(t *testing.T) {
 	t.Run("serialize empty", func(t *testing.T) {
-		s := NewStorage()
-		data := SerializeDb(s)
+		s := NewDatabase()
+		data := s.Serialize()
 
-		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
+		recoveredDb, err := NewDatabaseFromBytes(bytes.NewReader(data))
 		assert.NoError(t, err)
-		assert.Equal(t, s.AllSchema(), recoveredDb.AllSchema())
-		assert.Equal(t, s.root.NumberOfPages, recoveredDb.root.NumberOfPages)
-		assert.EqualValues(t, recoveredDb.root.NumberOfPages, 2) // root schema
+		assert.Equal(t, s.Schema(), recoveredDb.Schema())
+		assert.Equal(t, s.storage.root.NumberOfPages, recoveredDb.storage.root.NumberOfPages)
+		assert.EqualValues(t, recoveredDb.storage.root.NumberOfPages, 2) // root schema
 	})
 
 	t.Run("single table", func(t *testing.T) {
-		s := NewStorage()
+		s := NewDatabase()
 		sql := `create table foobar(abc int, asdf boolean, xxx string)`
 		assert.NoError(t, execute(t, s, sql))
 
-		data := SerializeDb(s)
+		data := s.Serialize()
 
-		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
+		recoveredDb, err := NewDatabaseFromBytes(bytes.NewReader(data))
 		assert.NoError(t, err)
-		assert.Equal(t, s.AllSchema(), recoveredDb.AllSchema())
-		assert.Equal(t, s.root.NumberOfPages, recoveredDb.root.NumberOfPages)
-		assert.EqualValues(t, 1+1+1, recoveredDb.root.NumberOfPages) // root schema and empty data
+		assert.Equal(t, s.Schema(), recoveredDb.Schema())
+		assert.Equal(t, s.storage.root.NumberOfPages, recoveredDb.storage.root.NumberOfPages)
+		assert.EqualValues(t, 1+1+1, recoveredDb.storage.root.NumberOfPages) // root schema and empty data
 	})
 
 	t.Run("overflow pages", func(t *testing.T) {
-		s := NewStorage()
+		s := NewDatabase()
 		bigString := generateBigStr(2*1024 + 10)
 		var queryStr strings.Builder
 		queryStr.Grow(len(bigString) + 200)
@@ -209,18 +210,18 @@ func TestSerializeStorage(t *testing.T) {
 
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
 		assert.NoError(t, execute(t, s, queryStr.String()))
-		data := SerializeDb(s)
+		data := s.Serialize()
 
-		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
+		recoveredDb, err := NewDatabaseFromBytes(bytes.NewReader(data))
 		assert.NoError(t, err)
-		assert.Equal(t, s.AllSchema(), recoveredDb.AllSchema())
-		assert.Equal(t, s.root.NumberOfPages, recoveredDb.root.NumberOfPages)
-		assert.EqualValues(t, 3+1, recoveredDb.root.NumberOfPages) // root schema data overflow
+		assert.Equal(t, s.Schema(), recoveredDb.Schema())
+		assert.Equal(t, s.storage.root.NumberOfPages, recoveredDb.storage.root.NumberOfPages)
+		assert.EqualValues(t, 3+1, recoveredDb.storage.root.NumberOfPages) // root schema data overflow
 	})
 
 	t.Run("overflow pages off by 1", func(t *testing.T) {
 		t.Skip()
-		s := NewStorage()
+		s := NewDatabase()
 		bigString := generateBigStr(5 * 4096)
 		var queryStr strings.Builder
 		queryStr.Grow(len(bigString) + 200)
@@ -230,44 +231,51 @@ func TestSerializeStorage(t *testing.T) {
 
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
 		assert.NoError(t, execute(t, s, queryStr.String()))
-		data := SerializeDb(s)
+		data := s.Serialize()
 
-		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
+		recoveredDb, err := NewDatabaseFromBytes(bytes.NewReader(data))
 		assert.NoError(t, err)
-		assert.Equal(t, s.AllSchema(), recoveredDb.AllSchema())
-		assert.Equal(t, s.root.NumberOfPages, recoveredDb.root.NumberOfPages)
-		assert.EqualValues(t, 3+5, recoveredDb.root.NumberOfPages) // root schema data 5overflows
+		assert.Equal(t, s.Schema(), recoveredDb.Schema())
+		assert.Equal(t, s.storage.root.NumberOfPages, recoveredDb.storage.root.NumberOfPages)
+		assert.EqualValues(t, 3+5, recoveredDb.storage.root.NumberOfPages) // root schema data 5overflows
 	})
 
 	t.Run("whole db state", func(t *testing.T) {
-		s := NewStorage()
+		s := NewDatabase()
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
 		assert.NoError(t, execute(t, s, `create table xxx(email string)`))
 		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (123, "asdf")`))
 		assert.NoError(t, execute(t, s, `insert into foobar(id, name) VALUES (456, "baz")`))
 		assert.NoError(t, execute(t, s, `insert into xxx(email) VALUES ("john@doe.com")`))
 
-		data := SerializeDb(s)
+		data := s.Serialize()
 
-		assert.EqualValues(t, s.root.NumberOfPages, len(data)/PageSize)
+		assert.EqualValues(t, s.storage.root.NumberOfPages, len(data)/PageSize)
 
-		recoveredDb, err := DeserializeDb(bytes.NewReader(data))
+		recoveredDb, err := NewDatabaseFromBytes(bytes.NewReader(data))
 		assert.NoError(t, err)
-		assert.Equal(t, s.root.NumberOfPages, recoveredDb.root.NumberOfPages)
+		assert.Equal(t, s.storage.root.NumberOfPages, recoveredDb.storage.root.NumberOfPages)
 
-		assert.Equal(t, s.root.NumberOfPages, recoveredDb.root.NumberOfPages)
-		assert.EqualValues(t, recoveredDb.root.NumberOfPages, 1+1+2) // root + schema + 2x data
+		assert.Equal(t, s.storage.root.NumberOfPages, recoveredDb.storage.root.NumberOfPages)
+		assert.EqualValues(t, recoveredDb.storage.root.NumberOfPages, 1+1+2) // root + schema + 2x data
 
-		assert.Equal(t, s.root, recoveredDb.root)
-		for i := 1; i < int(s.root.NumberOfPages); i++ {
-			assert.Equal(t, s.getPage(PageID(i)).Header, recoveredDb.getPage(PageID(i)).Header, "header on page %d", i)
-			assert.Equal(t, s.getPage(PageID(i)).SlotArray, recoveredDb.getPage(PageID(i)).SlotArray, "slot array on page %d", i)
+		readPage := func(s *Database, id PageID) *GenericPage {
+			t.Helper()
+			got, _ := s.storage.ReadGenericPage(id)
+			return got
 		}
-		assert.Equal(t, s.AllSchema(), recoveredDb.AllSchema())
+
+		assert.Equal(t, s.storage.root, recoveredDb.storage.root)
+		for i := 1; i < int(s.storage.root.NumberOfPages); i++ {
+			assert.Equal(t, readPage(s, PageID(i)).Header, readPage(recoveredDb, PageID(i)).Header, "header on page %d", i)
+			assert.Equal(t, readPage(s, PageID(i)).Indexes, readPage(recoveredDb, PageID(i)).Indexes, "indexes on page %d", i)
+			assert.Equal(t, readPage(s, PageID(i)).CellData, readPage(recoveredDb, PageID(i)).CellData, "cells on page %d", i)
+		}
+		assert.Equal(t, s.Schema(), recoveredDb.Schema())
 	})
 }
 
-func execute(t *testing.T, s *Storage, statement string) error {
+func execute(t *testing.T, s *Database, statement string) error {
 	t.Helper()
 
 	stmt, err := sql.Parse(sql.Lex(statement))
@@ -284,7 +292,7 @@ func execute(t *testing.T, s *Storage, statement string) error {
 	return nil
 }
 
-func query(t *testing.T, s *Storage, statement string) (QueryResult, error) {
+func query(t *testing.T, s *Database, statement string) (QueryResult, error) {
 	t.Helper()
 
 	stmt, err := sql.Parse(sql.Lex(statement))
@@ -297,7 +305,7 @@ func query(t *testing.T, s *Storage, statement string) (QueryResult, error) {
 func testSelect(t *testing.T, prep []string, queryStr string, exp QueryResult) {
 	t.Helper()
 
-	s := NewStorage()
+	s := NewDatabase()
 	for _, v := range prep {
 		assert.NoError(t, execute(t, s, v))
 	}

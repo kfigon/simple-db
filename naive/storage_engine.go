@@ -11,6 +11,14 @@ type StorageEngine struct {
 	allPages []byte
 }
 
+// to support generic pages and overflows
+type CombinedPageIteratorEntry struct {
+	GenericPageHeader
+	data []byte
+}
+type PageIteratorCombined iter.Seq2[PageID, CombinedPageIteratorEntry]
+type NewTupleIterator iter.Seq[Tuple]
+
 func NewStorageEngine() *StorageEngine {
 	s := &StorageEngine{
 		allPages: make([]byte, 20*PageSize),
@@ -24,6 +32,10 @@ func NewStorageEngine() *StorageEngine {
 	s.persistPage(0, s.root.Serialize())
 
 	return s
+}
+
+func NewStorageEngineWithData(root *RootPage, allPages []byte) *StorageEngine {
+	return &StorageEngine{*root, allPages}
 }
 
 func (s *StorageEngine) GetSchema2() Schema2 {
