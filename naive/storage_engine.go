@@ -38,8 +38,8 @@ func NewStorageEngineWithData(root *RootPage, allPages []byte) *StorageEngine {
 	return &StorageEngine{*root, allPages}
 }
 
-func (s *StorageEngine) GetSchema2() Schema2 {
-	out := Schema2{}
+func (s *StorageEngine) GetSchema2() Schema {
+	out := Schema{}
 
 	for sch := range s.SchemaTuples() {
 		got, err := sql.Parse(sql.Lex(sch.SqlStatement))
@@ -47,7 +47,7 @@ func (s *StorageEngine) GetSchema2() Schema2 {
 		createStmt, ok := got.(*sql.CreateStatement)
 		debugAssert(ok, "schema corruption, invalid sql statement for table: %s, should be create statement, got %T", sch.Name, got)
 
-		res := TableSchema2{}
+		res := TableSchema{}
 		for _, data := range createStmt.Columns {
 			f, err := FieldTypeFromString(data.Typ)
 			debugAsserErr(err, "schema corruption, invalid type for table %s: ", sch.Name)
@@ -126,7 +126,7 @@ func (s *StorageEngine) AllocatePage(pageTyp PageType, name string) (PageID, *Ge
 	return newPageID, p
 }
 
-func FindStartingPage(s Schema2, pageTyp PageType, name string) (PageID, bool) {
+func FindStartingPage(s Schema, pageTyp PageType, name string) (PageID, bool) {
 	for tableName, tableSchema := range s {
 		if pageTyp == tableSchema.PageTyp && name == string(tableName) {
 			return tableSchema.StartPage, true

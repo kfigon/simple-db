@@ -175,7 +175,7 @@ func loadFile(s *naive.Database, fileName string) error {
 	return nil
 }
 
-func schemaToQuery(sch naive.TableSchema2) naive.QueryResult {
+func schemaToQuery(sch naive.TableSchema) naive.QueryResult {
 	columns := [][]string{}
 	for i := 0; i < len(sch.FieldNames); i++ {
 		fieldName := sch.FieldNames[i]

@@ -147,13 +147,13 @@ type ColumnData struct {
 type TableName string
 type FieldName string
 
-type TableSchema2 struct {
+type TableSchema struct {
 	FieldsTypes []FieldType
 	FieldNames  []FieldName
 	StartPage   PageID
 	PageTyp     PageType
 }
-type Schema2 map[TableName]TableSchema2
+type Schema map[TableName]TableSchema
 
 type Row map[FieldName]ColumnData
 
@@ -167,7 +167,7 @@ func NewExecutionEngine(storage *StorageEngine) *ExecutionEngine {
 	}
 }
 
-func (e *ExecutionEngine) Schema() Schema2 {
+func (e *ExecutionEngine) Schema() Schema {
 	return e.storage.GetSchema2()
 }
 
@@ -312,7 +312,7 @@ func (e *ExecutionEngine) Select(stmt sql.SelectStatement) (QueryResult, error) 
 }
 
 // todo: move to proper place
-func (e *ExecutionEngine) rowIteratorzz(tableSchema TableSchema2) RowIter {
+func (e *ExecutionEngine) rowIteratorzz(tableSchema TableSchema) RowIter {
 	return func(yield func(Row) bool) {
 		for tup := range e.storage.Tuples(tableSchema.StartPage) {
 			row := parseTupleToRow(tup, tableSchema.FieldNames)
@@ -444,7 +444,7 @@ func parseTupleToRow(t Tuple, schema []FieldName) Row {
 	return out
 }
 
-func colsToQuery(stmt sql.SelectStatement, schema TableSchema2) ([]FieldName, error) {
+func colsToQuery(stmt sql.SelectStatement, schema TableSchema) ([]FieldName, error) {
 	out := []FieldName{}
 
 	if stmt.HasWildcard {
