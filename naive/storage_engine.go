@@ -38,7 +38,7 @@ func NewStorageEngineWithData(root *RootPage, allPages []byte) *StorageEngine {
 	return &StorageEngine{*root, allPages}
 }
 
-func (s *StorageEngine) GetSchema2() Schema {
+func (s *StorageEngine) GetSchema() Schema {
 	out := Schema{}
 
 	for sch := range s.SchemaTuples() {
@@ -109,7 +109,7 @@ func (s *StorageEngine) AllocatePage(pageTyp PageType, name string) (PageID, *Ge
 	newPageID := PageID(s.root.NumberOfPages)
 
 	// link last page to the new one
-	if startPage, ok := FindStartingPage(s.GetSchema2(), pageTyp, name); ok {
+	if startPage, ok := FindStartingPage(s.GetSchema(), pageTyp, name); ok {
 		var lastPageID PageID
 		for id := range s.ReadPages(startPage) {
 			lastPageID = id
@@ -213,7 +213,7 @@ func (s *StorageEngine) persistPage(id PageID, pageData []byte) {
 func (s *StorageEngine) AddTuple(pageTyp PageType, name string, t Tuple) (*GenericPage, PageID, error) {
 	var lastPageID *PageID
 
-	for table, schema := range s.GetSchema2() {
+	for table, schema := range s.GetSchema() {
 		if table == TableName(name) && schema.PageTyp == pageTyp {
 			lastPageID = &schema.StartPage
 			break

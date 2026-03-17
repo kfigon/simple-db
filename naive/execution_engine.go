@@ -168,11 +168,11 @@ func NewExecutionEngine(storage *StorageEngine) *ExecutionEngine {
 }
 
 func (e *ExecutionEngine) Schema() Schema {
-	return e.storage.GetSchema2()
+	return e.storage.GetSchema()
 }
 
 func (e *ExecutionEngine) CreateTable(stmt sql.CreateStatement) error {
-	_, schemaFound := FindStartingPage(e.storage.GetSchema2(), DataPageType, string(stmt.Table))
+	_, schemaFound := FindStartingPage(e.storage.GetSchema(), DataPageType, string(stmt.Table))
 	if schemaFound {
 		return fmt.Errorf("table %v already present", stmt.Table)
 	} else if len(stmt.Columns) == 0 {
@@ -208,7 +208,7 @@ func (e *ExecutionEngine) addTupleAndAllocIfFull(name string, pageTyp PageType, 
 }
 
 func (e *ExecutionEngine) Insert(stmt sql.InsertStatement) error {
-	schema, schemaFound := e.storage.GetSchema2()[TableName(stmt.Table)]
+	schema, schemaFound := e.storage.GetSchema()[TableName(stmt.Table)]
 	if !schemaFound {
 		return fmt.Errorf("table %v not found", stmt.Table)
 	}
@@ -279,7 +279,7 @@ func (e *ExecutionEngine) Insert(stmt sql.InsertStatement) error {
 func (e *ExecutionEngine) Select(stmt sql.SelectStatement) (QueryResult, error) {
 	// todo: better structure, currently it's not lazy
 	var zero QueryResult
-	schema, ok := e.storage.GetSchema2()[TableName(stmt.Table)]
+	schema, ok := e.storage.GetSchema()[TableName(stmt.Table)]
 	if !ok {
 		return zero, fmt.Errorf("table %v does not exist", stmt.Table)
 	}

@@ -15,7 +15,7 @@ func TestNaiveStorage(t *testing.T) {
 		sql := `create table foobar(abc int, asdf boolean, xxx string)`
 		assert.NoError(t, execute(t, s, sql))
 
-		assert.Equal(t, s.storage.GetSchema2(), Schema{
+		assert.Equal(t, s.storage.GetSchema(), Schema{
 			"foobar": TableSchema{
 				FieldsTypes: []FieldType{Int32, Boolean, String},
 				FieldNames:  []FieldName{"abc", "asdf", "xxx"},
