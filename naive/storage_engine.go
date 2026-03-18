@@ -71,6 +71,7 @@ func (s *StorageEngine) GetSchema() Schema {
 			res.FieldsTypes = append(res.FieldsTypes, f)
 		}
 		res.StartPage = sch.StartingPageID
+		res.PageTyp = sch.PageTyp
 		out[TableName(sch.Name)] = res
 	}
 

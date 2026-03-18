@@ -21,7 +21,14 @@ func TestNaiveStorage(t *testing.T) {
 				FieldNames:  []FieldName{"abc", "asdf", "xxx"},
 				StartPage:   2,
 				PageTyp:     DataPageType,
-			}})
+			},
+			schemaName: TableSchema{
+				FieldsTypes: []FieldType{Int32, Int32, String, String},
+				FieldNames:  []FieldName{"page_type", "starting_page_id", "name", "sql_statement"},
+				StartPage:   1,
+				PageTyp:     DataPageType,
+			},
+		})
 	})
 
 	t.Run("select with overflow page", func(t *testing.T) {
