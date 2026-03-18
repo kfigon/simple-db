@@ -42,6 +42,8 @@
         * [ ] restore overflow page during read
         * [x] tests
     * [ ] properly design boundaries for execution and storage engines. What abstractions do they need?
+        * execution engine should work only on operators
+        * storage engine should handle finding pages, puting tuples, realloc, overflows
     * [ ] nil column support
     * [ ] nil column validation for inserts
     * [ ] nil column support in sql

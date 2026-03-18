@@ -2,6 +2,8 @@ package naive
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"iter"
 	"simple-db/sql"
 )
@@ -105,7 +107,7 @@ func (s *StorageEngine) AllocatePage(pageTyp PageType, name string) (PageID, *Ge
 	newPageID := PageID(s.root.NumberOfPages)
 
 	// link last page to the new one
-	if startPage, ok := FindStartingPage(s.GetSchema(), pageTyp, name); ok {
+	if startPage, ok := FindStartingPage(s.GetSchema(), name); ok {
 		var lastPageID PageID
 		for id := range s.ReadPages(startPage) {
 			lastPageID = id
@@ -122,13 +124,74 @@ func (s *StorageEngine) AllocatePage(pageTyp PageType, name string) (PageID, *Ge
 	return newPageID, p
 }
 
-func FindStartingPage(s Schema, pageTyp PageType, name string) (PageID, bool) {
-	for tableName, tableSchema := range s {
-		if pageTyp == tableSchema.PageTyp && name == string(tableName) {
-			return tableSchema.StartPage, true
+func (s *StorageEngine) AddTuple(name string, t Tuple) (PageID, *GenericPage, error) {
+	schema := s.GetSchema()
+
+	pid, ok := s.FindLastPage(schema, name)
+	if !ok {
+		return 0, nil, fmt.Errorf("page for %v not found", name)
+	}
+	page, ok := s.ReadGenericPage(pid)
+	debugAssert(ok, "data corruption, can't find page %d", pid)
+
+	t = s.repackTupleForOverflows(t)
+
+	_, err := page.Add(t)
+	if errors.Is(err, errNoSpace) {
+		// realloc
+		newPageID, newPage := s.AllocatePage(page.Header.PageTyp, name)
+		_, err = newPage.Add(t)
+		if err != nil {
+			return 0, nil, fmt.Errorf("failed to realloc page for %s: %w", name, err)
+		}
+		s.persistPage(newPageID, newPage.Serialize())
+		return newPageID, newPage, nil
+	} else if err != nil {
+		return 0, nil, fmt.Errorf("failed to add tuple to page %d for %s: %w", pid, name, err)
+	}
+
+	s.persistPage(pid, page.Serialize())
+	return pid, page, nil
+}
+
+func (s *StorageEngine) repackTupleForOverflows(t Tuple) Tuple {
+	for i := 0; i < int(t.NumberOfFields); i++ {
+		typ := t.ColumnTypes[i]
+		val := t.ColumnDatas[i]
+
+		if typ == StringField && len(val) >= PageSize/2 {
+			overFlowPageStartID := s.AllocateOverflowPage(val)
+			first := SerializeInt(int32(len(val)))
+			second := SerializeInt(int32(overFlowPageStartID))
+			serializedData := make([]byte, 0, 4+4)
+			serializedData = append(serializedData, first...)
+			serializedData = append(serializedData, second...)
+			t.ColumnTypes[i] = OverflowField
+			t.ColumnDatas[i] = serializedData
 		}
 	}
-	return 0, false
+	return t
+}
+
+func FindStartingPage(s Schema, name string) (PageID, bool) {
+	got, ok := s[TableName(name)]
+	if !ok {
+		return 0, false
+	}
+	return got.StartPage, true
+}
+
+func (s *StorageEngine) FindLastPage(sch Schema, name string) (PageID, bool) {
+	pid, ok := FindStartingPage(sch, name)
+	if !ok {
+		return 0, false
+	}
+
+	var lastPageID PageID
+	for id := range s.ReadPages(pid) {
+		lastPageID = id
+	}
+	return lastPageID, true
 }
 
 func (s *StorageEngine) AllocateOverflowPage(data []byte) PageID {
@@ -204,25 +267,6 @@ func (s *StorageEngine) persistPage(id PageID, pageData []byte) {
 		s.allPages = newBytes
 	}
 	copy(s.allPages[offset:offset+len(pageData)], pageData)
-}
-
-func (s *StorageEngine) AddTuple(pageTyp PageType, name string, t Tuple) (*GenericPage, PageID, error) {
-	var lastPageID *PageID
-
-	for table, schema := range s.GetSchema() {
-		if table == TableName(name) && schema.PageTyp == pageTyp {
-			// todo: this is first page!!!1
-			lastPageID = &schema.StartPage
-			break
-		}
-	}
-	debugAssert(lastPageID != nil, "page for %s not found", name)
-
-	lastPage, ok := s.ReadGenericPage(*lastPageID)
-	debugAssert(ok, "data corruption, page %d from schema not found for %s", *lastPageID, name)
-
-	_, err := lastPage.Add(t)
-	return lastPage, *lastPageID, err
 }
 
 func (s *StorageEngine) ReadPages(startingPageID PageID) PageIteratorCombined {

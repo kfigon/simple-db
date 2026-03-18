@@ -171,7 +171,7 @@ func (e *ExecutionEngine) Schema() Schema {
 }
 
 func (e *ExecutionEngine) CreateTable(stmt sql.CreateStatement) error {
-	_, schemaFound := FindStartingPage(e.storage.GetSchema(), DataPageType, string(stmt.Table))
+	_, schemaFound := FindStartingPage(e.storage.GetSchema(), string(stmt.Table))
 	if schemaFound {
 		return fmt.Errorf("table %v already present", stmt.Table)
 	} else if len(stmt.Columns) == 0 {
@@ -187,22 +187,8 @@ func (e *ExecutionEngine) CreateTable(stmt sql.CreateStatement) error {
 		Name:           stmt.Table,
 		SqlStatement:   stmt.String(),
 	}
-	return e.addTupleAndAllocIfFull(schemaName, DataPageType, sch.ToTuple())
-}
 
-func (e *ExecutionEngine) addTupleAndAllocIfFull(name string, pageTyp PageType, t Tuple) error {
-	page, id, err := e.storage.AddTuple(pageTyp, name, t)
-
-	if err == nil {
-		e.storage.persistPage(id, page.Serialize())
-	} else if errors.Is(err, errNoSpace) {
-		id, page := e.storage.AllocatePage(pageTyp, name)
-		_, err = page.Add(t)
-		if err != nil {
-			return fmt.Errorf("error during realloc and add: %w", err)
-		}
-		e.storage.persistPage(id, page.Serialize())
-	}
+	_, _, err := e.storage.AddTuple(schemaName, sch.ToTuple())
 	return err
 }
 
@@ -252,27 +238,16 @@ func (e *ExecutionEngine) Insert(stmt sql.InsertStatement) error {
 			tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeInt(d.Data.(int32)))
 			tuple.ColumnTypes = append(tuple.ColumnTypes, IntField)
 		case String:
-			strVal := d.Data.(string)
-			if len(strVal) >= PageSize/2 {
-				overFlowPageStartID := e.storage.AllocateOverflowPage([]byte(strVal))
-				first := SerializeInt(int32(len(strVal)))
-				second := SerializeInt(int32(overFlowPageStartID))
-				serializedData := make([]byte, 0, 4+4)
-				serializedData = append(serializedData, first...)
-				serializedData = append(serializedData, second...)
-				tuple.ColumnDatas = append(tuple.ColumnDatas, serializedData)
-				tuple.ColumnTypes = append(tuple.ColumnTypes, OverflowField)
-			} else {
-				tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeString(strVal))
-				tuple.ColumnTypes = append(tuple.ColumnTypes, StringField)
-			}
+			tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeString(d.Data.(string)))
+			tuple.ColumnTypes = append(tuple.ColumnTypes, StringField)
 		case Boolean:
 			tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeBool(d.Data.(bool)))
 			tuple.ColumnTypes = append(tuple.ColumnTypes, BooleanField)
 		}
 	}
 
-	return e.addTupleAndAllocIfFull(stmt.Table, DataPageType, tuple)
+	_, _, err := e.storage.AddTuple(stmt.Table, tuple)
+	return err
 }
 
 func (e *ExecutionEngine) Select(stmt sql.SelectStatement) (QueryResult, error) {
