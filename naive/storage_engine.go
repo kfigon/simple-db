@@ -211,6 +211,7 @@ func (s *StorageEngine) AddTuple(pageTyp PageType, name string, t Tuple) (*Gener
 
 	for table, schema := range s.GetSchema() {
 		if table == TableName(name) && schema.PageTyp == pageTyp {
+			// todo: this is first page!!!1
 			lastPageID = &schema.StartPage
 			break
 		}
