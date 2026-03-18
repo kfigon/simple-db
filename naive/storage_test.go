@@ -32,7 +32,7 @@ func TestNaiveStorage(t *testing.T) {
 	})
 
 	t.Run("select with overflow page", func(t *testing.T) {
-		t.Skip()
+		t.Skip("resource intensive, timeouts")
 		s := NewDatabase()
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))
 
