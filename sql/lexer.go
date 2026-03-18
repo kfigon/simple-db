@@ -7,6 +7,7 @@ import (
 )
 
 type TokenType int
+
 const (
 	EOF TokenType = iota
 	Select
@@ -35,7 +36,7 @@ const (
 )
 
 func (t TokenType) String() string {
-	return [...]string {
+	return [...]string{
 		"EOF",
 		"Select",
 		"Insert",
@@ -64,9 +65,9 @@ func (t TokenType) String() string {
 }
 
 type Token struct {
-	Typ TokenType
+	Typ    TokenType
 	Lexeme string
-	Line int
+	Line   int
 }
 
 func (t Token) String() string {
@@ -77,7 +78,7 @@ func Lex(in string) []Token {
 	var out []Token
 	it := &strIter{strings.NewReader(in), 1}
 
-	singleCharTokens := map[rune]TokenType {
+	singleCharTokens := map[rune]TokenType{
 		'.': Dot,
 		',': Comma,
 		'*': Wildcard,
@@ -86,20 +87,20 @@ func Lex(in string) []Token {
 		')': CloseParen,
 	}
 
-	keyword := map[string]TokenType {
+	keyword := map[string]TokenType{
 		"select": Select,
-		"from": From,
+		"from":   From,
 		"having": Having,
-		"where": Where,
-		"join": Join,
-		"left": Left,
-		"right": Right,
-		"outer": Outer,
+		"where":  Where,
+		"join":   Join,
+		"left":   Left,
+		"right":  Right,
+		"outer":  Outer,
 		"insert": Insert,
-		"table": Table,
+		"table":  Table,
 		"create": Create,
 		"values": Values,
-		"into": Into,
+		"into":   Into,
 	}
 	stringToType := func(w string) TokenType {
 		lower := strings.ToLower(w)
@@ -129,11 +130,11 @@ func Lex(in string) []Token {
 			dig := readUntil(c, it, unicode.IsDigit)
 			out = append(out, emit(Number, dig, it.line))
 		} else if c == '"' {
-			word := readUntil(c, it, func(r rune) bool { return r != '"'})
+			word := readUntil(c, it, func(r rune) bool { return r != '"' })
 			it.next() // consume trailing "
 			out = append(out, emit(String, word[1:], it.line))
 		} else {
-			word := readUntil(c, it, unicode.IsLetter)
+			word := readUntil(c, it, func(r rune) bool { return unicode.IsLetter(r) || r == '_' })
 			out = append(out, emit(stringToType(word), word, it.line))
 		}
 	}
@@ -142,9 +143,9 @@ func Lex(in string) []Token {
 	return out
 }
 
-func readUntil(first rune, si *strIter, fn func(rune)bool) string {
+func readUntil(first rune, si *strIter, fn func(rune) bool) string {
 	out := string(first)
-	for next, ok := si.peek(); ok; next,ok = si.peek() {
+	for next, ok := si.peek(); ok; next, ok = si.peek() {
 		if fn(next) {
 			si.next()
 			out += string(next)
@@ -160,7 +161,7 @@ type strIter struct {
 	line int
 }
 
-func(l *strIter) next() (rune, bool) {
+func (l *strIter) next() (rune, bool) {
 	r, _, err := l.ReadRune()
 	if err != nil {
 		return r, false
@@ -171,7 +172,7 @@ func(l *strIter) next() (rune, bool) {
 	return r, true
 }
 
-func(l *strIter) peek() (rune, bool) {
+func (l *strIter) peek() (rune, bool) {
 	r, ok := l.next()
 	if r == '\n' {
 		l.line--

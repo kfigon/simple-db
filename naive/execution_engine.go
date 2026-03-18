@@ -171,7 +171,7 @@ func (e *ExecutionEngine) Schema() Schema {
 }
 
 func (e *ExecutionEngine) CreateTable(stmt sql.CreateStatement) error {
-	_, schemaFound := FindStartingPage(e.storage.GetSchema(), string(stmt.Table))
+	_, schemaFound := FindStartingPage(e.Schema(), string(stmt.Table))
 	if schemaFound {
 		return fmt.Errorf("table %v already present", stmt.Table)
 	} else if len(stmt.Columns) == 0 {
@@ -366,5 +366,11 @@ func debugAssert(expectTrue bool, format string, args ...any) {
 }
 
 func debugAsserErr(err error, format string, args ...any) {
-	debugAssert(err == nil, format, args...)
+	errStr := func() string {
+		if err == nil {
+			return ""
+		}
+		return err.Error()
+	}
+	debugAssert(err == nil, format+": "+errStr(), args...)
 }

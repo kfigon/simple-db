@@ -31,11 +31,20 @@ func NewStorageEngine() *StorageEngine {
 	}
 
 	s.root = NewRootPage()
-	schemaID, _ := s.AllocatePage(DataPageType, schemaName)
+	schemaID, schemaPage := s.AllocatePage(DataPageType, schemaName)
 
 	s.root.SchemaPageStart = schemaID
+	// todo: this is a bad workaround, that I need a schema for schema tuple. can we do better?
+	schemaPage.Add(SchemaTuple{
+		PageTyp:        DataPageType,
+		StartingPageID: schemaID,
+		Name:           schemaName,
+		SqlStatement:   "create table " + schemaName + "(page_type int, starting_page_id int, name string, sql_statement string)",
+	}.ToTuple())
+
 	// todo: optimise this, root persist is done also in dir and schema allocations, but misses setting dir and schema ids
 	s.persistPage(0, s.root.Serialize())
+	s.persistPage(schemaID, schemaPage.Serialize())
 
 	return s
 }
