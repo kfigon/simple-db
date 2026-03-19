@@ -357,12 +357,10 @@ func (e *ExecutionEngine) followOverflowChain(dataLen int, firstPage PageID) []b
 	for _, page := range e.storage.ReadPages(firstPage) {
 		overflowPage := must(DeserializeOverflowPage(&page.GenericPageHeader, bytes.NewBuffer(page.data)))
 
-		// todo: check for one off errors
-		howMuchToRead := len(overflowPage.Data)
-		if remainingDataLen < howMuchToRead {
-			howMuchToRead = remainingDataLen
-		}
-		buf.Write(overflowPage.Data[:howMuchToRead])
+		howMuchToRead := min(remainingDataLen, len(overflowPage.Data))
+
+		got, _ := buf.Write(overflowPage.Data[:howMuchToRead])
+		remainingDataLen -= got
 	}
 	return buf.Bytes()
 }
