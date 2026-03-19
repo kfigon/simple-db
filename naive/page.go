@@ -151,7 +151,7 @@ func (g *GenericPage) Serialize() []byte {
 
 func DeserializeGenericPage(header *GenericPageHeader, r io.Reader) (*GenericPage, error) {
 	p := NewPage(header.PageTyp, PageSize)
-
+	p.Header = *header
 	lastOffset := int(p.lastOffset)
 
 	for range header.SlotArraySize {
