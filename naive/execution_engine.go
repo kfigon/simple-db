@@ -16,7 +16,7 @@ type Database struct {
 func (d *Database) Serialize() []byte {
 	var out bytes.Buffer
 	for i := range d.storage.root.NumberOfPages {
-		p := d.storage.allPages[i*PageSize : (i+1)*PageSize]
+		p := d.storage.allPages[byteOffsetFromPageID(PageID(i)):byteOffsetFromPageID(PageID(i+1))]
 		out.Write(p)
 	}
 	res := out.Bytes()
