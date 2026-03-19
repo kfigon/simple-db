@@ -128,6 +128,8 @@ type SchemaTuple struct {
 	SqlStatement   string // sql stmt used to create this. Will be parsed on boot and cached
 }
 
+const SchemaTypleSql = "create table " + schemaName + "(page_type int, starting_page_id int, name string, sql_statement string)"
+
 func (s SchemaTuple) ToTuple() Tuple {
 	return Tuple{
 		NumberOfFields: 4,

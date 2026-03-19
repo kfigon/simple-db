@@ -39,7 +39,7 @@ func NewStorageEngine() *StorageEngine {
 		PageTyp:        DataPageType,
 		StartingPageID: schemaID,
 		Name:           schemaName,
-		SqlStatement:   "create table " + schemaName + "(page_type int, starting_page_id int, name string, sql_statement string)",
+		SqlStatement:   SchemaTypleSql,
 	}.ToTuple())
 
 	// todo: optimise this, root persist is done also in dir and schema allocations, but misses setting dir and schema ids

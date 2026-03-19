@@ -285,7 +285,6 @@ func (e *ExecutionEngine) Select(stmt sql.SelectStatement) (QueryResult, error) 
 	return out, nil
 }
 
-// todo: move to proper place
 func (e *ExecutionEngine) rowIteratorzz(tableSchema TableSchema) RowIter {
 	return func(yield func(Row) bool) {
 		for tup := range e.storage.Tuples(tableSchema.StartPage) {
