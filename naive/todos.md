@@ -29,8 +29,8 @@
         * [x] funnel all writes and updates to single method
         * [x] serialize and persist changes to each pages
         * [x] serialization and deserialization of the db
-    * [ ] introduce ExecutionEngine class to provide high level api
-        * [ ] exec engine - operates on sql, cached schema and operators. Uses IDs. Decoding happens here
+    * [x] introduce ExecutionEngine class to provide high level api
+        * [x] exec engine - operates on sql, cached schema and operators. Uses IDs. Decoding happens here
             * [ ] row iterator and column accessors should be lazy to avoid eager fetching overflows
         * [x] storage engine - operates on pages, tuples and bytes. Uses page IDs. Also uses overflow pages
         * [x] pages - operates on byte tuples, slots. Generic page, root, overflow
@@ -74,7 +74,7 @@
 
 * [ ] cleanup code 
     * [x] separate iterators and access methods.
-    * [ ] move some stuff to exection engine
+    * [x] move some stuff to exection engine
     * [x] schema outside of directory
     * [x] schema pages that can store different tables
 * [ ] tool for debugging data on disk
