@@ -79,6 +79,24 @@ func NewDatabaseWithStorage(storage *StorageEngine) *Database {
 	return &Database{NewExecutionEngine(storage)}
 }
 
+func (d *Database) Execute(sqlStatement string) (any, error) {
+	stmt, err := sql.Parse(sql.Lex(sqlStatement))
+	if err != nil {
+		return nil, err
+	}
+
+	switch stmt := stmt.(type) {
+	case *sql.CreateStatement:
+		return nil, d.CreateTable(*stmt)
+	case *sql.InsertStatement:
+		return nil, d.Insert(*stmt)
+	case *sql.SelectStatement:
+		return d.Select(*stmt)
+	default:
+		return nil, fmt.Errorf("unknown statement type %T", stmt)
+	}
+}
+
 const PageSize = 4 * 1024
 const schemaName = "catalog_schema"
 const assertionsEnabled = true

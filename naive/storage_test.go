@@ -2,7 +2,6 @@ package naive
 
 import (
 	"bytes"
-	"simple-db/sql"
 	"strings"
 	"testing"
 
@@ -285,28 +284,19 @@ func TestSerializeStorage(t *testing.T) {
 func execute(t *testing.T, s *Database, statement string) error {
 	t.Helper()
 
-	stmt, err := sql.Parse(sql.Lex(statement))
-	assert.NoError(t, err)
-
-	switch stmt := stmt.(type) {
-	case *sql.CreateStatement:
-		return s.CreateTable(*stmt)
-	case *sql.InsertStatement:
-		return s.Insert(*stmt)
-	}
-
-	assert.Fail(t, "unreachable, invalid statement")
-	return nil
+	res, err := s.Execute(statement)
+	assert.Nil(t, res, "non select query result should be nil")
+	return err
 }
 
 func query(t *testing.T, s *Database, statement string) (QueryResult, error) {
 	t.Helper()
 
-	stmt, err := sql.Parse(sql.Lex(statement))
-	assert.NoError(t, err)
-	assert.IsType(t, &sql.SelectStatement{}, stmt)
+	got, err := s.Execute(statement)
+	res, ok := got.(QueryResult)
+	assert.True(t, ok, "type mismatch, expected QueryResult, got %T", got)
 
-	return s.Select(*stmt.(*sql.SelectStatement))
+	return res, err
 }
 
 func testSelect(t *testing.T, prep []string, queryStr string, exp QueryResult) {
