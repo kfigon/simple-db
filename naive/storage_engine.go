@@ -19,7 +19,6 @@ type CombinedPageIteratorEntry struct {
 	data []byte
 }
 type PageIteratorCombined iter.Seq2[PageID, CombinedPageIteratorEntry]
-type TupleIterator iter.Seq[Tuple]
 
 func byteOffsetFromPageID(p PageID) int {
 	return int(p) * PageSize

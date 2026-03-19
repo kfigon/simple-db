@@ -177,9 +177,9 @@ func (g *GenericPage) hasSpace(newData int) bool {
 	return int(g.lastOffset)-newData-(len(g.Indexes)*rowIdSize) > 0
 }
 
-type TupleIteratorz iter.Seq[Tuple]
+type TupleIterator iter.Seq[Tuple]
 
-func (g *GenericPage) Iterator() TupleIteratorz {
+func (g *GenericPage) Iterator() TupleIterator {
 	return func(yield func(Tuple) bool) {
 		for slotId := 0; slotId < len(g.Indexes); slotId++ {
 			d := must(g.Read(SlotIdx(slotId)))
