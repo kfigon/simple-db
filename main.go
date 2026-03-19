@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"simple-db/naive"
-	"simple-db/sql"
 	"strings"
 )
 
@@ -74,30 +73,16 @@ func main() {
 }
 
 func handleSql(storage *naive.Database, s string) error {
-	stmt, err := sql.Parse(sql.Lex(s))
+	got, err := storage.Execute(s)
 	if err != nil {
-		return fmt.Errorf("error parsing sql: %w", err)
+		return fmt.Errorf("sql error: %w", err)
 	}
 
-	switch stmt := stmt.(type) {
-	case *sql.CreateStatement:
-		if err = storage.CreateTable(*stmt); err != nil {
-			return fmt.Errorf("statement error: %w", err)
-		}
-		fmt.Println("created table", stmt.Table)
-	case *sql.InsertStatement:
-		if err = storage.Insert(*stmt); err != nil {
-			return fmt.Errorf("statement error: %w", err)
-		}
-		fmt.Println("inserted into table", stmt.Table)
-	case *sql.SelectStatement:
-		res, err := storage.Select(*stmt)
-		if err != nil {
-			return fmt.Errorf("statement error: %w", err)
-		}
-		fmt.Println(fmtQueryRes(res))
+	switch got := got.(type) {
+	case naive.QueryResult:
+		fmt.Println(fmtQueryRes(got))
 	default:
-		return fmt.Errorf("invalid statement for sql: %q", s)
+		return fmt.Errorf("invalid statement for sql: %q: %T", s, got)
 	}
 	return nil
 }
