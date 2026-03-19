@@ -39,8 +39,8 @@
     * [ ] overflow pages
         * [x] serialization of over flow page
         * [x] build overflow page
-        * [ ] restore overflow page during read
-        * [x] tests
+        * [x] restore overflow page during read
+        * [ ] tests
     * [x] properly design boundaries for execution and storage engines. What abstractions do they need?
         * execution engine should work only on operators
         * storage engine should handle finding pages, puting tuples, realloc, overflows
@@ -81,7 +81,7 @@
 * [ ] better update support - overflow pages, page garbage collection, dead tuples and dead cell cleanups 
 * [x] try to understand different storage layouts - page storage (heap file, tree), page layout (log structured, tuple oriented - slotted pages, index organized storage). Storage models - row, column, mix
 * [ ] tuple header with types, like sqlite does
-    * [ ] overflow pages for data bigger than > 2kb
+    * [x] overflow pages for data bigger than > 2kb
     * [ ] null columns
     * [ ] semi-self contained
 * [ ] join

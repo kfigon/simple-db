@@ -289,7 +289,7 @@ func (e *ExecutionEngine) Select(stmt sql.SelectStatement) (QueryResult, error) 
 func (e *ExecutionEngine) rowIteratorzz(tableSchema TableSchema) RowIter {
 	return func(yield func(Row) bool) {
 		for tup := range e.storage.Tuples(tableSchema.StartPage) {
-			row := parseTupleToRow(tup, tableSchema.FieldNames)
+			row := e.parseTupleToRow(tup, tableSchema.FieldNames)
 			if !yield(row) {
 				return
 			}
@@ -302,7 +302,7 @@ type QueryResult struct {
 	Values [][]string
 }
 
-func parseTupleToRow(t Tuple, schema []FieldName) Row {
+func (e *ExecutionEngine) parseTupleToRow(t Tuple, schema []FieldName) Row {
 	out := Row{}
 	for i := range t.NumberOfFields {
 		data := t.ColumnDatas[i]
@@ -321,14 +321,33 @@ func parseTupleToRow(t Tuple, schema []FieldName) Row {
 		case StringField:
 			columnData = &ColumnData{String, must(ReadString(buf))}
 		case OverflowField:
-			// todo: handle overflows
-			debugAssert(false, "overflow todo - pass storage and follow pointers")
+			length := must(ReadInt(buf))
+			firstPageID := must(ReadInt(buf))
+			parsedData := e.followOverflowChain(int(length), PageID(firstPageID))
+			columnData = &ColumnData{String, string(parsedData)}
 		default:
 			debugAssert(false, "unexpected field type: %d", typ)
 		}
 		out[fieldName] = *columnData
 	}
 	return out
+}
+
+func (e *ExecutionEngine) followOverflowChain(dataLen int, firstPage PageID) []byte {
+	buf := bytes.NewBuffer(make([]byte, 0, dataLen))
+	remainingDataLen := dataLen
+
+	for _, page := range e.storage.ReadPages(firstPage) {
+		overflowPage := must(DeserializeOverflowPage(&page.GenericPageHeader, bytes.NewBuffer(page.data)))
+
+		// todo: check for one off errors
+		howMuchToRead := len(overflowPage.Data)
+		if remainingDataLen < howMuchToRead {
+			howMuchToRead = remainingDataLen
+		}
+		buf.Write(overflowPage.Data[:howMuchToRead])
+	}
+	return buf.Bytes()
 }
 
 func colsToQuery(stmt sql.SelectStatement, schema TableSchema) ([]FieldName, error) {
