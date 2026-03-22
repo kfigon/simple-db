@@ -104,10 +104,10 @@ func TestParser(t *testing.T) {
 							Right:    ValueLiteral{Token{String, "asdf", 1}},
 						}},
 					Right: &InfixExpression{
-							Operator: Token{Operator, "=", 1},
-							Left:     ColumnLiteral{Token{Identifier, "c", 1}},
-							Right:    ValueLiteral{Token{Boolean, "true", 1}},
-						},
+						Operator: Token{Operator, "=", 1},
+						Left:     ColumnLiteral{Token{Identifier, "c", 1}},
+						Right:    ValueLiteral{Token{Boolean, "true", 1}},
+					},
 				}},
 			},
 		},
@@ -140,12 +140,12 @@ func TestParser(t *testing.T) {
 		},
 		{
 			desc: "insert1",
-			input: `INSERT INTO foobar (colA, colB, colC)
-					VALUES (true, 1234, "asfg")`,
+			input: `INSERT INTO foobar (colA, colB, colC, colD)
+					VALUES (true, 1234, "asfg", null)`,
 			expected: &InsertStatement{
 				Table:   "foobar",
-				Columns: []string{"colA", "colB", "colC"},
-				Values:  []string{"true", "1234", "asfg"},
+				Columns: []string{"colA", "colB", "colC", "colD"},
+				Values:  []string{"true", "1234", "asfg", "null"},
 			},
 		},
 	}

@@ -102,6 +102,24 @@ func TestNaiveStorage(t *testing.T) {
 		assert.ElementsMatch(t, []string{"456", "baz"}, res.Values[1])
 	})
 
+	t.Run("null insert", func(t *testing.T) {
+		s := NewDatabase()
+		assert.NoError(t, execute(t, s, `create table foobar(id int, name string, foo string)`))
+		assert.NoError(t, execute(t, s, `insert into foobar(id, name, foo) VALUES (1, "abc", null)`))
+		assert.NoError(t, execute(t, s, `insert into foobar(id, name, foo) VALUES (2, null, "bcd")`))
+		assert.NoError(t, execute(t, s, `insert into foobar(id, name, foo) VALUES (null, "cde", "fgh")`))
+
+		res, err := query(t, s, "select * from foobar")
+		assert.NoError(t, err)
+
+		assert.ElementsMatch(t, []FieldName{"id", "name", "foo"}, res.Header)
+		assert.Len(t, res.Values, 3)
+
+		assert.ElementsMatch(t, []string{"1", "asdf", ""}, res.Values[0])
+		assert.ElementsMatch(t, []string{"2", "", "bcd"}, res.Values[1])
+		assert.ElementsMatch(t, []string{"", "cde", "fgh"}, res.Values[2])
+	})
+
 	t.Run("basic select with specified columns", func(t *testing.T) {
 		s := NewDatabase()
 		assert.NoError(t, execute(t, s, `create table foobar(id int, name string)`))

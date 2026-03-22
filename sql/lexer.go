@@ -33,6 +33,7 @@ const (
 	Having
 	Values
 	Into
+	Null
 )
 
 func (t TokenType) String() string {
@@ -61,6 +62,7 @@ func (t TokenType) String() string {
 		"Having",
 		"Values",
 		"Into",
+		"Null",
 	}[int(t)]
 }
 
@@ -101,15 +103,16 @@ func Lex(in string) []Token {
 		"create": Create,
 		"values": Values,
 		"into":   Into,
+		"null":   Null,
+		"true":   Boolean,
+		"false":  Boolean,
+		"and":    Operator,
+		"or":     Operator,
 	}
 	stringToType := func(w string) TokenType {
 		lower := strings.ToLower(w)
 		if t, ok := keyword[lower]; ok {
 			return t
-		} else if lower == "true" || lower == "false" {
-			return Boolean
-		} else if lower == "and" || lower == "or" {
-			return Operator
 		}
 		return Identifier
 	}

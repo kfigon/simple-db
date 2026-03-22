@@ -11,7 +11,11 @@ type Log struct {
 	lastLsn LSN
 }
 
-type LogEntry struct{}
+type LogEntry struct {
+	lsn LSN
+	//... page/slot []change
+	// []table-columns-change
+}
 
 func (le LogEntry) Serialize() []byte {
 	// todo: implement log entry and serialization

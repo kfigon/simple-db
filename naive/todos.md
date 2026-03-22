@@ -62,8 +62,9 @@
     * [arch](https://www.sqlite.org/arch.html)
     * [format](https://www.sqlite.org/fileformat2.html)
 * [ ] log
-    * [ ] should a log be separate file? Should we follow page layout?
-    * [ ] log structure investigation (sql vs physical changes - old val, new val, rowid + offset)
+    * [ ] rewatch lectures, decide:
+        * [ ] should a log be separate file? Should we follow page layout?
+        * [ ] log structure investigation (sql vs physical changes - old val, new val, rowid + offset)
     * [ ] implement log
     * [ ] use log for changes
     * [ ] integrate log in all writes

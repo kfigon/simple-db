@@ -200,8 +200,8 @@ func (p *parser) parseInsertStatement() (*InsertStatement, error) {
 	var vals []string
 	for t := p.next(); !eof(t); t = p.next() {
 		next := p.next()
-		
-		if t.Typ == Identifier || t.Typ == Number || t.Typ == Boolean || t.Typ == String {
+
+		if t.Typ == Identifier || t.Typ == Number || t.Typ == Boolean || t.Typ == String || t.Typ == Null {
 			vals = append(vals, t.Lexeme)
 
 			if next.Typ == CloseParen{
@@ -213,7 +213,7 @@ func (p *parser) parseInsertStatement() (*InsertStatement, error) {
 				return nil, fmt.Errorf("insert table: values should be separated by commas, got %v", next)		
 			}
 		} else {
-			return nil, fmt.Errorf("insert table: unknown token when defining values. Expected identifier, boolean, string or number, got %v", t)
+			return nil, fmt.Errorf("insert table: unknown token when defining values. Expected identifier, boolean, string, null or number, got %v", t)
 		}
 	}
 	
