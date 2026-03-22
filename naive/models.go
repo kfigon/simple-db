@@ -2,6 +2,7 @@ package naive
 
 import (
 	"fmt"
+	"simple-db/sql"
 	"strconv"
 )
 
@@ -48,21 +49,28 @@ func FieldTypeFromString(s string) (FieldType, error) {
 	}
 }
 
-func ParseStringValueToType(v string, typ FieldType) (any, error) {
-	switch typ {
-	case Null:
+func ParseExpressionValueToType(providedValue sql.Expression, fieldTyp FieldType) (any, error) {
+	switch v := providedValue.(type) {
+	case sql.ValueLiteral:
+		switch fieldTyp {
+		case Null:
+			return nil, nil
+		case Int32:
+			v, err := strconv.ParseInt(v.Tok.Lexeme, 10, 32)
+			return int32(v), err
+		case String:
+			return v.Tok.Lexeme, nil
+		case Boolean:
+			return strconv.ParseBool(v.Tok.Lexeme)
+		case Float:
+			return strconv.ParseFloat(v.Tok.Lexeme, 64)
+		default:
+			return nil, fmt.Errorf("invalid data type %v", fieldTyp)
+		}
+	case sql.NullLiteral:
 		return nil, nil
-	case Int32:
-		v, err := strconv.ParseInt(v, 10, 32)
-		return int32(v), err
-	case String:
-		return v, nil
-	case Boolean:
-		return strconv.ParseBool(v)
-	case Float:
-		return strconv.ParseFloat(v, 64)
 	default:
-		return nil, fmt.Errorf("invalid data type %v", typ)
+		panic(fmt.Sprintf("todo expression type for insert: %T", v))
 	}
 }
 

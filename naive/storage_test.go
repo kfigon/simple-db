@@ -115,9 +115,9 @@ func TestNaiveStorage(t *testing.T) {
 		assert.ElementsMatch(t, []FieldName{"id", "name", "foo"}, res.Header)
 		assert.Len(t, res.Values, 3)
 
-		assert.ElementsMatch(t, []string{"1", "asdf", ""}, res.Values[0])
-		assert.ElementsMatch(t, []string{"2", "", "bcd"}, res.Values[1])
-		assert.ElementsMatch(t, []string{"", "cde", "fgh"}, res.Values[2])
+		assert.ElementsMatch(t, []string{"1", "asdf", "<nil>"}, res.Values[0])
+		assert.ElementsMatch(t, []string{"2", "<nil>", "bcd"}, res.Values[1])
+		assert.ElementsMatch(t, []string{"<nil>", "cde", "fgh"}, res.Values[2])
 	})
 
 	t.Run("basic select with specified columns", func(t *testing.T) {

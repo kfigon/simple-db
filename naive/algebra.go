@@ -59,7 +59,7 @@ func Product(rows RowIter, rows2 RowIter) RowIter {
 }
 
 // todo: add error handling
-func buildPredicate(pred sql.BoolExpression) func(Row) bool {
+func buildPredicate(pred sql.Expression) func(Row) bool {
 	return func(r Row) bool {
 		col := predBuilder(pred, r)
 		debugAssert(col.Typ == Boolean, "boolean predicate required, got %v", col.Typ)
@@ -88,7 +88,7 @@ func buildCastAndOperand[T any](left, right ColumnData, fn func(a, b T) bool) fu
 	}
 }
 
-func predBuilder(pred sql.BoolExpression, r Row) ColumnData {
+func predBuilder(pred sql.Expression, r Row) ColumnData {
 	switch v := pred.(type) {
 	case *sql.InfixExpression:
 		left := predBuilder(v.Left, r)

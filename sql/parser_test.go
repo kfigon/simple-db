@@ -145,7 +145,12 @@ func TestParser(t *testing.T) {
 			expected: &InsertStatement{
 				Table:   "foobar",
 				Columns: []string{"colA", "colB", "colC", "colD"},
-				Values:  []string{"true", "1234", "asfg", "null"},
+				Values: []Expression{
+					ValueLiteral{Token{Boolean, "true", 2}},
+					ValueLiteral{Token{Number, "1234", 2}},
+					ValueLiteral{Token{String, "asfg", 2}},
+					NullLiteral{},
+				},
 			},
 		},
 	}

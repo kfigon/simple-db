@@ -8,12 +8,12 @@ import (
 
 func TestLex(t *testing.T) {
 	testCases := []struct {
-		desc	string
-		input 	string
+		desc     string
+		input    string
 		expected []Token
 	}{
 		{
-			desc: "tokens1",
+			desc:  "tokens1",
 			input: "select i 3 adf 123 from . x",
 			expected: []Token{
 				{Select, "select", 1},
@@ -38,14 +38,14 @@ func TestLex(t *testing.T) {
 				{Table, "table", 1},
 				{Identifier, "foobar", 1},
 				{OpenParen, "(", 1},
-				
+
 				{Identifier, "abc", 2},
 				{Identifier, "int", 2},
 				{Comma, ",", 2},
 				{Identifier, "asdf", 3},
 				{Identifier, "boolean", 3},
 				{Comma, ",", 3},
-				
+
 				{CloseParen, ")", 4},
 				{EOF, "", 4},
 			},
@@ -62,6 +62,17 @@ cd" 12`,
 cd`, 2},
 				{Number, "12", 2},
 				{EOF, "", 2},
+			},
+		},
+		{
+			desc:  "nulls in string",
+			input: `insert "foobar" null 123`,
+			expected: []Token{
+				{Insert, "insert", 1},
+				{String, "foobar", 1},
+				{Null, "null", 1},
+				{Number, "123", 1},
+				{EOF, "", 1},
 			},
 		},
 	}

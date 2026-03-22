@@ -153,9 +153,13 @@ func (e *ExecutionEngine) Insert(stmt sql.InsertStatement) error {
 			return fmt.Errorf("unknown column %q for %v", col, stmt.Table)
 		}
 
-		parsed, err := ParseStringValueToType(val, typ)
+		parsed, err := ParseExpressionValueToType(val, typ)
 		if err != nil {
 			return fmt.Errorf("type mismatch for column %q for table %v, expected %v", col, stmt.Table, typ)
+		}
+
+		if parsed == nil {
+			typ = Null
 		}
 
 		inputLookup[FieldName(col)] = ColumnData{
@@ -184,6 +188,9 @@ func (e *ExecutionEngine) Insert(stmt sql.InsertStatement) error {
 		case Boolean:
 			tuple.ColumnDatas = append(tuple.ColumnDatas, SerializeBool(d.Data.(bool)))
 			tuple.ColumnTypes = append(tuple.ColumnTypes, BooleanField)
+		case Null:
+			tuple.ColumnDatas = append(tuple.ColumnDatas, nil)
+			tuple.ColumnTypes = append(tuple.ColumnTypes, NullField)
 		}
 	}
 

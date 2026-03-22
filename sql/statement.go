@@ -7,7 +7,7 @@ type Statement interface {
 }
 
 type WhereStatement struct {
-	Predicate BoolExpression
+	Predicate Expression
 }
 
 type SelectStatement struct {
@@ -21,7 +21,7 @@ func (*SelectStatement) statementTag() {}
 
 type InsertStatement struct {
 	Columns []string
-	Values  []string
+	Values  []Expression
 	Table   string
 }
 
@@ -47,14 +47,14 @@ type ColumnDefinition struct {
 
 func (*CreateStatement) statementTag() {}
 
-type BoolExpression interface {
+type Expression interface {
 	expressionTag()
 }
 
 type InfixExpression struct {
 	Operator Token
-	Left     BoolExpression
-	Right    BoolExpression
+	Left     Expression
+	Right    Expression
 }
 
 func (*InfixExpression) expressionTag() {}
@@ -64,6 +64,10 @@ type ValueLiteral struct {
 }
 
 func (ValueLiteral) expressionTag() {}
+
+type NullLiteral struct{}
+
+func (NullLiteral) expressionTag() {}
 
 type ColumnLiteral struct {
 	Name Token
