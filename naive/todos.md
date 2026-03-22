@@ -44,9 +44,9 @@
     * [x] properly design boundaries for execution and storage engines. What abstractions do they need?
         * execution engine should work only on operators
         * storage engine should handle finding pages, puting tuples, realloc, overflows
-    * [ ] nil column support
+    * [x] nil column support
     * [ ] nil column validation for inserts
-    * [ ] nil column support in sql
+    * [x] nil column support in sql
     * [x] ditch directory pages. Mimic sqlite tuple format and schema:
         * [x] no directory page type
         * [x] implement just the schema page:
