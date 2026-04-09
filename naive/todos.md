@@ -73,7 +73,7 @@
 * [ ] transactions, acid
 * [ ] recovery
 
-* [ ] cleanup code 
+* [x] cleanup code 
     * [x] separate iterators and access methods.
     * [x] move some stuff to exection engine
     * [x] schema outside of directory
@@ -93,7 +93,7 @@
 * [ ] pesistence or persistence abstraction
 
 * [x] operators - Row abstraction might be replaced by just array of columns, to reduce memory
-* [ ] ~~work through a book from E. Sciore. Edit: I have an issue with that book, I don't get all the explanations and code~~
+* [ ] work through a book from E. Sciore. Edit: I have an issue with that book, I don't get all the explanations and code
 * [x] revisit again lectures from CMU. Think about order of implementation and metadata structure. Maybe focus on reading sqlite code or tony's sary mkdb?
 
 * best video on pratt parser [link](https://www.youtube.com/watch?v=0c8b7YfsBKs), explains binding power instead of predecence
