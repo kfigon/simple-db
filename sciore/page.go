@@ -2,7 +2,6 @@ package sciore
 
 import (
 	"encoding/binary"
-	"strings"
 )
 
 var endian = binary.LittleEndian
@@ -29,23 +28,32 @@ func (p *Page) WriteInt(offset int, value int) {
 }
 
 func (p *Page) ReadString(offset int) string {
+	b := p.ReadBytes(offset)
+	return string(b)
+}
+
+func (p *Page) ReadBytes(offset int) []byte {
 	offsetPlusHeader := offset + 8
 	assert(offsetPlusHeader < len(p.Data), "size mismatch %d != %d", offsetPlusHeader, len(p.Data))
 	size := p.ReadInt(offset)
 	requiredSize := offsetPlusHeader + size
 	assert(requiredSize < len(p.Data), "size mismatch %d != %d", requiredSize, len(p.Data))
 
-	b := strings.Builder{}
-	b.Write(p.Data[offsetPlusHeader:requiredSize])
-	return b.String()
+	b := make([]byte, requiredSize)
+	copy(b, p.Data[offsetPlusHeader:requiredSize])
+	return b
 }
 
 func (p *Page) WriteString(offset int, s string) {
-	strLen := len(s)
+	p.WriteBytes(offset, []byte(s))
+}
+
+func (p *Page) WriteBytes(offset int, b []byte) {
+	strLen := len(b)
 	sizeLen := 8
 	requiredLen := strLen + sizeLen + offset
 	assert(requiredLen < len(p.Data), "size mismatch %d != %d", requiredLen, len(p.Data))
 
 	p.WriteInt(offset, strLen)
-	_ = copy(p.Data[offset+8:], []byte(s))
+	_ = copy(p.Data[offset+8:], b)
 }
